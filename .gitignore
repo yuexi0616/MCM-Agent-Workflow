@@ -222,3 +222,6 @@ __marimo__/
 *.dll
 *.so
 *.dylib
+
+# Large files exceeding GitHub limit
+MCMKnowledgeBase/raw/2024赛题/E题/附件2.csv
