@@ -1,0 +1,2365 @@
+{
+  "version": "1.0",
+  "description": "MCM 流水线错误注册表 — 按 error-taxonomy 分类体系记录所有审计发现的漏洞",
+  "last_updated": "2026-05-31T20:45:00",
+  "total_runs": 7,
+  "total_errors": 167,
+  "errors_by_phase": {
+    "modeling": 100,
+    "coding": 61,
+    "paper": 6
+  },
+  "errors": [
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "ERR-001",
+      "risk": "High",
+      "category": "模型完整性缺失",
+      "description": "温室地块(G_ord∪G_smart, 20个单元)未纳入任何数学约束和决策变量定义，占种植单元37%",
+      "location": "符号表+数学模型约束a-f",
+      "principle_violated": "模型应覆盖题目所有实体要素"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "ERR-002",
+      "risk": "High",
+      "category": "数学模型错误",
+      "description": "问题3边际分布变换 (1+δ·Φ(u)) 仅允许正向波动，违反±5%/±10%双向波动要求",
+      "location": "算法5 Step4",
+      "principle_violated": "随机扰动应中心为零对称分布"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "ERR-003",
+      "risk": "High",
+      "category": "算法可复现性",
+      "description": "DEGA编码方案(DecodeIndividual/Crossover/mutate)未定义，代码手无法实现",
+      "location": "算法1 阶段2",
+      "principle_violated": "算法伪代码应具有足够细节支撑无歧义实现"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "ERR-004",
+      "risk": "High",
+      "category": "计算可行性",
+      "description": "2000情景×200个体×500代=2×10^8次评估，约10^12次浮点运算，超出MCM环境限制",
+      "location": "算法4/算法1参数",
+      "principle_violated": "模型求解应在竞赛时限和环境内可行"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "ERR-005",
+      "risk": "High",
+      "category": "模型定义矛盾",
+      "description": "数学模型的硬约束MILP与算法实现的罚函数法对应两个不同的优化问题",
+      "location": "数学模型第3节 vs 算法6",
+      "principle_violated": "数学模型与算法实现必须一致"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "ERR-006",
+      "risk": "Med",
+      "category": "约束冲突",
+      "description": "两季蔬菜约束 x_{i,veg1}+x_{i,veg2}≤1 与总面积约束 Σ_j x≤1 冲突，压缩产能",
+      "location": "数学模型约束(d)",
+      "principle_violated": "约束之间应逻辑一致无冲突"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "ERR-007",
+      "risk": "Med",
+      "category": "时序建模缺陷",
+      "description": "两阶段随机规划忽略多年度序贯决策的灵活价值",
+      "location": "问题2/3整体框架",
+      "principle_violated": "多周期决策应反映时序依赖性"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "ERR-008",
+      "risk": "Med",
+      "category": "数学严谨性",
+      "description": "Cholesky分解未处理非正定相关矩阵的退化情形",
+      "location": "问题3第2节",
+      "principle_violated": "数值算法需涵盖异常路径处理"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "ERR-009",
+      "risk": "Med",
+      "category": "符号管理",
+      "description": "ε, δ_S, δ_p, δ_Y, penalty_coeff 未入符号表；M_{ij}/M_{kj}记号不一致",
+      "location": "符号表 + 数学模型",
+      "principle_violated": "所有数学符号须在符号表中统一定义"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "ERR-010",
+      "risk": "Med",
+      "category": "方法论脱节",
+      "description": "问题分析承诺的作物聚类降维策略未在算法中实现",
+      "location": "问题分析 vs 算法流程",
+      "principle_violated": "分析阶段的策略应在实现阶段兑现"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "NEW-001",
+      "risk": "Med",
+      "category": "编码歧义",
+      "description": "F类编码S1/S2共享相同作物集; X[i][j][t]同时代表两季面积; 初始化S2覆盖S1; 修复S1/S2总量相等",
+      "location": "algorithm_flow > 算法2 > 编码方案 > F类",
+      "principle_violated": "编码结构需区分物理决策维度",
+      "revision": 2
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "NEW-002",
+      "risk": "Med",
+      "category": "数学表达式与代码不一致",
+      "description": "P4数学表达式Q_{jt}^s≥0.9·S_{jt}(每季)与代码Σ_i Y_j·X[i][j][t]≥0.9·S_{jt}(年度); 两季地块被要求年产量≥180%预期销量",
+      "location": "mathematical_model > 1.3 > [P4] vs algorithm_flow > 算法5 > P4代码",
+      "principle_violated": "数学表达式必须与实现一致",
+      "revision": 2
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "NEW-003",
+      "risk": "Med",
+      "category": "约束未实现",
+      "description": "P1跨季节轮作(z_{ijt}^1+z_{ijt}^2≤1, z_{i2t}+z_{i1(t+1)}≤1)在数学模型声明但算法5仅检查年对年; F类编码致约束不可执行",
+      "location": "mathematical_model > 1.3 > [P1] vs algorithm_flow > 算法5 > P1代码",
+      "principle_violated": "所有声明的约束必须有对应的可行性保障机制",
+      "revision": 2
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "NEW-004",
+      "risk": "Low",
+      "category": "函数未定义",
+      "description": "算法1第500-503行引用AdaptF和AdaptCR但未提供任何实现公式",
+      "location": "algorithm_flow > 算法1 > 自适应参数调整",
+      "principle_violated": "算法伪代码中的函数调用必须可无歧义实现",
+      "revision": 2
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "NEW-005",
+      "risk": "Low",
+      "category": "收敛性风险",
+      "description": "DE/best/2在pop_size=100有效维度~8000(D:N=1:80), 低于DE推荐1:5~1:10, 易早熟收敛",
+      "location": "algorithm_flow > 算法1 > 主循环",
+      "principle_violated": "优化算法参数配置应有收敛性论证",
+      "revision": 2
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "NEW-006",
+      "risk": "Low",
+      "category": "冗余操作",
+      "description": "每个个体每代修复4次(变异后→交叉后→EvaluateFitness内→主循环后), 可能降低种群多样性",
+      "location": "algorithm_flow > 算法1 > 主循环",
+      "principle_violated": "算法设计应避免冗余计算",
+      "revision": 2
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "NEW-007",
+      "risk": "Low",
+      "category": "分类名称不准确",
+      "description": "符号表第78行豆类子集含'土豆'(茄科块茎,非豆科); 索引{C038:1,2,3,4,5,17,18,19}计算正确但名称存疑",
+      "location": "symbol_table > J_bean",
+      "principle_violated": "术语应与真实作物分类一致",
+      "revision": 2
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "NEW-008",
+      "risk": "Low",
+      "category": "产量双重计数",
+      "description": "P4罚函数Σ_i Y_j·X[i][j][t]对F类作物隐含每季产量相同假设; 年产量应为2倍但代码与S_{jt}比较未说明双季系数",
+      "location": "algorithm_flow > 算法5 > P4",
+      "principle_violated": "物量核算应准确反映多季生产",
+      "revision": 2
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-001",
+      "risk": "High",
+      "category": "dimension_mismatch",
+      "description": "Webster 延误公式中 (1-g/C) 误写为 (1-λ/C)，λ/C 量纲不匹配",
+      "location": "mathematical_model > 公式(213)",
+      "directive": "更正为标准 Webster 延误公式 d = C(1-g/C)^2 / (2(1-λ/S))"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-002",
+      "risk": "High",
+      "category": "missing_assumption",
+      "description": "DID 模型未分离节假日效应与管控效果，β₃ 无法识别纯净因果效应",
+      "location": "mathematical_model > 4.2 DID",
+      "directive": "补充节假日效应控制方法，明确处理组/对照组划分依据"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-003",
+      "risk": "High",
+      "category": "overly_strong_assumption",
+      "description": "K-Means 做时间分段忽略时序依赖性，可能产生碎片化时段",
+      "location": "mathematical_model > 1.2 K-Means",
+      "directive": "替换为时序约束聚类或贝叶斯断点检测，对比结果一致性"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-004",
+      "risk": "High",
+      "category": "missing_assumption",
+      "description": "Problem 3 轨迹重建因侧方进出导致系统性偏差",
+      "location": "mathematical_model > 3.1 + assumptions > 1",
+      "directive": "量化侧方进出比例，设计保守/乐观两套估计方案，对阈值 τ 做敏感性分析"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-005",
+      "risk": "High",
+      "category": "overly_strong_assumption",
+      "description": "GA 双层优化中绿灯分配可能违反 g_min 约束，等比缩放不可行",
+      "location": "algorithm_flow > Algorithm 2 Step 3",
+      "directive": "增加 C_0 可行性检查，对不可行解施加硬性惩罚，删除等比缩放处理"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-006",
+      "risk": "Med",
+      "category": "missing_assumption",
+      "description": "低流量时段转向概率 MLE 估计面临数据稀疏性",
+      "location": "mathematical_model > 1.3 转向概率估计",
+      "directive": "添加最小样本量门控或 Dirichlet-Multinomial 贝叶斯平滑"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-007",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "DQN 部分缺乏可实现的工程方案，伪代码不可执行",
+      "location": "algorithm_flow > Algorithm 2 Stage C",
+      "directive": "回答队列估计/仿真器/动作空间问题，或从核心算法流中移除详细伪代码"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-008",
+      "risk": "Med",
+      "category": "overly_strong_assumption",
+      "description": "综合评分 min-max 归一化在所有指标同向变化时反转物理含义",
+      "location": "mathematical_model > 4.5 公式(387)-(390)",
+      "directive": "替换为以零为基准的变换，添加效应方向符号指示器"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-009",
+      "risk": "Med",
+      "category": "missing_assumption",
+      "description": "多天数据平均混叠工作日/周末/节假日三种不同交通模式",
+      "location": "algorithm_flow > Algorithm 1 Step 1",
+      "directive": "分日期类型计算平均，或使用所有单天样本点而非均值"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-010",
+      "risk": "Med",
+      "category": "overly_strong_assumption",
+      "description": "DID 平行趋势检验采用低效力的交互项前测，未提供替代方案",
+      "location": "algorithm_flow > 边界情况 6",
+      "directive": "补充事件研究法/合成控制法作为平行趋势不成立时的替代"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-011",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "巡游车 H_threshold 阈值固定，未考虑管控措施改变方向分布",
+      "location": "mathematical_model > 3.3 公式(290)",
+      "directive": "讨论管控措施与巡游判定阈值的交互效应，考虑动态阈值方案"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-012",
+      "risk": "Low",
+      "category": "ambiguous_algorithm",
+      "description": "相位-方向映射函数 direction_to_phase_idx 未定义",
+      "location": "algorithm_flow > Algorithm 1 Step 1",
+      "directive": "明确交叉口相位方案并定义映射函数"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-013",
+      "risk": "Low",
+      "category": "missing_error_handling",
+      "description": "停车位需求参数 μ_occ 和 ρ 缺乏敏感性分析",
+      "location": "mathematical_model > 3.4 公式(315)",
+      "directive": "添加参数敏感性分析，报告 μ_occ 和 ρ 合理取值范围内的 P_demand 变化范围"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-014",
+      "risk": "Low",
+      "category": "ambiguous_algorithm",
+      "description": "符号表中 KL 散度和 W_k 未被模型引用",
+      "location": "symbol_table",
+      "directive": "移除未使用符号或在模型中补充相关公式"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-015",
+      "risk": "High",
+      "category": "circular_reasoning",
+      "description": "Algorithm 4 Step 1 用 outcome 变量（流量变化率 change_rate_i）推断处理组划分 treated_i，是循环论证——DID 的目的是估计处理效应，但处理状态本身由潜在结果变化定义。阈值 median(change_rate)-0.1 无理论依据。若全部交叉口均受管控，此方法会错误划分部分为未处理组；若部分未受管控，由此产生选择偏误。",
+      "location": "algorithm_flow > Algorithm 4 > Step 1",
+      "directive": "删除基于 outcome 的 treated_i 推断逻辑。明确管控覆盖范围：若全部 12 交叉口受控则简化为前后对比模型；若部分受控则基于外部政策信息划分处理组。"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-016",
+      "risk": "Med",
+      "category": "dimension_mismatch",
+      "description": "PELT/BIC 惩罚项使用 12+12x12=156 参数/时段，但协方差矩阵 Σ 跨时段共享，每新增时段仅增加 12 个均值参数。惩罚项是正确值 (0.5*ln(N)*12) 的 13 倍，导致 BIC 严重偏好较少时段（K 被低估）。",
+      "location": "mathematical_model > 1.2 > 方案B > PELT用BIC惩罚",
+      "directive": "β_penalty 改为 0.5 * ln(N) * 12（仅均值向量参数数量），而非 0.5 * ln(N) * (12 + 12*12)。"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-017",
+      "risk": "High",
+      "category": "constraint_violation",
+      "description": "GA 绿灯二次分配仅处理 residual > 0（第619行），当 residual < 0（截断后总绿灯超可用时间）时不做任何处理，输出 Σg_{i,j} > C_0 - L_i 的违规配时方案。4相位示例：available_green=104, Webster分配[60,30,7,7], clip后[60,30,15,15]=120>104, residual=-16, 约束被违反。",
+      "location": "algorithm_flow > Algorithm 2 > 阶段B > Step 3 > 二次分配",
+      "directive": "将流程改为 '先分配 g_min 再按流量比分配剩余'，替代当前 'Webster 比例分配 + 后截断' 流程。天然保证 Σg = C_0 - L_i 且各相位 ≥ g_min。"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-018",
+      "risk": "Low",
+      "category": "missing_assumption",
+      "description": "Algorithm 3 Step 1 使用 segment_length 变量（第700行）计算行驶时间，但该变量未在符号表或算法参数列表中定义。",
+      "location": "algorithm_flow > Algorithm 3 > Step 1 > 侧方进出检测",
+      "directive": "在符号表中添加 segment_length 定义，或说明路段长度从交叉口间距计算的方法。"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-019",
+      "risk": "Low",
+      "category": "overly_strong_assumption",
+      "description": "GA 适应度仅用单个 '关键相位' 延误 E[W_i] 代表交叉口总延误，未说明单相位延误作为交叉口延误代理的合理性及误差范围。对于四相位交叉口，非关键相位延误可能显著不同，优化目标可能偏向某方向。",
+      "location": "algorithm_flow > Algorithm 2 > 阶段B > Step 3 > 延误计算",
+      "directive": "说明使用关键相位延误作为代理变量的理由，或在适应度中使用各相位延误的流量加权平均。"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "coding",
+      "problem": "2024-E-traffic-control",
+      "timestamp": "2026-05-30T23:50:00",
+      "flaws": [
+        {
+          "id": "C-20260530-001",
+          "risk": "High",
+          "category": "covariance_misestimation",
+          "location": "TimePeriodPartitioner.pelt_changepoint_detection(), lines 667-671",
+          "summary": "PELT shared covariance pre-estimated with global mean-centering instead of pooled within-segment covariance. Global-centering conflates between-segment variation with within-segment variation when change points exist, inflating covariance estimates and biasing NLL computation.",
+          "status": "open"
+        },
+        {
+          "id": "C-20260530-002",
+          "risk": "High",
+          "category": "edge_case_crash",
+          "location": "SignalTimingOptimizer.allocate_green(), lines 1042-1061",
+          "summary": "Overflow redistribution loop breaks without resolution when all 4 phases hit g_max. Bare break leaves total_g > G_avail, triggering assertion failure at runtime. Latent bug avoided in current run by parameter coincidence.",
+          "status": "open"
+        },
+        {
+          "id": "C-20260530-003",
+          "risk": "High",
+          "category": "invalid_statistical_test",
+          "location": "ControlEffectEvaluator.event_study(), lines 1914-1923",
+          "summary": "Parallel trend test uses averaged t-statistic compared to t-distribution instead of proper joint F-test for H0: all pre-treatment coefficients = 0. Average of t-statistics follows neither t nor F distribution.",
+          "status": "open"
+        },
+        {
+          "id": "C-20260530-004",
+          "risk": "High",
+          "category": "validation_omission",
+          "location": "main pipeline lines 2711-2743",
+          "summary": "Synthetic data provides exact ground truth (120 injected cruising plates) but code never computes precision/recall/F1. Detected count 210 vs ground truth 120 -- model accuracy unknown.",
+          "status": "open"
+        },
+        {
+          "id": "C-20260530-005",
+          "risk": "Med",
+          "category": "algorithm_implementation",
+          "location": "TimePeriodPartitioner.pelt_changepoint_detection(), lines 702-711",
+          "summary": "PELT pruning is functionally a no-op. No candidate pruned by optimality condition. Algorithm runs O(n^2) rather than advertised O(n).",
+          "status": "open"
+        },
+        {
+          "id": "C-20260530-006",
+          "risk": "Med",
+          "category": "proxy_bias",
+          "location": "ControlEffectEvaluator.compute_daily_metrics(), line 1719",
+          "summary": "Speed proxy hardcodes 500m between records. Actual segment lengths 700m (intersections 1-8) and 360m (intersections 9-12). For shorter segments, speeds overestimated by ~39%.",
+          "status": "open"
+        },
+        {
+          "id": "C-20260530-007",
+          "risk": "Med",
+          "category": "parameter_instability",
+          "location": "results.json cruising_detection, CruisingVehicleDetector.sensitivity_analysis()",
+          "summary": "Tau sensitivity CV = 56.2%. Parking demand varies 7x (15 to 102 spaces) across tau=[15,60]. Output depends more on tuning parameter than on data.",
+          "status": "open"
+        },
+        {
+          "id": "C-20260530-008",
+          "risk": "Med",
+          "category": "pipeline_divergence",
+          "location": "main pipeline lines 2729-2739",
+          "summary": "Cruise counts and feature samples for fig6 from separate re-run of estimate_parking_demand(), not from sensitivity_analysis() internal results.",
+          "status": "open"
+        },
+        {
+          "id": "C-20260530-009",
+          "risk": "Med",
+          "category": "encoding_inconsistency",
+          "location": "SignalTimingOptimizer.polynomial_mutation(), line 1251",
+          "summary": "Offset mutation uses child[0] (C_0) as ub, but SBX crosses C_0 and offsets independently. Post-mutation repair corrects but GA explores unnecessarily large space.",
+          "status": "open"
+        },
+        {
+          "id": "C-20260530-010",
+          "risk": "Med",
+          "category": "convergence_validation",
+          "location": "SignalTimingOptimizer.ga_optimize(), lines 1174-1196",
+          "summary": "GA converges exactly to heuristic initialization offsets (63.0s / 32.4s = travel time at 11.11 m/s). Not validated against random initialization. Elite dominance not ruled out.",
+          "status": "open"
+        },
+        {
+          "id": "C-20260530-011",
+          "risk": "Low",
+          "category": "dead_code",
+          "location": "DataPreprocessor.label_date_types(), line 298",
+          "summary": "Variable holidays = {5,6,7,8,9,10} declared but never used. Actual holiday detection uses different arithmetic.",
+          "status": "open"
+        },
+        {
+          "id": "C-20260530-012",
+          "risk": "Low",
+          "category": "hidden_domain_logic",
+          "location": "ControlEffectEvaluator.comprehensive_evaluation(), lines 1981-1984",
+          "summary": "Cohen d sign flip for flow/wait metrics is undocumented domain knowledge. Reduction = improvement should be explicit.",
+          "status": "open"
+        },
+        {
+          "id": "C-20260530-013",
+          "risk": "Low",
+          "category": "low_explanatory_power",
+          "location": "results.json control_evaluation",
+          "summary": "All R-squared values below 0.2 (avg_speed: 0.066, total_flow: 0.198, waiting_time: 0.067). Post coefficient beta_3 not significant for any metric.",
+          "status": "open"
+        },
+        {
+          "id": "C-20260530-014",
+          "risk": "Low",
+          "category": "unexplained_results",
+          "location": "results.json partition_results",
+          "summary": "Breakpoints nearly identical across date types (weekday=weekend=[28,36,56,68,76,84], holiday differs by 1 position). Correct for synthetic scaled data but needs explanation.",
+          "status": "open"
+        },
+        {
+          "id": "C-20260530-015",
+          "risk": "Low",
+          "category": "missing_convergence_check",
+          "location": "SignalTimingOptimizer.ga_optimize(), line 1270",
+          "summary": "GA runs exactly 200 generations without any convergence check or early stopping.",
+          "status": "open"
+        },
+        {
+          "id": "C-20260530-016",
+          "risk": "Low",
+          "category": "code_smell",
+          "location": "Visualizer.plot_cruising_stats(), lines 2278-2291",
+          "summary": "Cruising time series subplot conditionally empty if cruise_counts is None. Empty subplot in 2x2 grid looks like an error.",
+          "status": "open"
+        },
+        {
+          "id": "V-20260530-001",
+          "risk": "Med",
+          "category": "visualization",
+          "location": "Visualizer.plot_ga_convergence(), fig4",
+          "summary": "Single GA run trace without variance information. Standard practice: multiple runs with mean/std band.",
+          "status": "open"
+        },
+        {
+          "id": "V-20260530-002",
+          "risk": "Med",
+          "category": "visualization",
+          "location": "Visualizer.plot_green_wave_diagram(), fig5",
+          "summary": "Green wave diagram shows only Phase 1 (N-S straight) bands. Other three phases invisible without annotation.",
+          "status": "open"
+        },
+        {
+          "id": "V-20260530-003",
+          "risk": "Med",
+          "category": "visualization",
+          "location": "Visualizer.plot_cruising_stats(), fig6 subplot 4",
+          "summary": "Feature scatter (8000 vehicles) small markers alpha=0.6 no edge color. Dense clusters obscure distribution. Hexbin recommended.",
+          "status": "open"
+        },
+        {
+          "id": "V-20260530-004",
+          "risk": "Low",
+          "category": "visualization",
+          "location": "Visualizer.plot_cruising_stats(), fig6 subplot 4 labeling",
+          "summary": "Title says lower-left quadrant for cruising, but cruising requires H >= H_threshold (above threshold line). Confusing spatial description.",
+          "status": "open"
+        },
+        {
+          "id": "V-20260530-005",
+          "risk": "Low",
+          "category": "visualization",
+          "location": "Visualizer.plot_summary_dashboard(), fig8 panel 8",
+          "summary": "Coefficient labels auto-abbreviated (avg_s_Post, tot_Post) may be illegible at print resolution.",
+          "status": "open"
+        },
+        {
+          "id": "V-20260530-006",
+          "risk": "Low",
+          "category": "visualization",
+          "location": "Visualizer.plot_flow_heatmap(), fig1 colorbar",
+          "summary": "Colorbar shrink=0.8 across 3 subplots; movement labels fontsize=8 may be hard to read in print.",
+          "status": "open"
+        },
+        {
+          "id": "C-20260530-017",
+          "risk": "Med",
+          "category": "resolved_verification",
+          "location": "ControlEffectEvaluator vs M-20260530-015",
+          "summary": "Phase-1 DID circular reasoning fix VERIFIED. All 12 intersections treated; no outcome-based division.",
+          "status": "closed_verified"
+        },
+        {
+          "id": "C-20260530-018",
+          "risk": "Med",
+          "category": "resolved_verification",
+          "location": "allocate_green() vs M-20260530-017",
+          "summary": "Phase-1 GA residual bug fix VERIFIED. Three-step g_min->remainder->overflow design with assertions.",
+          "status": "closed_verified"
+        },
+        {
+          "id": "C-20260530-019",
+          "risk": "Med",
+          "category": "resolved_verification",
+          "location": "pelt_changepoint_detection() vs M-20260530-016",
+          "summary": "Phase-1 PELT BIC over-penalty fix VERIFIED. Penalty = 0.5 * ln(96) * 12.",
+          "status": "closed_verified"
+        },
+        {
+          "id": "C-20260530-020",
+          "risk": "Med",
+          "category": "resolved_verification",
+          "location": "AVG_SEGMENT_LENGTH vs M-20260530-018",
+          "summary": "Phase-1 segment_length undefined fix VERIFIED. AVG_SEGMENT_LENGTH=530.0 defined.",
+          "status": "closed_verified"
+        },
+        {
+          "id": "C-20260530-021",
+          "risk": "Med",
+          "category": "resolved_verification",
+          "location": "compute_avg_speed() vs M-20260530-019",
+          "summary": "Phase-1 critical phase delay proxy VERIFIED. Model design section 2.5 provides justification.",
+          "status": "closed_verified"
+        }
+      ]
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-001",
+      "risk": "High",
+      "category": "physics_violation",
+      "description": "Y染色体浓度(Y_conc)与总cffDNA浓度概念混用，T_min相对总cffDNA定义但建模用Y_conc，缺转换公式",
+      "location": "Q2-A2, Q2-S1",
+      "directive": "澄清Y_conc与cffDNA的映射关系或为T_min定义等效Y_conc阈值",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-002",
+      "risk": "High",
+      "category": "dimension_mismatch",
+      "description": "BIC公式使用风险值R*替代log-likelihood，统计上无效",
+      "location": "Q2-S2 式20",
+      "directive": "删除或重命名BIC公式，改用肘部法或轮廓系数选择K",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-003",
+      "risk": "High",
+      "category": "overly_strong_assumption",
+      "description": "MAR假设在NIPT数据中不合理——检测失败与浓度偏低相关(MNAR)，未指定缺失指示变量或Heckman修正",
+      "location": "G-A1",
+      "directive": "增加MNAR讨论，指定缺失指示变量是否纳入模型",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-004",
+      "risk": "High",
+      "category": "overly_strong_assumption",
+      "description": "DeepHit双层LSTM+MLP在300-500个男胎个体上参数/样本比~40:1，严重过拟合风险",
+      "location": "Q3-S2",
+      "directive": "简化架构、增加Cox基线对比、或在模型设计中量化讨论过拟合风险",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-005",
+      "risk": "High",
+      "category": "ambiguous_algorithm",
+      "description": "GA适应度中penalty_violation从未定义，代码手无法实现约束违反惩罚",
+      "location": "ALG-Q2 Step 2.1.e",
+      "directive": "明确定义罚函数形式(静态/动态/自适应/ε-约束)",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-006",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "n_i=1孕妇GPR的'群体均值函数'未精确定义",
+      "location": "ALG-Q2 Step 1.1 n_i==1",
+      "directive": "精确定义均值函数来源(如LMM固定效应预测值)",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-007",
+      "risk": "Med",
+      "category": "overly_strong_assumption",
+      "description": "DeepHit非信息删失假设不成立——检测频率可能与BMI/年龄等协变量相关",
+      "location": "Q3-A2",
+      "directive": "增加对假设违反方向性偏差的敏感性分析",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-008",
+      "risk": "Med",
+      "category": "dimension_mismatch",
+      "description": "P_penalty指数增长量级未校准，可支配F_ail∈[0,1]的贡献",
+      "location": "Q2-S2 式18",
+      "directive": "提供λ的校准方法(交叉验证/Pareto前沿/逆推)",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-009",
+      "risk": "Med",
+      "category": "overly_strong_assumption",
+      "description": "Q4堆叠集成在~240个女胎个体上架构复杂度过高，缺乏置信区间",
+      "location": "Q4-S1, Q4-S2",
+      "directive": "论证4+1架构在n~240上的合理性，给出AUROC的95%CI",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-010",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "F_ail(t|g)在指示函数式16与连续近似式17之间二择一未指定",
+      "location": "Q2-S2 Step 2.1.b",
+      "directive": "明确指定使用连续近似形式并说明理由",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-011",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "Q4基模型同时指定class_weight='balanced'和自定义加权交叉熵，两种机制不兼容",
+      "location": "Q4-S1 式28 vs LightGBM参数",
+      "directive": "明确选用其中一种机制",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-012",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "Q1→Q2 GPR均值函数在常见框架中的实现方式未指定",
+      "location": "data_flow Q1→Q2",
+      "directive": "指定如何在scikit-learn/GPyTorch中设置非零均值函数",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-013",
+      "risk": "Med",
+      "category": "missing_assumption",
+      "description": "孕周计算标准(LMP vs B超)可能混用但未指定一致性检验或校正",
+      "location": "G-A2",
+      "directive": "增加孕周标准一致性检验步骤",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-014",
+      "risk": "Low",
+      "category": "overly_strong_assumption",
+      "description": "BMI孕早期至中期变化<5%的假设对妊娠剧吐/GDM人群不成立",
+      "location": "Q1-A4",
+      "directive": "在灵敏度分析中纳入BMI变化的不确定性",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-015",
+      "risk": "Low",
+      "category": "ambiguous_algorithm",
+      "description": "Optuna 50次搜索在7维超参空间中覆盖不足",
+      "location": "Q4-S1 optuna_optimization",
+      "directive": "增加搜索次数至200以上或缩小搜索空间",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-016",
+      "risk": "Low",
+      "category": "missing_assumption",
+      "description": "Q3时序插值策略可能引入前瞻偏差(后向填充使用未来数据)",
+      "location": "ALG-Q3 Step 1.1.2",
+      "directive": "插值必须使用因果方法(仅用过去信息)",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-017",
+      "risk": "Low",
+      "category": "missing_assumption",
+      "description": "w_early/w_late标注无量纲但有效量纲取决于P_penalty值域",
+      "location": "symbol_table",
+      "directive": "标注权重取值范围或增加量纲注释",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-018",
+      "risk": "Low",
+      "category": "overly_strong_assumption",
+      "description": "染色体异常互斥假设在NIPT层面不稳健(母体CNV致多条染色体偏离)",
+      "location": "Q4-A3",
+      "directive": "讨论非三体原因导致的假阳性信号",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-019",
+      "risk": "Low",
+      "category": "missing_assumption",
+      "description": "引用bayesian-estimation和monte-carlo-simulation但模型未使用",
+      "location": "meta > methodology_references",
+      "directive": "删除未使用的知识库引用",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-020",
+      "risk": "Med",
+      "category": "data_leakage",
+      "description": "Q4堆叠集成CV在记录级(605条)而非患者级(~240名)划分数据，同患者记录可跨训练/验证集分布",
+      "location": "ALG-Q4 pseudocode line 1386",
+      "principle_violated": "交叉验证应保持样本独立性，同一患者的多次测量不可跨折叠",
+      "found_in_revision": "rev1",
+      "status": "open"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-021",
+      "risk": "Med",
+      "category": "algorithm_inconsistency",
+      "description": "GPR均值函数在数学模型(含beta5交互项, line 429)与伪代码(无beta5, line 1121)间不一致",
+      "location": "mathematical_model line 429 vs ALG-Q2 pseudocode line 1121",
+      "principle_violated": "数学模型与算法伪代码必须一致",
+      "found_in_revision": "rev1",
+      "status": "open"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-022",
+      "risk": "Low",
+      "category": "boundary_condition",
+      "description": "GA伪代码P_penalty未施加t>=t_ideal保护，t<t_ideal时惩罚为负值激励过早检测",
+      "location": "ALG-Q2 pseudocode line 1177 vs mathematical model line 513",
+      "principle_violated": "伪代码应忠实反映数学模型的约束条件",
+      "found_in_revision": "rev1",
+      "status": "open"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-023",
+      "risk": "Low",
+      "category": "ambiguous_protocol",
+      "description": "Q4堆叠集成元模型评估协议不完整，未指定嵌套CV或独立测试集",
+      "location": "ALG-Q4 step 2.3 (line 1437)",
+      "principle_violated": "评估协议须明确数据隔离机制，防泄漏",
+      "found_in_revision": "rev1",
+      "status": "open"
+    },
+    {
+      "run_id": "run-20260530-004",
+      "phase": "modeling",
+      "problem": "2025-D",
+      "timestamp": "2026-05-30T12:00:00",
+      "rev1_audit": "2026-05-30T23:15:00",
+      "rev1_status": "APPROVED",
+      "flaws": [
+        {
+          "id": "M-2025D-001",
+          "risk": "High",
+          "category": "ambiguous_algorithm",
+          "location": "TIME_DEPENDENT_DIJKSTRA: dry passage condition",
+          "summary": "时变 Dijkstra 用 OR 而非 AND 判断巷道干燥，部分湿润巷道被错误当作完全干燥",
+          "status": "closed_in_rev1",
+          "fix_verification": "AND条件已实现（t_u < t_arr_u and t_u < t_arr_v）；新增部分湿润 XOR 分支使用 v_mix=90 m/min"
+        },
+        {
+          "id": "M-2025D-002",
+          "risk": "High",
+          "category": "ambiguous_algorithm",
+          "location": "DUAL_SOURCE_FLOOD: collision detection",
+          "summary": "双源碰撞检测仅覆盖节点级碰撞，边级碰撞（两端分别被 AB 占据）未在算法中实现",
+          "status": "closed_in_rev1",
+          "fix_verification": "边级碰撞检测已添加（v_i∈S_A and v_j∈S_B or vice versa）；t_meet恒定流量公式实现；rollback_edge函数定义"
+        },
+        {
+          "id": "M-2025D-003",
+          "risk": "High",
+          "category": "ambiguous_algorithm",
+          "location": "PRACTICAL_DIJKSTRA_STRATEGY: greedy BFS",
+          "summary": "伪实用 Dijkstra 为贪心 BFS 扩展，不等价于最短路径算法，665节点无需此替代方案",
+          "status": "closed_in_rev1",
+          "fix_verification": "贪心 BFS 已完全移除；仅保留标准时变 Dijkstra；附 O(|E| log |V|) 复杂度分析和最优子结构论证"
+        },
+        {
+          "id": "M-2025D-004",
+          "risk": "High",
+          "category": "physics_violation",
+          "location": "SINGLE_SOURCE_FLOOD_3D: BFS Step 3",
+          "summary": "3D BFS 遍历 z>z_A 的高层节点连接 V_low 未覆盖点，隐含物理不可能的水流路径",
+          "status": "closed_in_rev1",
+          "fix_verification": "BFS严格限制在 E_low（两端点均在 V_low 内）；注释明确声明不遍历 z>z_A 节点"
+        },
+        {
+          "id": "M-2025D-005",
+          "risk": "Med",
+          "category": "physics_violation",
+          "location": "0. 图网络构建: point-to-segment distance",
+          "summary": "点到直线距离公式实际计算点到无限直线距离，非点到线段距离",
+          "status": "closed_in_rev1",
+          "fix_verification": "改为分段函数：t<0→点到vi端；t>1→点到vj端；0≤t≤1→垂线距离"
+        },
+        {
+          "id": "M-2025D-006",
+          "risk": "Med",
+          "category": "physics_violation",
+          "location": "1.1 流量分配公式",
+          "summary": "流量平均分配未排除上升巷道，与 Assumption 3 矛盾",
+          "status": "closed_in_rev1",
+          "fix_verification": "d_active(v_i) 排除 flag_up=1；算法主循环和 get_candidates 均跳过上升巷道；Assumption 3 修订"
+        },
+        {
+          "id": "M-2025D-007",
+          "risk": "Med",
+          "category": "physics_violation",
+          "location": "Iterative expansion: partial fill not tracked",
+          "summary": "迭代式贪婪扩展忽略慢速分支的已填充量，流量重分配后剩余时间计算有系统性误差",
+          "status": "closed_in_rev1",
+          "fix_verification": "partial_fill 字典追踪每条边累积体积；delta_t 用 remaining_vol = V_total - partial_fill；非选中边每轮累加"
+        },
+        {
+          "id": "M-2025D-008",
+          "risk": "Med",
+          "category": "ambiguous_algorithm",
+          "location": "SINGLE_SOURCE_FLOOD: while loop termination",
+          "summary": "迭代扩展 while 循环无终止保护，不连通子图导致死循环",
+          "status": "closed_in_rev1",
+          "fix_verification": "主循环增加 if len(candidates) == 0: break 保护"
+        },
+        {
+          "id": "M-2025D-009",
+          "risk": "Med",
+          "category": "ambiguous_algorithm",
+          "location": "trigger_break_flow: flow reallocation",
+          "summary": "断流重分配忽略剩余分支在断流前已积累的部分填充量",
+          "status": "closed_in_rev1",
+          "fix_verification": "重分配后使用 partial_fill 获取已填充量，计算 remaining_vol = V_total - filled 和 t_remaining"
+        },
+        {
+          "id": "M-2025D-010",
+          "risk": "Med",
+          "category": "ambiguous_algorithm",
+          "location": "TIME_DEPENDENT_DIJKSTRA: mid-traversal flooding",
+          "summary": "未检查矿工在巷道行进中水位超过 0.3m 的中间淹没风险",
+          "status": "closed_in_rev1",
+          "fix_verification": "松弛前增加 t_u < t_0.3 < t_v 判断；计算 safe_dist；若 safe_dist < L 则 continue"
+        },
+        {
+          "id": "M-2025D-011",
+          "risk": "Med",
+          "category": "overly_strong_assumption",
+          "location": "REPLAN_PATH: path comparison",
+          "summary": "重规划假设原路径在双源模型下仍可通行作为比较基准，但原路径可能已被新模型预测淹没",
+          "status": "closed_in_rev1",
+          "fix_verification": "新增 evaluate_path_under_dual 评估原路径剩余段在双源模型下的可行性；决策树覆盖新路径可行/不可行和原路径可行/不可行所有组合"
+        },
+        {
+          "id": "M-2025D-012",
+          "risk": "Low",
+          "category": "dimension_mismatch",
+          "location": "TIME_DEPENDENT_DIJKSTRA: unit inconsistency",
+          "summary": "速度单位 m/s 与时间单位 min 混用，转换文档不充分",
+          "status": "closed_in_rev1",
+          "fix_verification": "全部统一为分钟和 m/min：v_dry=240, v_with=120, v_against=60, v_mix=90"
+        },
+        {
+          "id": "M-2025D-013",
+          "risk": "Low",
+          "category": "missing_assumption",
+          "location": "model_validation_notes",
+          "summary": "验证参考值依赖优秀论文声明，未独立核实原始数据",
+          "status": "closed_in_rev1",
+          "fix_verification": "验证值后注明有待代码手读取原始 Excel 数据核实"
+        },
+        {
+          "id": "M-2025D-014",
+          "risk": "Low",
+          "category": "missing_assumption",
+          "location": "边界情况处理",
+          "summary": "未处理矿工初始位置已在淹没区的边缘情况",
+          "status": "closed_in_rev1",
+          "fix_verification": "边界情况1明确 t_notice >= t_0.3 时标记无法生还"
+        },
+        {
+          "id": "M-2025D-015",
+          "risk": "Low",
+          "category": "ambiguous_algorithm",
+          "location": "TIME_DEPENDENT_DIJKSTRA: flow_dir_flag uninitialized in case 2",
+          "summary": "flow_dir_flag 仅情况3（两端有水）赋值，但情况2（部分湿润边）的中途淹没检测引用未初始化变量，可致 NameError。物理论证表明极难触发（矿工速度>>水流速度）",
+          "status": "open",
+          "found_in_rev1": true
+        },
+        {
+          "id": "M-2025D-016",
+          "risk": "Low",
+          "category": "ambiguous_algorithm",
+          "location": "REPLAN_PATH: get_remaining_segment undefined",
+          "summary": "get_remaining_segment(init_path, t_switch) 被调用但辅助函数列表中未定义；init_path 上附着 .total_time 属性的写法有类型歧义",
+          "status": "open",
+          "found_in_rev1": true
+        }
+      ]
+    },
+    {
+      "run_id": "run-20260530-001",
+      "phase": "modeling",
+      "problem": "2022-A-wave-energy",
+      "timestamp": "2026-05-30T17:00:00",
+      "revision": "rev1_audited",
+      "revision_timestamp": "2026-05-30T23:00:00",
+      "flaws": [
+        {
+          "id": "M-2022A-001",
+          "risk": "High",
+          "category": "physics_violation",
+          "location": "mathematical_model > PTO力符号",
+          "summary": "PTO弹簧力/阻尼力符号方向使阻尼器注入正能量而非提取",
+          "status": "closed_resolved",
+          "resolution": "rev1: 浮子方程+Kh*xr+Ch*v_rel; 振子方程-Kh*xr-Ch*v_rel; 能量平衡验证"
+        },
+        {
+          "id": "M-2022A-002",
+          "risk": "High",
+          "category": "ambiguous_algorithm",
+          "location": "algorithm_flow > T_total",
+          "summary": "仿真时长40T不足",
+          "status": "closed_resolved",
+          "resolution": "rev1: Q2-4统一T_total=200s; Q1保留40T"
+        },
+        {
+          "id": "M-2022A-003",
+          "risk": "High",
+          "category": "ambiguous_algorithm",
+          "location": "algorithm_flow > Algorithm 4 > 精英保留",
+          "summary": "精英保留替换population[0]而非最差个体",
+          "status": "closed_resolved",
+          "resolution": "rev1: 改为worst_idx=argmin(fitness); population[worst_idx]=best。但fitness数组在population=offspring后失效(见M-2022A-014)"
+        },
+        {
+          "id": "M-2022A-004",
+          "risk": "Med",
+          "category": "missing_assumption",
+          "location": "assumptions > 频率无关近似",
+          "summary": "m和Cxh作为常数处理",
+          "status": "closed_resolved",
+          "resolution": "rev1: 新增假设4(频率无关近似), 标注近似值, 附窄频范围论证"
+        },
+        {
+          "id": "M-2022A-005",
+          "risk": "Med",
+          "category": "missing_assumption",
+          "location": "mathematical_model > 问题2情形2",
+          "summary": "alpha作为自由变量优化, 未求解alpha=0.5固定情形",
+          "status": "closed_resolved",
+          "resolution": "rev1: 拆分为子问题2a(alpha=0.5固定)和2b(alpha自由联合优化)"
+        },
+        {
+          "id": "M-2022A-006",
+          "risk": "Med",
+          "category": "ambiguous_algorithm",
+          "location": "algorithm_flow > Algorithm 4 > SBX/变异参数",
+          "summary": "SBX分布指数eta和变异指数etam未定义数值",
+          "status": "closed_resolved",
+          "resolution": "rev1: etac=15, etam=20明确定义"
+        },
+        {
+          "id": "M-2022A-007",
+          "risk": "Med",
+          "category": "ambiguous_algorithm",
+          "location": "algorithm_flow > Algorithm 4 > 早停",
+          "summary": "GA早停仅注释未实现",
+          "status": "closed_resolved",
+          "resolution": "rev1: 早停检查实现(30代变化<1e-6时break)"
+        },
+        {
+          "id": "M-2022A-008",
+          "risk": "Med",
+          "category": "missing_assumption",
+          "location": "mathematical_model > I_z(t) d0",
+          "summary": "d0未定义",
+          "status": "closed_resolved",
+          "resolution": "rev1: 符号表及问题3中给出定义和估算方法(d0~0.6m)"
+        },
+        {
+          "id": "M-2022A-009",
+          "risk": "Low",
+          "category": "missing_assumption",
+          "location": "mathematical_model > alpha=0公式",
+          "summary": "alpha=0时通用幂公式退化为库伦摩擦",
+          "status": "closed_resolved",
+          "resolution": "rev1: 降阶形式分支处理alpha=0为线性情形"
+        },
+        {
+          "id": "M-2022A-010",
+          "risk": "Low",
+          "category": "ambiguous_algorithm",
+          "location": "algorithm_flow > Algorithm 3 > 积分方法",
+          "summary": "矩形法和梯形法二择一未指定",
+          "status": "closed_resolved",
+          "resolution": "rev1: 明确只使用梯形法则"
+        },
+        {
+          "id": "M-2022A-011",
+          "risk": "Low",
+          "category": "overly_strong_assumption",
+          "location": "assumptions > 纵摇-垂荡解耦量化",
+          "summary": "解耦假设缺乏量化论证",
+          "status": "closed_resolved",
+          "resolution": "rev1: 量化: 1-cos5deg=0.38%, B偏差<0.4%, 质心位移0.19mm"
+        },
+        {
+          "id": "M-2022A-012",
+          "risk": "Low",
+          "category": "missing_assumption",
+          "location": "mathematical_model > 振子行程约束",
+          "summary": "振子行程约束未建模",
+          "status": "closed_resolved",
+          "resolution": "rev1: 行程+-0.8m, 接触力及GA罚函数(但接触力符号有误见M-2022A-015)"
+        },
+        {
+          "id": "M-2022A-013",
+          "risk": "Low",
+          "category": "ambiguous_algorithm",
+          "location": "algorithm_flow > 附件3插值",
+          "summary": "附件3参数无指定插值方法",
+          "status": "closed_resolved",
+          "resolution": "rev1: 指定三次样条插值, <4点降级线性插值"
+        },
+        {
+          "id": "M-2022A-014",
+          "risk": "Med",
+          "category": "ambiguous_algorithm",
+          "location": "algorithm_flow > Algorithm 4 > 精英保留(步72-75)",
+          "summary": "GA精英保留中fitness数组在population=offspring后失效。argmin(fitness)引用旧群体适应度索引与子代不匹配",
+          "status": "open",
+          "found_in_revision": "rev1"
+        },
+        {
+          "id": "M-2022A-015",
+          "risk": "High",
+          "category": "physics_violation",
+          "location": "mathematical_model > 接触力公式(396-400)",
+          "summary": "接触力上极限分支符号错误: x_r>x_r,max时F_contact=-k*(正)^2<0, 浮子受+F_contact(向下), 振子受-F_contact(向上), 加剧分离",
+          "status": "open",
+          "found_in_revision": "rev1"
+        },
+        {
+          "id": "M-2022A-016",
+          "risk": "Low",
+          "category": "missing_symbol",
+          "location": "symbol_table > k_contact/k_pen",
+          "summary": "符号表缺少k_contact定义; k_pen标注无双量纲但量纲为W/m^2",
+          "status": "open",
+          "found_in_revision": "rev1"
+        },
+        {
+          "id": "M-2022A-017",
+          "risk": "Low",
+          "category": "incomplete_verification",
+          "location": "mathematical_model > 能量平衡(132-135行)",
+          "summary": "能量平衡仅验证垂荡, 未扩展到垂荡+纵摇耦合情形",
+          "status": "open",
+          "found_in_revision": "rev1"
+        },
+        {
+          "id": "M-2022A-018",
+          "risk": "Low",
+          "category": "ambiguous_algorithm",
+          "location": "algorithm_flow > Algorithm 4 > Q2(2a)参数传递",
+          "summary": "Q2(2a)调用算法1时未显式传递alpha=0.5参数",
+          "status": "open",
+          "found_in_revision": "rev1"
+        }
+      ]
+    },
+    {
+      "run_id": "run-20260530-004",
+      "phase": "coding",
+      "problem": "2025-D",
+      "timestamp": "2026-05-30T23:55:00",
+      "flaws": [
+        {
+          "id": "C-2025D-001",
+          "risk": "High",
+          "category": "physics_violation",
+          "location": "dual_source_flood(), t_spread computation (line 1724)",
+          "summary": "t_spread = min(t_A, t_B) takes the smaller of two sources' spread completion times, but the spread phase is not complete until the later source finishes. Should be max(t_A, t_B). Affects all downstream t_spread-dependent quantities."
+        },
+        {
+          "id": "C-2025D-002",
+          "risk": "High",
+          "category": "physics_violation",
+          "location": "dual_source_flood(), rising phase (lines 1691-1693)",
+          "summary": "Uses (t_A + t_B)/2 as base spread time for edge_0_3m_time/edge_full_time computation. Arithmetic mean of two independent spread times has no physical meaning. Combined volume evolution is Q*t + Q*max(0, t-t_offset_B). The averaging introduces systematic bias in all flood-time-dependent computations for Problem 3 and Problem 4."
+        },
+        {
+          "id": "C-2025D-003",
+          "risk": "High",
+          "category": "data_vis_misleading",
+          "location": "run_problem_3(), line 2773",
+          "summary": "plot_dual_source_collision receives empty WaterState for source B. Figure 7 will only show A's single-source coverage and blocked edges, without any B-source coverage visualization. This is critically misleading for a competition paper."
+        },
+        {
+          "id": "C-2025D-004",
+          "risk": "High",
+          "category": "missing_physics",
+          "location": "single_source_flood_3d(), Step 5 (line 1134); summary_results.txt line 25",
+          "summary": "3D model T_total=626.63 min only accounts for filling all levels to H0=0.1m, not H_MAX=3m. The summary report labels this as 'T_total' without clarifying it is only the 0.1m fill time. Full 3m fill would be ~30x longer. edge_0_3m_time and edge_full_time for upper-level edges remain unfilled."
+        },
+        {
+          "id": "C-2025D-005",
+          "risk": "Med",
+          "category": "physics_violation",
+          "location": "dual_source_flood(), edge-level collision t_meet (lines 1572-1583)",
+          "summary": "t_meet = (V_total + Q_B*t_offset_B) / Q_total adds Q_B*t_offset_B volume term treating B's offset flow as accumulated in this specific tunnel. B's water spreads through its own network during offset, not in this tunnel. Also uses instantaneous edge-level flow rates Q_A/Q_B for cumulative volume estimation, which is dynamically incorrect."
+        },
+        {
+          "id": "C-2025D-006",
+          "risk": "Med",
+          "category": "algorithmic_consistency",
+          "location": "single_source_flood() line 968 vs dual_source_flood() line 1700",
+          "summary": "Single source T_total = max(edge_full_time) (proportional allocation per edge length). Dual source T_total = total_volume/(2*Q) (pure conservation). Two methods produce inconsistent results: 12420.57 vs expected 6210.29, actual 6389.05 (2.9% deviation). Parallel reporting would confuse readers."
+        },
+        {
+          "id": "C-2025D-007",
+          "risk": "Med",
+          "category": "missing_physics",
+          "location": "single_source_flood_3d(), Step 5 (lines 1107-1147)",
+          "summary": "3D parallel upward spread fills each level to H0 sequentially but does not account for raising lower levels from H0 to H_MAX while upper levels fill. Model treats levels as sequential and independent, but real physics is parallel and dependent. Underestimates total time and misorders level arrival times."
+        },
+        {
+          "id": "C-2025D-008",
+          "risk": "Med",
+          "category": "boundary_condition",
+          "location": "summary_results.txt line 28; replan_path() lines 1896-1900",
+          "summary": "Problem 2 escape time (1.42 min) < Problem 4 T_SWITCH (5.0 min). Miner reaches exit before replanning trigger. replan_path degenerates to restarting from start node. No actual replanning occurs with synthetic data. Must be documented."
+        },
+        {
+          "id": "C-2025D-009",
+          "risk": "Low",
+          "category": "documentation_inconsistency",
+          "location": "mine_flood_simulation.py line 22 vs line 150",
+          "summary": "Module docstring claims '.total_time attribute removed from PathResult' but line 150 self.total_time = total_time still stores it. Not a runtime bug but misleading documentation."
+        },
+        {
+          "id": "C-2025D-010",
+          "risk": "Low",
+          "category": "missing_validation",
+          "location": "summary_results.txt line 33",
+          "summary": "56 blocked edges (~37% of ~150 edges in synthetic 80-node network) reported from dual-source collision without any real-data comparison baseline. Modeling phase validation reference values unverified."
+        },
+        {
+          "id": "C-2025D-011",
+          "risk": "Low",
+          "category": "incomplete_data",
+          "location": "dual_source_flood(), line 1717-1718",
+          "summary": "Returned dual-source WaterState has empty edge_spread_time dict. Although downstream code uses edge_0_3m_time instead (which is populated), the WaterState data structure is incomplete."
+        },
+        {
+          "id": "C-2025D-012",
+          "risk": "Low",
+          "category": "visualization",
+          "location": "summary_results.txt line 28",
+          "summary": "escape_time unit column shows '-' instead of 'min', inconsistent with other rows like '总灌满时间(双源)' which correctly shows 'min'."
+        }
+      ]
+    },
+    {
+      "run_id": "run-20260530-001",
+      "phase": "coding",
+      "problem": "2022-A-wave-energy",
+      "timestamp": "2026-05-30T23:50:00",
+      "flaws": [
+        {
+          "id": "C-2022A-001",
+          "risk": "High",
+          "category": "documentation_mismatch",
+          "location": "README.md lines 44-45, phase-2-output.xml lines 42-44 vs wave_energy_solver.py lines 58-59, 71-72",
+          "summary": "Documentation claims h_ga=0.005, pop=50, gen=100 but code uses H_GA=0.01, N_POP=15, N_GEN=30. All 3 parameters differ. Also phase-2-output.xml claims ~600 lines but script is 1175 lines.",
+          "status": "open"
+        },
+        {
+          "id": "C-2022A-002",
+          "risk": "High",
+          "category": "boundary_optimum",
+          "location": "wave_energy_solver.py > solve_problem4, run_ga with bounds [0, 100000]",
+          "summary": "Q4 optimal Cp=100000 hits upper search bound. True optimum lies at or above 100000 N.m.s. Reference paper A001_2022 found Cp*=98227 which differs.",
+          "status": "open"
+        },
+        {
+          "id": "C-2022A-003",
+          "risk": "High",
+          "category": "result_discrepancy",
+          "location": "wave_energy_solver.py > solve_problem4 output vs phase-2-output.xml expected values",
+          "summary": "Q4 P_max=167W is 47% below phase-2-output.xml expected range 300-320W and reference paper 316.58W. Indicates unconverged GA, step-size error, or model bug in coupled RHS.",
+          "status": "open"
+        },
+        {
+          "id": "C-2022A-004",
+          "risk": "High",
+          "category": "result_discrepancy",
+          "location": "wave_energy_solver.py > solve_problem3 output vs phase-2-output.xml expected values",
+          "summary": "Q3 coupled power P=56W is 37-56% of expected range 100-150W. Factor-of-2 discrepancy cannot be explained by numerical tolerance. Coupled model systematically under-predicts.",
+          "status": "open"
+        },
+        {
+          "id": "C-2022A-005",
+          "risk": "Med",
+          "category": "step_size_sensitivity",
+          "location": "wave_energy_solver.py > make_obj_heave, make_obj_coupled (H_GA used for GA fitness)",
+          "summary": "GA optimizes at H_GA=0.01 but no validation at H_FINAL=0.0005. Optimal damping coefficients found at 20x coarser step may be suboptimal at design resolution.",
+          "status": "open"
+        },
+        {
+          "id": "C-2022A-006",
+          "risk": "Med",
+          "category": "physical_modelling_ambiguity",
+          "location": "wave_energy_solver.py line 212: Iz = I_z0 + m_z * (d_0 + xr)^2",
+          "summary": "I_z0 documented as 'oscillator ref. MoI at x_r=0' but unclear if about CG or pitch axis. If about pitch axis, parallel-axis correction is wrong (double-counts baseline offset). Affects Q3/Q4 pitch dynamics.",
+          "status": "open"
+        },
+        {
+          "id": "C-2022A-007",
+          "risk": "Med",
+          "category": "missing_verification",
+          "location": "wave_energy_solver.py > average_power_heave, average_power_coupled",
+          "summary": "No steady-state convergence verification. Code assumes T0=100s is sufficient but does not check period-to-period power variation. Transient contamination possible.",
+          "status": "open"
+        },
+        {
+          "id": "C-2022A-008",
+          "risk": "Med",
+          "category": "incomplete_physics",
+          "location": "wave_energy_solver.py > energy_balance_heave (lines 382-415)",
+          "summary": "Energy balance omits contact force work term (Fc * v_rel). While unlikely activated in Q1 test cases (<0.02m xr vs stroke limit 0.8m), formal incompleteness means balance will not close during contact events.",
+          "status": "open"
+        },
+        {
+          "id": "C-2022A-009",
+          "risk": "Med",
+          "category": "insufficient_convergence_analysis",
+          "location": "wave_energy_solver.py > run_ga (single seed 42)",
+          "summary": "GA run with single seed (42). N_POP=15, N_GEN=30 gives only 450 evaluations for 2D problems. Without multiple seeds or restarts, global optimality cannot be assessed.",
+          "status": "open"
+        },
+        {
+          "id": "C-2022A-010",
+          "risk": "Med",
+          "category": "underresolved_visualization",
+          "location": "wave_energy_solver.py > sweep_coupled_surface (15x15 grid, H_GA=0.01)",
+          "summary": "Q4 power surface uses only 15x15=225 points at coarse step H_GA. Contour plot may miss fine structure. ~4x under-resolved in each dimension vs a 50x50 grid.",
+          "status": "open"
+        },
+        {
+          "id": "C-2022A-011",
+          "risk": "Low",
+          "category": "misleading_label",
+          "location": "wave_energy_solver.py > plot_energy_balance line 958",
+          "summary": "Energy balance bar chart labels residual as '<dE/dt>' implying independent computation. Actual value is closure error (P_in - P_rad - P_abs).",
+          "status": "open"
+        },
+        {
+          "id": "C-2022A-012",
+          "risk": "Low",
+          "category": "data_limitation",
+          "location": "wave_energy_solver.py > Annex 3 interpolation for L, I_prime, C_xp",
+          "summary": "Pitch parameters use only 2 valid data points via linear interpolation across omega ~1.7-2.0. Coupled model accuracy fundamentally limited by this sparsity.",
+          "status": "open"
+        },
+        {
+          "id": "C-2022A-013",
+          "risk": "Low",
+          "category": "fragile_implementation",
+          "location": "wave_energy_solver.py > plot_q4 lines 1068-1069 (meshgrid + .T)",
+          "summary": "Q4 contour uses meshgrid(Ch, Cp) with P_surf.T transposition. Correct but fragile — a maintenance programmer removing .T would silently produce wrong axes.",
+          "status": "open"
+        },
+        {
+          "id": "C-2022A-014",
+          "risk": "Low",
+          "category": "data_quality",
+          "location": "wave_energy_solver.py > _ANNEX3_DATA > f(omega) at omega=2.2143",
+          "summary": "Excitation force f jumps from 1760N to 4890N (2.8x) over 12% frequency increase. Non-monotonic pattern causes cubic spline overshoot risk between points.",
+          "status": "open"
+        },
+        {
+          "id": "C-2022A-015",
+          "risk": "Low",
+          "category": "visual_quality",
+          "location": "wave_energy_solver.py > plot_energy_balance line 966",
+          "summary": "Hardcoded text offsets (+0.5 for positive, -2 for negative) scale poorly when bar values span orders of magnitude (e.g., P_in~200W vs residual~0.001W).",
+          "status": "open"
+        }
+      ]
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "coding",
+      "id": "CODE-001",
+      "risk": "High",
+      "category": "产出完整性",
+      "description": "Q2和Q3求解结果完全缺失。输出目录只有Q1_A和Q1_B的6张图，没有Q2/Q3的任何图表(fig3_profit_dist, fig_sensitivity_lambda, fig_compare_Q2_Q3, summary.json)。run_all_problems在执行Q2求解过程中崩溃或被中断，不确定性问题分析无产出",
+      "location": "crop_strategy_solver.py > run_all_problems() (line 2035)",
+      "principle_violated": "三个问题的求解必须全部完成才能进入论文阶段"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "coding",
+      "id": "CODE-002",
+      "risk": "High",
+      "category": "随机种子管理",
+      "description": "_init_synthetic_data第245行np.random.seed(42)重置随机种子，导致Q1_A和Q1_B优化轨迹完全相同。MD5校验确认fig4/5/6三组图在case A和B之间完全一致(分别匹配736586b0/5ecff67a/f268cb63)，种植方案决策矩阵X相同",
+      "location": "crop_strategy_solver.py > _init_synthetic_data() line 245",
+      "principle_violated": "多次调用求解器时应产生不同的随机轨迹"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "coding",
+      "id": "CODE-003",
+      "risk": "High",
+      "category": "灵敏度分析无效",
+      "description": "run_sensitivity_analysis第2005行'lam * 0'将CVaR硬编码为零，使lambda-目标值曲线为平坦直线。该函数应重新做情景评估计算不同lambda下的CVaR但未进行",
+      "location": "crop_strategy_solver.py > run_sensitivity_analysis() line 2005",
+      "principle_violated": "灵敏度分析必须真实反映参数变化对目标的影响"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "coding",
+      "id": "CODE-004",
+      "risk": "Med",
+      "category": "约束未实现",
+      "description": "P1跨季节轮作约束(z_{ijt}^1+z_{ijt}^2<=1)在第609行是空操作(pass)，未施加任何罚函数值。因F类编码无法区分S1/S2，该约束在技术层面不可执行",
+      "location": "crop_strategy_solver.py > compute_penalty() P1 section lines 596-609",
+      "principle_violated": "数学模型声明的约束必须在代码中实现"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "coding",
+      "id": "CODE-005",
+      "risk": "Med",
+      "category": "罚函数双重计数",
+      "description": "P1中F类作物的年对年违反同时触发第618行(年对年)和第638行(跨季)两次惩罚检查，同一违反行为被施加2倍w_pen",
+      "location": "crop_strategy_solver.py > compute_penalty() lines 614-618 and 629-638",
+      "principle_violated": "约束违反应被精确计数，不得重复"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "coding",
+      "id": "CODE-006",
+      "risk": "Med",
+      "category": "全局可变状态",
+      "description": "_PLOT_TYPE_CACHE全局变量(第702-710行)是compute_penalty的唯一地块类型来源。缓存未设置时_get_plot_type_of_plot返回0(A类)，导致非A类地块约束检查使用错误类型。缓存有3个不同入口(第730/1077/1510行)，调用顺序变化或遗漏会触发后备bug",
+      "location": "crop_strategy_solver.py > _PLOT_TYPE_CACHE (lines 702-710)",
+      "principle_violated": "函数应通过参数显式传递依赖，而非全局可变状态"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "coding",
+      "id": "CODE-007",
+      "risk": "Med",
+      "category": "罚函数双重计数",
+      "description": "P3分散度惩罚在s=0(S1)和s=1(S2)循环中分别统计Z[i,j,t]>0的地块数。F类Z标志无法区分季节，同一地块在两个季节中被重复计数，违反量翻倍",
+      "location": "crop_strategy_solver.py > compute_penalty() P3 section lines 657-665",
+      "principle_violated": "统计口径应与物理意义一致"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "coding",
+      "id": "CODE-008",
+      "risk": "Low",
+      "category": "可视化误导",
+      "description": "Fig1右子图将利润(~200K量级)和多样性(~0.08)绘制在同一个Y轴上，多样性曲线因量级差异不可读",
+      "location": "crop_strategy_solver.py > plot_results() fig1 line 1767",
+      "principle_violated": "不同量纲的变量应使用双Y轴"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "coding",
+      "id": "CODE-009",
+      "risk": "Low",
+      "category": "约束验证缺失",
+      "description": "verify_all_constraints函数(第1666行)实现了完整的约束违反统计但从未在主流程中被调用，论文无法引用定量约束满足度数据",
+      "location": "crop_strategy_solver.py > verify_all_constraints() line 1666, never called in main_solver or run_all_problems",
+      "principle_violated": "约束验证结果应作为求解产出的一部分"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "coding",
+      "id": "CODE-010",
+      "risk": "Low",
+      "category": "基线数据未使用",
+      "description": "2023年种植数据未用于轮作基线检查。compute_penalty只检查Z[i,j,0]和Z[i,j,1]之间，未检查Z_2023[i,j]与Z[i,j,0]的重茬",
+      "location": "crop_strategy_solver.py > compute_penalty() lines 613-618",
+      "principle_violated": "假设10声明的2023年休耕基线应被代码验证或明确声明"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "coding",
+      "id": "CODE-011",
+      "risk": "Low",
+      "category": "早停容差过严",
+      "description": "早停容差1e-4*abs(mean)在利润~200K时约20单位，但w_pen=1e6使单一约束触发改变适应度1e6，远超容差。早停实际上只在解完全无约束违反时触发，gen>60硬性保护是唯一有效退出条件",
+      "location": "crop_strategy_solver.py > DEGAOptimizer.run() line 1276",
+      "principle_violated": "早停容差应与目标函数值域匹配"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-001",
+      "risk": "High",
+      "category": "ambiguous_algorithm",
+      "description": "Algorithm 5 (SolveProblem2) 第610行使用未初始化变量 T_overall_best，Phase A 循环内无变量声明或赋值，直接引用导致代码手无法无歧义实现",
+      "location": "algorithm_flow > Algorithm 5 > 阶段A > 第610行",
+      "directive": "初始化 T_overall_best 或合并 best_T 逻辑",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "Algorithm 5 第642行添加 T_overall_best = -inf 显式初始化，版本校验通过"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-002",
+      "risk": "High",
+      "category": "ambiguous_algorithm",
+      "description": "Algorithm 6 (SolveProblem3) 第746行引用 prev_best_F 但该变量在第749行才首次赋值。早停条件在 gen=31 时引用未定义变量",
+      "location": "algorithm_flow > Algorithm 6 > DE主循环 > 第746-749行",
+      "directive": "将 prev_best_F = best_F 的初始化移至循环之前",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "Algorithm 6 第798行在 FOR gen 循环前初始化 prev_best_F = best_F，版本校验通过"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-003",
+      "risk": "High",
+      "category": "ambiguous_algorithm",
+      "description": "v_b 参数含义在数学模型（总初始速度 = UAV速度 + 弹射速度）与 Algorithm 5 参数描述（ejection only）之间不一致。若代码手实现为纯弹射速度，Bomb 轨迹将丢失 UAV 20-50 m/s 水平速度分量",
+      "location": "mathematical_model > 0.2 烟幕弹方程(第145行) vs algorithm_flow > Algorithm 5 > params_fixed.v_b 描述(第559行)",
+      "directive": "统一 v_b 定义为总初始速度或在弹道方程中显式包含 UAV 速度项",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "数学模型 §0.2 明确 v_b0 为弹射标量，v_b,jell = UAV速度 + v_b0*e_eject；Algorithm 5 参数描述和 EvaluateQ2 均保持此一致构造，版本校验通过"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-004",
+      "risk": "Med",
+      "category": "missing_assumption",
+      "description": "符号表缺少 delta_min, delta_gap, Delta_gap（Q3 弹间时序约束参数）和 T_max（Algorithm 6 优化时域上限 60s），这些参数出现在约束和算法中但未在符号表中定义",
+      "location": "symbol_table + mathematical_model > Q3约束(第278-284行) + algorithm_flow > Algorithm 6(第672行)",
+      "directive": "在符号表中补充 delta_min, delta_gap, Delta_gap, T_max 的定义和单位",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "符号表已添加 delta_min[s], delta_gap[s], Delta_gap[s], T_max[s], eta[1], Cost(j,m)[rad]，版本校验通过"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-005",
+      "risk": "Med",
+      "category": "missing_assumption",
+      "description": "Q5 未将 Q4 空间重叠回避约束扩展至多导弹组场景。不同导弹组之间的云团仍可能在空间上重叠，模型未做任何限制",
+      "location": "mathematical_model > Q5 + algorithm_flow > Algorithm 8",
+      "directive": "将空间重叠回避约束扩展至 Q5 全部 5UAV x 3Missile 场景",
+      "resolved": false,
+      "revision_count": 1,
+      "correction": "Algorithm 8 第44-54行添加了跨导弹组空间重叠检查的伪代码框架和罚函数计算，但惩罚反馈至层级二优化的迭代机制未实现。该问题在新漏洞#2中作为High风险单独记录，本条目标记为未完全解决"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-006",
+      "risk": "Med",
+      "category": "overly_strong_assumption",
+      "description": "引理2（连续性引理）证明不充分，仅靠临界点为有限个孤立时间点无法严格保证 S(t) 至多有一个连续遮蔽区间。若引理不成立，Algorithm 3 会错误合并多个分离区间，高估遮蔽时长",
+      "location": "mathematical_model > 0.5 引理2(第194-197行)",
+      "directive": "补充连续性引理的严格数学证明或实现多区间检测能力",
+      "resolved": false,
+      "revision_count": 1,
+      "correction": "引理2证明扩展为3步（临界时刻→分段常值→单峰论证），但遗漏a=0退化情形且单峰性论证仅基于几何直观。Algorithm 3已实现多区间检测作为后备，降低实际影响。该问题在新漏洞#5中记录未尽部分"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-007",
+      "risk": "Med",
+      "category": "overly_strong_assumption",
+      "description": "引理1（圆柱全遮挡判定）在 N_pts=50 的离散采样下存在采样不足风险：7.2度角分辨率在 5km 视距对应约 628m 弧长，而云团有效半径仅 40-60m，云团投影可能在采样点之间漏过",
+      "location": "mathematical_model > 0.4 引理1 + algorithm_flow > Algorithm 2(参数 N_pts)",
+      "directive": "补充离散采样误差界分析或提供自适应加密策略",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "问题分析中补充了 N_pts 的几何误差定量分析（含角度分辨率与导弹-云团距离的交叉验证），并采用优化用50/验证用300的双精度策略，版本校验通过"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-008",
+      "risk": "Low",
+      "category": "missing_assumption",
+      "description": "符号表定义了 alpha_k（导弹方位角）、beta_k（导弹俯仰角）、N_time 但三个符号均未被任何数学模型公式或算法引用，是冗余定义",
+      "location": "symbol_table(第90-91行, 第107行)",
+      "directive": "从符号表移除未使用符号或在模型中补充其用途",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "alpha_k, beta_k, N_time 已从符号表中移除，版本校验通过"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-009",
+      "risk": "Low",
+      "category": "missing_assumption",
+      "description": "Q5 目标函数将总有效遮蔽时长定义为三区间交集 mu(cap T_m) 但未论证选择交集而非并集或加权和的合理性",
+      "location": "mathematical_model > Q5 > 层级三(第349-355行)",
+      "directive": "补充目标函数选择的战术合理性论证",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "问题分析中补充了'Q5 交集目标函数战术合理性论证'段落，阐明交集选择的战术必要性，版本校验通过"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-010",
+      "risk": "Low",
+      "category": "ambiguous_algorithm",
+      "description": "Algorithm 7 阶段A2 时序错开排列中 Delta_t 的语义冲突：第788行 t_b = t_d + Delta_t 的 Delta_t 是飞行时间变量还是全局时间步长不明确，贪心调整后也未验证完整约束集",
+      "location": "algorithm_flow > Algorithm 7 > 阶段A2(第785-793行)",
+      "directive": "消除 Delta_t 的语义歧义，增加调整后的约束可行性验证",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "Algorithm 7 第870行将飞行时间重命名为 Delta_t_flight，与全局时间步长 Delta_t 区分，版本校验通过"
+    },
+
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-011",
+      "risk": "High",
+      "category": "ambiguous_algorithm",
+      "description": "Algorithm 8 (Q5) 第18-26行 UAV 分组逻辑错误：未分配 UVA 被 argmax([False,False,False]) 返回0，第25行 assigned_m >= 0 始终为 True，导致所有未分配 UVA 被错误加入 missile_groups[0]",
+      "location": "algorithm_flow > Algorithm 8 > 阶段1.2 (第938-961行)",
+      "directive": "修正分组循环：使用显式布尔标记区分已分配/未分配 UAV，或在第二遍循环中跳过未分配 UAV",
+      "resolved": false,
+      "revision_count": 0
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-012",
+      "risk": "High",
+      "category": "ambiguous_algorithm",
+      "description": "Algorithm 8 (Q5) 跨导弹组空间重叠约束的惩罚反馈机制未实现。交叉组罚函数在第45-54行计算但仅以注释提及'回调至层级二重新评估'，未定义任何具体的迭代循环结构、收敛判据或最大迭代次数",
+      "location": "algorithm_flow > Algorithm 8 > 阶段2 (第980-991行)",
+      "directive": "补充跨组罚函数的实际反馈机制：嵌入法（在各组适应度中嵌入跨组罚函数）或迭代法（定义循环、收敛条件、最大迭代次数）二选一",
+      "resolved": false,
+      "revision_count": 0
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-013",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "SolveProblem4 (Algorithm 7) 仅支持恰好3架UAV (12维决策变量)，但 Q5 任务分配可能产生 |J_m|=2 或 |J_m|>3 的导弹组。Algorithm 8 未提供这些情况的降级或泛化处理方案",
+      "location": "algorithm_flow > Algorithm 8 > 阶段2 (第969-979行) + Algorithm 7 函数签名",
+      "directive": "泛化 SolveProblem4 以支持可变 UAV 数量，或在 Algorithm 8 中为 |J_m|=2 和 |J_m|>3 增加专门的处理分支",
+      "resolved": false,
+      "revision_count": 0
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-014",
+      "risk": "Med",
+      "category": "overly_strong_assumption",
+      "description": "引理1证明中距离函数 f(P)=|M+s(P-M)-C| 混用视点 M 和线段参数 s，概念混淆；'最暴露点位于轮廓边界'的论断是几何直观而非严格数学证明，未利用凸几何的支撑超平面或凸锥性质来建立充要条件",
+      "location": "mathematical_model > 0.4 引理1 (第207-209行)",
+      "directive": "补充引理1的严格凸几何证明：利用凸集性质论证'若凸集A的所有边界点均被凸集B遮挡，则A的所有内点也被B遮挡'",
+      "resolved": false,
+      "revision_count": 0
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-015",
+      "risk": "Med",
+      "category": "missing_error_handling",
+      "description": "引理2证明中临界时刻分类遗漏 a=|d|^2=0 退化情形（导弹位置 M 与表面点 P 重合），此时二次方程退化为线性，判别式和 s1/s2 公式不适用",
+      "location": "mathematical_model > 0.5 引理2证明步骤1 (第227行)",
+      "directive": "说明 a=0 情形的处理方式：该情况下视线长度为零，无遮挡意义，可作为临界点处理",
+      "resolved": false,
+      "revision_count": 0
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-016",
+      "risk": "Low",
+      "category": "ambiguous_algorithm",
+      "description": "Algorithm 5 (Q2) 阶段B的DE种群初始化的1/3种子来自阶段A最优解的高斯扰动，但未处理阶段A完全无可行解的情况（T_overall_best 保持 -inf），无效解的扰动仍会注入种群",
+      "location": "algorithm_flow > Algorithm 5 > 阶段B (第681-683行)",
+      "directive": "增加阶段A无可行解时的后备分支：纯随机初始化整个DE种群，不注入高斯扰动种子",
+      "resolved": false,
+      "revision_count": 0
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-017",
+      "risk": "Low",
+      "category": "ambiguous_algorithm",
+      "description": "Q3数学模型第(22)式声明了衔接约束 delta_gap <= t_{d,ell+1} - t_{b,ell} <= Delta_gap 但 Algorithm 6 的 Fitness 函数未实现对应的罚函数检查，仅实现了最小投放间隔 delta_min",
+      "location": "mathematical_model > Q3约束(第322行) vs algorithm_flow > Algorithm 6 > Fitness (第756-791行)",
+      "directive": "统一数学模型与算法伪代码：若该约束为可选则从数学模型中删除或标注为'可选（本版本未实现）'，若保留则在Fitness中补充罚函数",
+      "resolved": false,
+      "revision_count": 0
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-018",
+      "risk": "High",
+      "category": "ambiguous_algorithm",
+      "description": "Algorithm 8 (Q5) 阶段2.5联合精化循环第1070行引用未定义变量 x_opt_1/2/3。Phase 2 的 FOR m=1 TO 3 循环中仅赋值给 x_opt（每轮被覆盖），未保存各组独立最优解。代码手无法无歧义构造联合决策向量",
+      "location": "algorithm_flow > Algorithm 8 > 阶段2.5 > 第1070行",
+      "directive": "在阶段2循环内将各组最优解保存至数组，例如 x_opt_group[m] = x_opt，并在阶段2.5引用 x_opt_group。或明确定义如何从阶段2执行结果中提取各组最优解",
+      "resolved": false,
+      "revision_count": 0,
+      "introduced_in_revision": "rev3"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-019",
+      "risk": "High",
+      "category": "ambiguous_algorithm",
+      "description": "Algorithm 8 (Q5) SelectWorstUAV 辅助函数第1107行初始化为 best = -inf，第1110行比较条件为 IF min_dist < best。由于 min_dist >= 0 恒成立，该条件永远为 False，函数始终返回 None，导致跨组重叠超限后的强制重分配机制完全失效",
+      "location": "algorithm_flow > Algorithm 8 > 辅助函数 > SelectWorstUAV (第1105-1111行)",
+      "directive": "将 best 初始值改为 +inf 或将比较符号改为 >，使函数能正确返回距另一组云团最近的 UAV",
+      "resolved": false,
+      "revision_count": 0,
+      "introduced_in_revision": "rev3"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-020",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "Algorithm 8 阶段2.5联合精化循环第1078行计算跨组罚函数时引用的 all_cloud_trajectories 仍是DE优化前的旧轨迹数据。DE更新了各组最优解 x_opt_m 但未重新计算对应的云团轨迹，ComputeCrossGroupPenalty 返回的是过时罚函数值，收敛检查无意义",
+      "location": "algorithm_flow > Algorithm 8 > 阶段2.5 > 迭代修正循环 (第1068-1081行)",
+      "directive": "在 ComputeCrossGroupPenalty 调用前补充轨迹重算步骤：根据更新后的 x_opt_m 重新生成 all_cloud_trajectories",
+      "resolved": false,
+      "revision_count": 0,
+      "introduced_in_revision": "rev3"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-021",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "Algorithm 8 阶段2.5第1086行 GOTO 阶段2 缺少最大重分配次数保护。如果 ReassignUAV 将 UAV 从组A分配到组B，阶段2重新优化后阶段2.5仍然触发罚函数超限，再次重分配可能将同一 UAV 分配回组A，形成振荡死循环",
+      "location": "algorithm_flow > Algorithm 8 > 阶段2.5 > 强制分配调整 (第1080-1090行)",
+      "directive": "增加重分配次数计数器 MAX_REASSIGN（建议值2或3），超限后降级处理（如接受当前最优解并记录重叠警告，而非继续循环）",
+      "resolved": false,
+      "revision_count": 0,
+      "introduced_in_revision": "rev3"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-022",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "Algorithm 8 JointFitness 函数第50-51行要求'从 x_joint 提取组 m 的变量'，但不同导弹组的无人机数量可能不同（|J_m| 可变），各组决策变量维数不同。联合向量拼接后无偏移量表指导变量分解，代码手无法无歧义实现分解逻辑。此外 w_pen_cross=1e3 与主罚函数 lambda=1e6 量级不匹配，跨组约束可能被目标函数主导",
+      "location": "algorithm_flow > Algorithm 8 > 阶段2.5 > JointFitness (第1048-1067行)",
+      "directive": "定义联合向量分解函数，明确 offset_table 的构建方式（基于各组 UAV 数量计算各段长度）。修正 w_pen_cross 量级以匹配主罚函数",
+      "resolved": false,
+      "revision_count": 0,
+      "introduced_in_revision": "rev3"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-023",
+      "risk": "Low",
+      "category": "ambiguous_algorithm",
+      "description": "Algorithm 8 ReassignUAV 函数第1115行将目标组选为 |missile_groups[m]| 最小的组。但触发重分配的原因是特定组对间云团空间重叠过大，应将引起重叠的另一组作为目标而非最小规模组",
+      "location": "algorithm_flow > Algorithm 8 > 辅助函数 > ReassignUAV (第1113-1117行)",
+      "directive": "将 SelectWorstUAV 的返回信息（重叠组对）传递给 ReassignUAV，使 UAV 被重分配至与其当前组重叠最严重的另一组",
+      "resolved": false,
+      "revision_count": 0,
+      "introduced_in_revision": "rev3"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-024",
+      "risk": "High",
+      "category": "dimension_mismatch",
+      "description": "JointFitness 偏移表对所有组统一使用 4*|J_m| 计算段长度，但 |J_m|=1 的组调用 SolveProblem3（返回 2K 维，K=3时6维）而非 SolveProblem4（返回 4*|J_m| 维）。5UAV-3Missile 分配必然产生至少一个 |J_m|=1 的组，因此偏移表始终错误。后果：DE 在错误维度（20 vs 22）搜索，JointFitness 分解出错误子向量。影响 4 处代码：offset 计算、total_dim 计算、post-DE 分解中涉及偏移表的全部逻辑。",
+      "location": "algorithm_flow > Algorithm 8 > JointFitness (第1049-1057行、第1081行、第1091-1095行)",
+      "directive": "区分 |J_m|=1 和 |J_m|>=2 两种情形的段长度：|J_m|=1 用 2*K，|J_m|>=2 用 4*|J_m|。或在 Stage 2 前调整分组使所有 |J_m|>=2。",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "Stage 2 新增 dims[3] 数组，|J_m|=1 设 2*K, |J_m|>=2 设 4*|J_m|。JointFitness 偏移表、total_dim、post-DE 切片 4 处均使用 dims[m]。rev5 校验通过。",
+      "introduced_in_revision": "rev4"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-025",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "JointFitness 仅计算跨组空间重叠罚函数（w_pen_cross=1e6），缺少组内约束重新检查（弹道不触地、t_b-t_d 范围、delta_min 最小投放间隔、delta_gap/Delta_gap 衔接间隙）。DE 精化可能产生违反组内约束的解。",
+      "location": "algorithm_flow > Algorithm 8 > JointFitness (第1047-1073行)",
+      "directive": "在 JointFitness 中补充组内约束罚函数项，或在 DE 边界处理中加入耦合约束（t_b >= t_d + Delta_t_b_min）的自适应修复。",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "JointFitness 新增 WithinGroupPenalty_Q3 和 WithinGroupPenalty_Q4 辅助函数，覆盖投放时序递增、最小间隔、飞行时间、弹道不触地、衔接间隙全部组内约束。rev5 校验通过。",
+      "introduced_in_revision": "rev4"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-026",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "missile_groups 在第994行定义为 1-indexed 字典 {m: [] FOR m=1 TO 3}，但 JointFitness 通过 missile_groups[m-1] 存取（m=1时访问索引0）。若代码手实现为 1-indexed dict 则 KeyError。",
+      "location": "algorithm_flow > Algorithm 8 > JointFitness + post-DE分解（第1051-1057行、第1081-1095行）",
+      "directive": "统一 missile_groups 为 0-indexed list，或在所有存取点使用一致的索引约定。",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "missile_groups 改为 0-indexed list [[M1组],[M2组],[M3组]]，所有 FOR m=1 TO 3 改为 m=0 TO 2，offset[m-1] 修复为 offset[m]。rev5 校验通过。",
+      "introduced_in_revision": "rev4"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-027",
+      "risk": "High",
+      "category": "ambiguous_algorithm",
+      "description": "JointFitness 第1096行 ComputeCrossGroupPenalty(all_cloud_trajectories) 引用 Stage 2 外作用域的原始轨迹，JointFitness 内重建的云团轨迹未存入该变量。DE 优化过程中跨组重叠罚函数对 trial solution 无梯度响应，Stage 2.5 跨组重叠联合DE精化无法有效推开重叠云团。这是 ERR-A-020 在 rev5 单轮DE架构下的再现。",
+      "location": "algorithm_flow > Algorithm 8 > 阶段2.5 > JointFitness (第1096行)",
+      "directive": "JointFitness 内构造的云团轨迹必须累积到局部容器后再传入 ComputeCrossGroupPenalty（参见 correction_directives 第1条），确保跨组罚函数对 DE trial solution 有梯度",
+      "resolved": false,
+      "revision_count": 0,
+      "introduced_in_revision": "rev5"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-028",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "UAV 索引歧义：missile_groups[m] 内为 1-indexed UAV 编号 (j=1..5)，但 U_j0 (5x3) 在代码实现中很可能为 0-indexed list。Stage 2 第1044行 [U_j0 for j in group] 若使用 0-indexed Python list 将偏移一位获取错误 UAV 位置。",
+      "location": "algorithm_flow > Algorithm 8 > Stage 2 (第1044行)",
+      "directive": "统一约定 UAV 数据结构的索引方式（1-indexed dict 或 0-indexed list + j-1 转换），将约定明确写入选型表或假设部分",
+      "resolved": false,
+      "revision_count": 0,
+      "introduced_in_revision": "rev5"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-029",
+      "risk": "Low",
+      "category": "ambiguous_algorithm",
+      "description": "missile_intervals 初始化为 []（空列表），但 Stage 2 循环中用下标赋值 missile_intervals[m] = ...（m=0..2），Python 空列表下标赋值将抛出 IndexError。与同位置 x_opt_group（正确初始化为 [None,None,None]）不一致。",
+      "location": "algorithm_flow > Algorithm 8 > Stage 2 (第1021行 vs 第1047行)",
+      "directive": "将 missile_intervals 初始化从 [] 改为 [None, None, None]",
+      "resolved": false,
+      "revision_count": 0,
+      "introduced_in_revision": "rev5"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-030",
+      "risk": "Low",
+      "category": "ambiguous_algorithm",
+      "description": "Algorithm 8 Stage 2 第1025-1026行伪代码步骤编号重复（两行均标注 35.），minor 排版错误。",
+      "location": "algorithm_flow > Algorithm 8 > Stage 2 (第1025-1026行)",
+      "directive": "修正伪代码编号使其唯一递增（第1026行应改为 36.）",
+      "resolved": false,
+      "revision_count": 0,
+      "introduced_in_revision": "rev5"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-031",
+      "risk": "High",
+      "category": "ambiguous_algorithm",
+      "description": "Algorithm 8 (Q5 simplified) line 3 references 'theta_j0' (UAV initial heading angle) to compute dir_UAV_j for the Hungarian cost matrix. This variable is not in the function signature SolveProblem5(U_j0[5][3], M_m0[3][3], params, N_max=3) and is not defined anywhere else. The cost matrix computation is blocked. The modeling hand's self-check claims '已避免ERR-A-018（未定义变量）' but theta_j0 is precisely such an undefined variable.",
+      "location": "algorithm_flow > Algorithm 8 > Level 1 (line 3)",
+      "directive": "Add theta_j0[5] as an explicit input parameter to SolveProblem5, or specify that it is part of params, or derive it from U_j0 positions with an explicit formula.",
+      "resolved": true,
+      "revision_count": 1,
+      "introduced_in_revision": "rev6",
+      "correction": "theta_j0[5] added to SolveProblem5 function signature as explicit input parameter; theta_{j0} added to symbol table."
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-032",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "Algorithm 8 lines 15-21 assign spare UAVs only to EMPTY groups. But the 5x5 Hungarian algorithm (line 9) assigns exactly one UAV per column. Columns 0,1,2 (real missiles) each receive exactly one UAV. Therefore groups[m] is NEVER empty for m=0,1,2. The fallback never fires. The 2 spare UAVs are permanently wasted. The mathematical model explicitly describes |J_m| >= 2 cases using SolveProblem4 (Q4), but this code path is structurally unreachable.",
+      "location": "algorithm_flow > Algorithm 8 > Level 1 (lines 15-21)",
+      "directive": "Replace the 'empty group' fallback with a mechanism that distributes spare UAVs to augment existing groups (e.g., assign each spare UAV to the group with the shortest occlusion time), enabling |J_m| >= 2 code paths.",
+      "resolved": true,
+      "revision_count": 1,
+      "introduced_in_revision": "rev6",
+      "correction": "Replaced Hungarian algorithm with two-phase greedy assignment: Phase 1 ensures 1 UAV per missile (basic coverage), Phase 2 assigns remaining 2 UAVs by global best score (enabling |J_m|>=2)."
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-033",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "Algorithm 7 (SolveProblem4) line 4 unpacks 3 return values (x_opt_j, T_j, intervals_j) from SolveProblem2, but SolveProblem2 (Algorithm 5 line 35) returns only 2 values: (best_x_overall, T_overall_best). The intervals_j variable is never returned. This cascades to Algorithm 8 line 31 where SolveProblem4 is expected to return merged intervals as the third value. Pre-existing bug, but now affects the Q5 code path.",
+      "location": "algorithm_flow > Algorithm 7 > Stage A1 (line 4)",
+      "directive": "Modify SolveProblem2 to return intervals, or restructure the Q4 code path to recompute intervals from x_opt after optimization.",
+      "resolved": true,
+      "revision_count": 1,
+      "introduced_in_revision": "prev (affects rev6)",
+      "correction": "SolveProblem2 return signature changed to (x_opt, T_opt, best_interval) triple; all call sites (Algorithm 7 Stage A1, Algorithm 8 Level 2 via Q3/Q4) now consistently unpack 3 values."
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-034",
+      "risk": "Low",
+      "category": "ambiguous_algorithm",
+      "description": "Algorithm 8 lines 33-38 flatten intervals using 'flat.extend(sub)' -- this expects each sub to be an iterable of intervals (list-of-lists format from SolveProblem3). If SolveProblem4 returns a flat merged interval list (as its name 'merged_intervals' suggests), then 'sub' would be a single (start,end) tuple and extend would corrupt flat into [s, e, s, e, ...]. This is a latent bug since ERR-A-032 makes the |J_m| >= 2 code path unreachable.",
+      "location": "algorithm_flow > Algorithm 8 > Level 2 (lines 33-38)",
+      "directive": "After fixing ERR-A-032, ensure the flattening logic handles both SolveProblem3 (list-of-lists) and SolveProblem4 (flat list) output formats correctly.",
+      "resolved": true,
+      "revision_count": 1,
+      "introduced_in_revision": "rev6",
+      "correction": "Unified SolveProblem3 and SolveProblem4 to both return flat interval lists [(s1,e1), (s2,e2), ...]. Algorithm 8 Level 2 interval merge and Level 3 scanline intersection now process consistent flat format."
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "modeling",
+      "id": "ERR-A-035",
+      "risk": "Low",
+      "category": "missing_assumption",
+      "description": "The problem_analysis section acknowledges '跨组空间重叠不再强制约束' as a known limitation, but this is not documented in the mathematical_model (Q5 Level 2) or algorithm_flow (Algorithm 8) sections. Without explicit documentation, the paper writer may not flag this as a limitation in the final paper.",
+      "location": "mathematical_model > Q5 Level 2 / algorithm_flow > Algorithm 8",
+      "directive": "Add an explicit note in the mathematical_model Q5 section and Algorithm 8 that cross-group spatial overlap is not constrained, and this is a known simplification.",
+      "resolved": true,
+      "revision_count": 1,
+      "introduced_in_revision": "rev6",
+      "correction": "Added explicit note in mathematical_model Q5 section (lines 401-404) and algorithm_flow boundary cases (item 11) about cross-group spatial overlap being unconstrained, with tactical justification and mitigation in sensitivity analysis."
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-001",
+      "risk": "High",
+      "category": "missing_error_handling",
+      "description": "Q5 returns 0.00s intersection because ALL three missile groups produce empty occlusion intervals (Q5_M0/M1/M2_intervals.csv have zero data rows). Root cause: task assignment Algorithm 8 Layer 1 uses heading-angle-only score function without checking geometric feasibility -- whether any UAV position can produce a cloud intersecting the missile's line of sight. Example: UAV0 at (3000,0,500) assigned to Missile2 at (4000,-6928,150): minimum UAV-to-line-of-sight distance ~2600m >> R_s=50m. Code silently accepts empty intervals with no diagnostic.",
+      "location": "solver.py > SolveProblem5 > Layer 1 (lines 1356-1399)",
+      "directive": "Add geometric feasibility filter to task assignment: compute perpendicular distance from each UAV's reachable region to each missile's line of sight; exclude infeasible pairings before assignment. Report which pairings fail and why.",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "Per-group geometric feasibility diagnostic added in SolveProblem5 (lines 1610-1621 and 1673-1733). Q5_feasibility_diagnosis.csv now reports per-UAV perpendicular distance to missile LOS, is_geometrically_feasible flag, and geo_note text for each pairing. The diagnostic clearly identifies all 5 pairings as geometrically infeasible (perp_dist 2640-3041m >> R_s=50m). However, the diagnostic is post-hoc (after assignment) rather than a pre-filter. The underlying assignment criterion is unchanged. Verified: CSV contains 6 rows with full geometric analysis.",
+      "introduced_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-002",
+      "risk": "High",
+      "category": "missing_error_handling",
+      "description": "Q2 optimization (SolveProblem2, pattern search + DE) converged to theta=3.122rad, v_u=45.63m/s, t_d=1.66s, t_b=10.51s with T_eff=8.13s (validation precision), which is 8.6% WORSE than the Q1 heuristic default (theta=pi, v_u=30, t_d=0, t_b=9, T_eff=8.90s) for the same scenario. Code does not compare optimization result against heuristic baseline or detect the regression.",
+      "location": "solver.py > SolveProblem2 (lines 641-836)",
+      "directive": "After DE convergence, evaluate a heuristic baseline (e.g., theta=initial heading, v_u=30, t_d=0, t_b=9) at same precision and keep whichever is better. Log when optimization regresses.",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "evaluate_heuristic_q2 function added (lines 97-107). Stage-C fallback comparison added in SolveProblem2 (lines 887-898): evaluates Q1 heuristic baseline (theta=pi, v_u=30, t_d=0, t_b=9) and keeps whichever is better. When optimization regresses, prints warning and uses heuristic. Verified: Q2 result (theta=3.1416, v_u=30, t_d=0, t_b=9, T_eff=8.90s) matches heuristic. However, the fact that optimization found NOTHING better than the heuristic remains a concern -- the fallback masks the optimization failure rather than fixing it.",
+      "introduced_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-003",
+      "risk": "High",
+      "category": "missing_error_handling",
+      "description": "Q3 with 3 bombs produces T_eff=8.19s -- 8% LESS than Q1 with 1 bomb (8.90s). Bombs 2 and 3 contribute zero occlusion because burst altitudes are too high (above the missile's line of sight). The retry threshold at line 1188 compares against the first bomb's own suboptimal result (~8.19s) with factor 0.9, so 8.19 > 8.19*0.9 = 7.37, never triggering. The threshold should compare against the GLOBAL best single-bomb baseline (8.90s from Q1 heuristic), not the first bomb's degraded result.",
+      "location": "solver.py > SolveProblem3 (lines 1180-1247)",
+      "directive": "Replace retry threshold with comparison against the Q1 heuristic baseline (t_d=0, t_b=9) evaluated at validation precision. The 3-bomb result MUST be >= the single-bomb optimum, not just >= 0.9 * first-bomb-alone.",
+      "resolved": false,
+      "revision_count": 1,
+      "introduced_in_revision": "rev1",
+      "correction": "Single-bomb baseline comparison added (lines 1180-1247), but retry threshold `actual_total < T_single * 0.9` has two defects: (a) T_single is the FIRST bomb's own solitary interval (~8.19s), not the global Q1 baseline (8.90s); (b) the 0.9 factor allows up to 10% degradation instead of requiring improvement. Threshold must be fixed."
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-005",
+      "risk": "Med",
+      "category": "reproducibility",
+      "description": "DE optimization results are not reliably reproducible despite np.random.seed(42). Sequential calls to SolveProblem2 (Q2), SolveProblem3 (Q3), SolveProblem4 (Q4), and SolveProblem5 (Q5) all consume the same RNG state in sequence.",
+      "location": "solver.py > lines 31 (seed), 633-637 (random init), 761-762 (DE pop init), 1050 (Q3 RNG), 1457 (Q4 RNG), 2545 (Q5 seed)",
+      "directive": "Use independent RandomState instances for each subproblem.",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "Independent RNG states: Q3 uses q3_rng = np.random.RandomState(43) (line 1050), Q4 uses q4_rng = np.random.RandomState(44) (line 1457), Q5 uses np.random.seed(45) (line 2545). Q1 and Q2 both use np.random.seed(42) but Q1 consumes no randomness, so functional correctness holds. Verified: independent streams for Q3/Q4/Q5.",
+      "introduced_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-006",
+      "risk": "Med",
+      "category": "misleading_viz",
+      "description": "Q1_summary_results.csv stores data as transposed format with unit suffixes embedded in numeric values, not parseable by standard tools.",
+      "location": "solver.py > main() > Q1 section (lines 2341-2354)",
+      "directive": "Restructure to key,value,unit three-column format.",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "Q1 CSV restructured to key,value,unit three-column format (12 parameter rows). Verified: Q1_summary_results.csv contains parseable key,value,unit columns.",
+      "introduced_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-007",
+      "risk": "Med",
+      "category": "missing_error_handling",
+      "description": "DE early stopping had no population diversity monitoring, unable to distinguish global convergence from local optimum collapse.",
+      "location": "solver.py > lines 113-128 (check_diversity), 859 (Q2), 1128 (Q3), 1490 (Q4)",
+      "directive": "Add population diversity monitoring across all DE loops.",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "check_diversity function added (lines 113-128), called every 10 generations in Q2 (line 859), Q3 (line 1128), Q4 (line 1490). Verified: function present and called in all 3 DE loops.",
+      "introduced_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-008",
+      "risk": "Med",
+      "category": "missing_error_handling",
+      "description": "Q5 task assignment score function (solver.py lines 1357-1367) uses INITIAL heading theta_j0 to compute UAV-to-missile suitability scores, but Q2/Q4 optimization can change the UAV's actual heading (theta is a decision variable). A UAV with poor initial heading alignment (high score = bad) might achieve perfect occlusion by turning, while a well-aligned initial heading does not guarantee the UAV will maintain that heading during optimization. The assignment score and the actual optimized trajectory are decoupled.",
+      "location": "solver.py > SolveProblem5 > Layer 1 (lines 1355-1367)",
+      "directive": "Either (a) use a geometric bound on the UAV's reachable region independent of heading, or (b) recompute the score after optimization in Layer 2 and flag mismatches.",
+      "resolved": false,
+      "revision_count": 0,
+      "introduced_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-009",
+      "risk": "Low",
+      "category": "missing_error_handling",
+      "description": "SolveProblem3 bounds were uniformly wide not per-bomb tightened, reducing DE search efficiency.",
+      "location": "solver.py > SolveProblem3 (lines 1029-1043)",
+      "directive": "Set t_b bounds per-bomb.",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "Per-bomb bounds implemented (lines 1029-1043): lb/ub computed for each bomb's t_d and t_b based on k * Q3_delta_min offset. Verified: min_td_k = t_d_min_Q3 + k * Q3_delta_min, max_td_k = t_d_max_Q3 - (K-1-k)*Q3_delta_min.",
+      "introduced_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-010",
+      "risk": "Low",
+      "category": "misleading_viz",
+      "description": "fig5_Q5_intersection.png may contain zero data bars when intervals are empty.",
+      "location": "solver.py > plot_q5_intersection (lines 2579-2581)",
+      "directive": "Skip generating fig5 when all intervals are empty.",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "has_any_interval check added (line 2579): fig5 generation skipped if all Q5 intervals empty. Verified: code correctly skips fig5 when intervals_q5 all empty.",
+      "introduced_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-011",
+      "risk": "Low",
+      "category": "reproducibility",
+      "description": "Q5 interval CSV files contained header-only zero-row DataFrames for empty intervals.",
+      "location": "solver.py > save_intervals_to_csv (lines 2224-2242)",
+      "directive": "Add a note column with NaN values when intervals are empty.",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "save_intervals_to_csv now includes NaN start/end times and 'note: 无有效遮蔽区间' row for empty intervals (lines 2225-2231). Verified: Q5_M0/M1/M2_intervals.csv all contain NaN row with note.",
+      "introduced_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-012",
+      "risk": "High",
+      "category": "missing_error_handling",
+      "description": "Q3 retry guard threshold bug: 3 bombs produce 8.19s occlusion (8% less than Q1's 8.90s single bomb) but retry does NOT trigger. The guard compares against first bomb's own solitary interval (~8.19s) with factor 0.9, so 8.19 > 8.19*0.9 = 7.37 always passes. Should compare against GLOBAL best single-bomb baseline (8.90s from Q1 heuristic, evaluated at validation precision).",
+      "location": "solver.py > SolveProblem3 (lines 1154-1247)",
+      "directive": "Replace retry threshold to compare against the known best single-bomb result (evaluate heuristic t_d=0,t_b=9 at N_pts_val,Delta_t_val). Require 3-bomb result >= single-bomb optimum.",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "Q3 retry threshold modified at line 1210: compares against T_q1_baseline - 0.5 (Q1 heuristic baseline minus margin). Verified: actual Q3 result (9.32s) > T_q1_baseline - 0.5 (8.40s), retry correctly not triggered.",
+      "introduced_in_revision": "rev2"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-013",
+      "risk": "High",
+      "category": "missing_assumption",
+      "description": "Q5 task assignment score function (heading alignment) is geometrically decoupled from occlusion feasibility. All 5 UAVs assigned with perpendicular distances 2600-3041m >> R_s=50m. Q5 returns 0.00s for default scenario. This is a model design limitation inherited by the code.",
+      "location": "solver.py > SolveProblem5 > Layer 1 (lines 1560-1603)",
+      "directive": "Add a geometric pre-filter to task assignment: exclude pairings where minimum reachable bomb distance from LOS exceeds R_s. Reject the scenario explicitly if no feasible assignment exists.",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "Pre-check added at lines 1577-1597: computes min perpendicular distance across all UAV-missile pairs; if min_perp > 2*R_s, prints detailed diagnostic and returns early. Q5_feasibility_diagnosis.csv saved with per-pair geometry details.",
+      "introduced_in_revision": "rev2"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-014",
+      "risk": "High",
+      "category": "overly_strong_assumption",
+      "description": "Q2 4D optimization found ZERO improvement over the heuristic default (theta=pi, v_u=30, t_d=0, t_b=9) with both pattern search and DE. Cascading effect propagates to Q3/Q4.",
+      "location": "solver.py > SolveProblem2 (lines 688-898)",
+      "directive": "Add use_heuristic_fallback parameter. Compare optimized result against heuristic at Phase C and keep whichever is better.",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "use_heuristic_fallback parameter added to SolveProblem2 (line 700), Phase C at lines 903-915 compares vs heuristic. Q4/Q5 call with fallback=False as heuristic (theta=pi) is UAV0-geometry-specific. Q2 result correctly falls back to heuristic (8.90s).",
+      "introduced_in_revision": "rev2"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-015",
+      "risk": "High",
+      "category": "missing_error_handling",
+      "description": "Q4 3-UAV coordination result (7.43s) is LOWER than Q1 single-UAV baseline (8.90s). Root cause: only UAV0 at (3000,0,500) is within R_s of M0's LOS. UAV1/UAV2 at 1500m/2598m perpendicular distance are geometrically incapable of occlusion. Q4 Phase A1 uses use_heuristic_fallback=False, degrading UAV0's individual solution. Paper MUST explain the geometry limitation.",
+      "location": "solver.py > SolveProblem4 (lines 1260-1518)",
+      "directive": "Add a Q4 result regression check: compare 3-UAV total against single-UAV max (Q1 baseline). Log diagnostic explaining why off-LOS UAVs contribute zero occlusion.",
+      "resolved": false,
+      "revision_count": 0,
+      "introduced_in_revision": "rev3"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-016",
+      "risk": "Med",
+      "category": "missing_error_handling",
+      "description": "Q3_summary_results.csv and Q5_summary_results.csv store t_d_list, t_b_list, groups, and intervals as raw str() of Python/numpy objects.",
+      "location": "solver.py > line 2464-2468 (Q3 summary), 2562-2569 (Q5 summary)",
+      "directive": "Convert numpy arrays to JSON arrays via json.dumps([float(v) ...]).",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "Applied json.dumps([float(v) ...]) in line 2513 (Q3 t_d_list/t_b_list) and lines 2607-2615 (Q5 groups/intervals). Verified: CSVs contain parseable JSON arrays.",
+      "introduced_in_revision": "rev2"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-017",
+      "risk": "Med",
+      "category": "dimension_mismatch",
+      "description": "Inconsistent below-ground burst handling between _evaluate_q2 and compute_single_cloud_intervals.",
+      "location": "solver.py > _evaluate_q2 lines 655-660 vs compute_single_cloud_intervals lines 550-554",
+      "directive": "Unify: both truncate C_b[2] to z=0 and continue computing occlusion. _evaluate_q2 adds lambda_penalty for selection pressure.",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "compute_single_cloud_intervals (lines 550-554) now truncates C_b[2] to 0 and continues (no longer returns empty). _evaluate_q2 (lines 655-660) already truncates after penalty. Both functions consistent. cloud_trajectory caller-level truncation remains as secondary check (ERR-C-020).",
+      "introduced_in_revision": "rev2"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-018",
+      "risk": "Med",
+      "category": "reproducibility",
+      "description": "Q1 and Q2 both use np.random.seed(42) (lines 2320, 2378). While Q1 consumes no randomness so Q2 gets the correct state, this is fragile: adding any randomness to Q1 would silently shift Q2 results.",
+      "location": "solver.py > main() (lines 2320, 2378)",
+      "directive": "Give Q1 and Q2 distinct seeds or use independent RandomState objects.",
+      "resolved": false,
+      "revision_count": 0,
+      "introduced_in_revision": "rev2"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-019",
+      "risk": "Med",
+      "category": "misleading_viz",
+      "description": "fig5_Q5_intersection.png persists as stale file in figures directory when current code correctly skips generation.",
+      "location": "solver.py > main() > Q5 (lines 2625-2633); figures/",
+      "directive": "Delete stale fig5 before skipping generation.",
+      "resolved": true,
+      "revision_count": 1,
+      "correction": "Stale check added at lines 2625-2628: deletes old fig5_Q5_intersection.png if exists. Verified: figures directory contains fig1, fig2, fig3, fig4, fig6 -- no stale fig5.",
+      "introduced_in_revision": "rev2"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-020",
+      "risk": "Low",
+      "category": "missing_assumption",
+      "description": "Cloud z=0 truncation in FindOcclusionInterval and _evaluate_q2 is applied by callers, not by cloud_trajectory itself.",
+      "location": "solver.py > cloud_trajectory (lines 506-519), FindOcclusionInterval (lines 258-259), _evaluate_q2 (lines 647-648)",
+      "directive": "Implement consistent z=0 truncation in cloud_trajectory itself. Document half-buried sphere approximation.",
+      "resolved": false,
+      "revision_count": 0,
+      "introduced_in_revision": "rev2"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-R3-001",
+      "risk": "Low",
+      "category": "misleading_viz",
+      "description": "Figure numbering skips from fig4 to fig6 because fig5 (Q5 intersection) was correctly suppressed (all Q5 intervals empty). Resulting gap creates inconsistency for paper writing.",
+      "location": "solver.py > main() > Q5 (lines 2625-2633)",
+      "directive": "Re-number figures consecutively or provide a mapping README for the paper writer. Consider always numbering fig6 as fig5 since the intersection plot was suppressed.",
+      "resolved": false,
+      "revision_count": 0,
+      "introduced_in_revision": "rev3"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-R3-002",
+      "risk": "Low",
+      "category": "missing_error_handling",
+      "description": "Q3 retry guard print message at line 1212 still reads '单弹 {T_single:.3f}s * 0.9' while actual condition on line 1210 compares against T_q1_baseline - 0.5. Print message describes old threshold, not current one.",
+      "location": "solver.py > SolveProblem3 (line 1212)",
+      "directive": "Update print message to reflect the actual comparison threshold (T_q1_baseline - 0.5) rather than the deprecated T_single * 0.9.",
+      "resolved": false,
+      "revision_count": 0,
+      "introduced_in_revision": "rev3"
+    },
+    {
+      "run_id": "run-20260531-141931",
+      "phase": "coding",
+      "id": "ERR-C-R3-003",
+      "risk": "Med",
+      "category": "missing_error_handling",
+      "description": "Q4 3-UAV coordination result (7.43s) is LOWER than Q1 single-UAV baseline (8.90s) but code does not flag regression. Only UAV0 is geometrically capable of occlusion for M0; UAV1/UAV2 at 1500m/2598m perpendicular distance exceed R_s=50m. Q4 Phase A1 uses use_heuristic_fallback=False, further degrading UAV0's solution.",
+      "location": "solver.py > SolveProblem4 (lines 1260-1518) + main() Q4 section (lines 2532-2586)",
+      "directive": "Add post-optimization comparison against single-UAV heuristic baseline. Log diagnostic explaining how many UAVs are geometrically positioned within R_s of M0's LOS.",
+      "resolved": false,
+      "revision_count": 0,
+      "introduced_in_revision": "rev3"
+    },
+    {
+      "id": "ERR-P-R3-001",
+      "run_id": "run-20260531-141931",
+      "timestamp": "2026-05-31T20:45:00",
+      "phase": "paper",
+      "audit_target": "draft_paper",
+      "risk_level": "Med",
+      "category": "data_mismatch",
+      "description": "Q5_feasibility_diagnosis.csv is stale data (file timestamp 15:41 vs 20:33 for other results). Contains only 5 of 15 UAV-missile pairs with perp distances 2640-3041 m, but omits the key pair (UAV 0 to M0 LOS, perp ~444 m) that the paper cites as the global minimum. The final run's feasibility pre-check caused early return before diagnostic code executed, leaving old CSV unmodified.",
+      "agent": "论文手",
+      "revision_count": 0,
+      "resolved": false
+    },
+    {
+      "id": "ERR-P-R3-002",
+      "run_id": "run-20260531-141931",
+      "timestamp": "2026-05-31T20:45:00",
+      "phase": "paper",
+      "audit_target": "draft_paper",
+      "risk_level": "Med",
+      "category": "overfitting_conclusion",
+      "description": "Q4 degradation explanation (Section 5.4: T_eff=7.43 s vs Q1 8.90 s) attributes loss to 'DE fine-tuning shifting parameters away from Q1 optimum in an unsuccessful attempt to generate cross-UAV synergy.' Causal claim about optimizer intent is unsupported: no Q4 decision variable values are compared against Q1/Q2 optimum, and no evidence shows DE attempted cross-UAV coupling.",
+      "agent": "论文手",
+      "revision_count": 0,
+      "resolved": false
+    },
+    {
+      "id": "ERR-P-R3-003",
+      "run_id": "run-20260531-141931",
+      "timestamp": "2026-05-31T20:45:00",
+      "phase": "paper",
+      "audit_target": "draft_paper",
+      "risk_level": "Med",
+      "category": "missing_quantitative_claim",
+      "description": "Section 6.1 (R_s sensitivity) uses qualitative language only: 'widens this window approximately linearly,' 'would bring some marginal pairs into feasibility.' No table, plot, or numerical data is provided for the functional relationship between R_s and T_eff for Q1/Q2.",
+      "agent": "论文手",
+      "revision_count": 0,
+      "resolved": false
+    },
+    {
+      "id": "ERR-P-R3-004",
+      "run_id": "run-20260531-141931",
+      "timestamp": "2026-05-31T20:45:00",
+      "phase": "paper",
+      "audit_target": "draft_paper",
+      "risk_level": "Low",
+      "category": "data_mismatch",
+      "description": "Q3 and Q4 optimization values (T_eff_opt_s: 9.40, 7.50) differ from validation values (T_eff_val_s: 9.32, 7.43). Paper reports only validation values without acknowledging or explaining the optimization-validation discrepancy (coarse vs fine discretization).",
+      "agent": "论文手",
+      "revision_count": 0,
+      "resolved": false
+    },
+    {
+      "id": "ERR-P-R3-005",
+      "run_id": "run-20260531-141931",
+      "timestamp": "2026-05-31T20:45:00",
+      "phase": "paper",
+      "audit_target": "draft_paper",
+      "risk_level": "Low",
+      "category": "missing_error_handling",
+      "description": "Paper body contains internal HTML comments (lines 279-295: Humanizer-zh Self-Check and paper writer self-check) that must be stripped before submission.",
+      "agent": "论文手",
+      "revision_count": 0,
+      "resolved": false
+    },
+    {
+      "id": "ERR-P-R3-006",
+      "run_id": "run-20260531-141931",
+      "timestamp": "2026-05-31T20:45:00",
+      "phase": "paper",
+      "audit_target": "draft_paper",
+      "risk_level": "Low",
+      "category": "misleading_viz",
+      "description": "Figure numbering jumps from Figure 4 (Section 5.4) to Figure 6 (Section 5.5) with no Figure 5. Code correctly suppressed Figure 5 when Q5 intervals were empty, but the gap in numbering is confusing to readers.",
+      "agent": "论文手",
+      "revision_count": 0,
+      "resolved": false
+    }
+  ]
+}

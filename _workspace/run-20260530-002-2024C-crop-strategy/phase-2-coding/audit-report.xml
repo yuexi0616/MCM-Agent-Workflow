@@ -1,0 +1,79 @@
+<devils_advocate_report>
+  <audit_target>代码审计 — 2024 CUMCM C题 Phase 2 &lt;code_repo&gt; &lt;data_vis&gt;，审计 crop_strategy_solver.py 代码实现与 output_Q1_Q2_Q3 可视化产出</audit_target>
+
+  <flaws>
+    ---【产出完整性检查】---
+
+    - [Risk Level: High] [CODE-001] Q2和Q3求解结果完全缺失。输出目录只包含Q1_A和Q1_B的6张图（fig1-fig6），没有Q2/Q3的任何图（fig3_profit_dist、fig_sensitivity_lambda、fig_compare_Q2_Q3），没有summary.json。`run_all_problems()`函数在Q1_A和Q1_B完成之后，在执行Q2求解过程中崩溃或被中断。Q2需要生成60个情景、每代60个个体（若达到120代上限则需120代），计算量远大于Q1。未完成Q2/Q3意味着整个不确定性问题分析没有产出，Phase 1模型设计中问题2和问题3的CVaR优化框架完全没有被执行。
+
+    - [Risk Level: High] [CODE-002] `_init_synthetic_data()`内部第245行`np.random.seed(42)`重置了随机种子，导致Q1_A和Q1_B产生完全相同的优化轨迹。每调用一次`main_solver` → `load_data`(合成数据) → `_init_synthetic_data` → `np.random.seed(42)`都会将全局RNG状态恢复至初始。其后果：Q1_A和Q1_B的初始种群、DE变异选择、二项式交叉的随机选择序列完全一致，最终收敛到相同的最优解。证据：fig4_heatmap、fig5_utilization、fig6_category_pie三组图在Q1_A和Q1_B之间的MD5校验值完全相同（分别是736586b0、5ecff67a、f268cb63），说明种植方案决策矩阵X完全一致。fig1和fig2文件大小差异仅来自case_type不同导致的利润计算差异。
+
+    - [Risk Level: High] [CODE-003] 灵敏度分析`run_sensitivity_analysis`函数第2005行将CVaR硬编码为零：`obj = expected_profit - penalty - lam * 0`。注释标注"CVaR简化估计"，但`lam * 0 = 0`对任何lambda取值都相同，导致lambda-目标值曲线为一条平坦直线。该函数本应重新在不同lambda取值下对最优解做情景评估计算CVaR，但完全没有进行情景评估。若该图出现在竞赛论文中，会暴露代码未正确实现CVaR灵敏度分析逻辑。
+
+    ---【约束实现正确性检查】---
+
+    - [Risk Level: Med] [CODE-004] P1跨季节轮作约束（同一作物不得在同一年内跨两季种植：z_{ijt}^1 + z_{ijt}^2 <= 1）在`compute_penalty`函数第609行是一个空操作（`pass`）。对应代码块（第596-609行）遍历了所有地块、作物和年份，但条件触发后只执行了注释而没有添加任何罚函数值。这是由于F类(智慧大棚)的编码方案中X[i][j][t]同时代表S1和S2的面积，无法区分z_{ijt}^1和z_{ijt}^2。此约束在数学模型第237行明确声明，但代码未实现。Phase 1审计中已经标记为NEW-003。
+
+    - [Risk Level: Med] [CODE-005] P1跨年轮作约束重复惩罚F类作物。`compute_penalty`函数中同一违反行为触发了两次惩罚：年对年检查（第618行`Z[i,j,t] + Z[i,j,t+1] > 1`）和跨季检查（第637-638行`M[pt,j,1] and M[pt,j,0]`条件下`Z[i,j,t] > 0 and Z[i,j,t+1] > 0`）。对F类蔬菜而言，两个条件实质相同（因M[F,j,0]=M[F,j,1]=1），但跨季检查额外叠加一次w_pen。
+
+    - [Risk Level: Med] [CODE-006] 全局可变状态`_PLOT_TYPE_CACHE`（第702-710行）作为`compute_penalty`中所有地块类型查询的唯一来源，设计脆弱。`_get_plot_type_of_plot`函数在缓存未设置时返回0（A类=平旱地）作为后备值，导致所有非A类地块的约束检查使用错误的地块类型。该缓存在`compute_profit`(第730行)、`evaluate_fitness`(第1077行)和`main_solver`(第1510行)三个不同入口设置，任何入口的调用顺序变化或遗漏都会触发这个后备bug。特别是在`compute_penalty`函数内部，第597行的第一次调用时缓存已经由`evaluate_fitness`设置，但单独调用`compute_penalty`（如灵敏度分析中第2002行）时无此保障。
+
+    - [Risk Level: Med] [CODE-007] P3作物分散度惩罚对F类地块双重计数。第657-665行在s=0(S1)和s=1(S2)两个季节循环中各统计一次`Z[i,j,t] > 0`的地块数量。由于F类X[i][j][t]同时代表S1和S2，相同的Z标志在两个季节中被重复计数，使得F类地块的违反量翻倍。
+
+    ---【可视化审计】---
+
+    - [Risk Level: Low] [CODE-008] Fig1右子图将利润(~200,000元量级)和多样性(~0.08无量纲)绘制在同一个Y轴上，多样性曲线因量级差异呈现为贴近零轴的平坦直线，完全无法读取其演化趋势。应使用双Y轴（左轴利润、右轴多样性）。
+
+    - [Risk Level: Low] [CODE-009] 约束违反报告未生成。`verify_all_constraints`函数（第1666行）实现了完整的约束违反统计（R1面积、P1轮作违反数、P2豆类违反数、P3分散度违反数、P4产量违反数），但在主求解流程`main_solver`和`run_all_problems`中未被调用。论文无法引用任何定量约束满足度数据。
+
+    ---【边界情况与算法正确性】---
+
+    - [Risk Level: Low] [CODE-010] 2023年种植数据未用于轮作基线检查。模型设计假设10声明2023年数据用于初始化重茬检查窗口，但`compute_penalty`函数只检查Z[i,j,t]和Z[i,j,t+1]（对t=0至5），未检查Z_2023[i,j]与Z[i,j,0]（2024年）之间的重茬。2023年休耕假设未在代码中验证。
+
+    - [Risk Level: Low] [CODE-011] 早停条件中`1e-4 * abs(mean(profit))`的收敛容差在利润约200K时约20单位，但罚函数系数w_pen=1e6意味着单一约束触发改变适应度达1e6量级，远大于20的容差。早停实际不会在存在任何约束违反时触发，仅当解完全稳定（无罚函数波动）时才可能触发。这样设计的结果是算法只能通过gen > 60的硬性保护触发（第1274行），自适应早停形同虚设。
+  </flaws>
+
+  <correction_directives>
+    === 必须修正（High-risk）===
+
+    1. (CODE-001) 必须排查Q2/Q3求解崩溃原因。最可能的原因：
+       (a) `generate_independent_scenarios`和`generate_correlated_scenarios`中`np.random`调用在合成数据+优化场景生成的大量随机数调用中导致内存溢出或无限循环。
+       (b) `evaluate_fitness`对Q2/Q3使用问题1的`profit_det`但不做情景生成的逻辑分支错误。
+       (c) N_scenarios_final=500与Config.N_SCENARIOS_OPT=60之间不一致，最终评估情景数远大于优化情景数。
+       解决方案：先单独运行`main_solver(2, "B")`捕获错误堆栈；再在代码顶层增加`try...except`包装并打印错误信息。
+
+    2. (CODE-002) 删除`_init_synthetic_data`函数中的第245行`np.random.seed(42)`。模块级第33行的`np.random.seed(42)`已保证全局可复现性。在数据生成函数中二次重置种子会破坏调用者期望的随机流连续性，导致多次调用`main_solver`产生相同优化路径。
+
+    3. (CODE-003) 重写`run_sensitivity_analysis`函数中第2005行的CVaR硬编码：
+       (a) 对每个lambda取值，使用问题2/3的情景生成器生成N个情景利润。
+       (b) 计算CVaR值，目标 = E[利润] - lambda * CVaR。
+       (c) 否则移除该函数并声明灵敏度分析因计算复杂度未执行。
+
+    === 建议修正（Med-risk）===
+
+    4. (CODE-004) P1跨季节约束必须在代码中实现：对E类（S1蔬菜+S2蘑菇，作物集不相交）此约束自动满足；对D类（S1水稻/蔬菜，S2根茎菜）作物集不同，也自动满足；但对F类（两季相同蔬菜集），需在P1中增加：将F类地块中两季种植相同作物视为违反并施加w_pen（这是与模型设计一致的严格解释），或在论文中明确声明F类两季相同是设计允许的特例并量化其影响边界。
+
+    5. (CODE-005) 消除P1双重计数：合并年对年检查（第618行）与跨季检查（第638行）为单一条件`Z[i,j,t] + Z[i,j,t+1] > 1`，避免对F类施加2x惩罚。
+
+    6. (CODE-006) 移除全局`_PLOT_TYPE_CACHE`设计，改为在`compute_penalty`函数签名中增加`plot_types`参数（与`repair_hard_constraints`的处理方式一致），通过显式参数传递消除隐藏状态依赖。
+
+    7. (CODE-007) P3分散度惩罚对F类作物只需检查一次（任一季节），或修改Z值的定义使其能区分S1和S2。
+
+    === 建议修正（Low-risk）===
+
+    8. (CODE-008) 将Fig1右子图改为双Y轴：左轴为利润，右轴为多样性。
+    9. (CODE-009) 在`main_solver`返回前调用`verify_all_constraints`，将结果打印到控制台和输出文件。
+    10. (CODE-010) 若假设10成立（所有地块2023年休耕），在代码注释中明确说明轮作检查从2024年开始，不检查2023→2024的重茬。若2023年数据存在，则在初始化阶段加载Z_2023。
+    11. (CODE-011) 降低早停容差或使用自适应容差（如`1e-3 * w_pen`），使早停对中等规模约束违反也能触发。
+  </correction_directives>
+
+  <status>REJECTED</status>
+  <notes>
+    3条High-risk漏洞（CODE-001: Q2/Q3未完成、CODE-002: 种子重置致Q1_A/Q1_B结果完全一致、CODE-003: CVaR灵敏度硬编码为零）均直接阻塞流水线。
+    CODE-001使问题2和问题3的不确定性分析完全缺失；CODE-002使情形A/B的对比分析失效（种植方案完全相同，只有利润数值因case_type不同而不同）；
+    CODE-003使灵敏度分析图在物理意义上无效。
+
+    Phase 1审计中标记的NEW-001（F类编码歧义）、NEW-002（P4表达式不一致）、NEW-003（跨季节约束未实现）在Phase 2代码中均被继承为未修复缺陷，且CODE-004/005/007进一步放大了其影响。
+    所有11条漏洞中，前3条High-risk必须修正后重新提交审计，其余8条可在修正后作为Med/Low风险记录。
+  </notes>
+</devils_advocate_report>

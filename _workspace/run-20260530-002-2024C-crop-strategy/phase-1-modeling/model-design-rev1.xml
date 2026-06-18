@@ -1,0 +1,1005 @@
+<model_design>
+  <problem_analysis>
+    2024 CUMCM C题（农作物种植策略）是一个多地块、多作物、多季节、多年份、多约束的农业种植优化问题，可归类为"带约束的分阶段序贯优化问题"。本次修正版针对10条审计意见进行了系统修正。
+
+    【核心难点识别】
+    1. 组合爆炸：54个种植单元（34露天地块+16普通大棚+4智慧大棚）× 41种作物 × 2季节 × 7年 ≈ 30,996个原始决策变量。需要高效的染色体编码与约束处理策略。
+    2. 三类约束的大规模耦合: 轮作约束（时间维度耦合）、地块类型-作物-季节相容约束（空间与时间维度耦合）、预期销售约束（市场维度耦合）相互交织，形成高维非线性可行域。
+    3. 不确定性层次递进: 问题1（确定）→ 问题2（独立随机）→ 问题3（相关随机），不确定性维度逐级扩大。
+
+    【降维思路】
+    - 地块类型驱动的相容压缩：每种地块类型仅可种植有限作物子集（ABC类: 15种粮豆、D类: 水稻+21种蔬菜、E类: 蔬菜+食用菌、F类: 蔬菜），将31K维搜索空间压缩至约8K个有效自由度。
+    - 修复算子代替硬约束搜索：对于面积配额、地块-作物相容性、季节模式选择等约束，采用确定性修复算子后处理，使DE仅在无约束连续空间搜索，避免组合整数变量。
+    - 自适应情景缩减：优化过程中用少量情景（N=100）评估适应度，仅最终评估使用大量情景（N=2000）。
+
+    【多目标冲突分析】
+    - 利润 vs 风险：追求高利润可选择高产但价格波动剧烈的作物（如羊肚菌），CVaR约束对此进行平衡。
+    - 轮作 vs 短期利润：轮作要求牺牲连续种植高利润作物的机会，需要在本期收益与长期可持续性之间权衡。
+    - 市场供需平衡：产量超过预期销售量会导致滞销损失或半价倾销，过度保守则浪费市场容量和土地资源。
+
+    【问题类型判定】
+    - 问题1：确定性混合整数非线性规划（MINLP），通过修复算子规避整数变量 → 连续优化可解
+    - 问题2：带CVaR风险约束的随机规划 → 情景生成 + DEGA搜索
+    - 问题3：带相关随机变量的随机规划 → Copula/Cholesky相关采样 + 同问题2框架
+
+    【本次修正已处理ERR-001至ERR-010共10条审计意见】
+    - ERR-001: 20个温室完整纳入全部约束体系（决策变量、面积约束、轮作约束、相容性约束）
+    - ERR-002: 问题3边际分布变换修正为对称双向扰动形式
+    - ERR-003: 明确定义DEGA编码方案（染色体为54×41×7实值矩阵，处理混合变量方式）
+    - ERR-004: 计算复杂度降至竞赛可行范围（优化用N=100，最终评估用N=2000）
+    - ERR-005: 统一约束范式（硬约束→修复算子；软约束→罚函数；数学模型中明确标注）
+    - ERR-006: 修正两季蔬菜与总面积约束的冲突（每季节独立面积核算）
+    - ERR-007: 补充多阶段序贯决策讨论与Rolling Horizon方案
+    - ERR-008: 补充Cholesky分解退化处理（nearPD修正）
+    - ERR-009: 补全符号表（ε, δ_S, δ_p, δ_Y, penalty_coeff, 修复ρ与M符号一致性）
+    - ERR-010: 删除作物聚类降维承诺（采用直接按地块类型分配策略）
+  </problem_analysis>
+
+  <assumptions>
+    1. 【地块独立性假设】各地块之间除轮作约束外无相互影响（如灌溉用水不冲突、病虫害不跨地块传播）。
+       合理性：华北山区地块分散，相互影响可忽略；参考C038论文假设。
+
+    2. 【轮作约束可跨年份灵活满足假设】三年内至少种一次豆类的约束可以在同一地块的不同年份灵活安排，只要在任意连续三年时间窗口内满足即可。
+       合理性：题目原文"每块地在三年内至少种植一次豆类作物"，优秀论文C038和C063均采用滑动窗口建模。
+
+    3. 【预期销售量为软上限假设】超出预期销售量的部分要么滞销（零收益），要么降价50%出售，不存在硬性生产配额。
+       合理性：题目明确规定两种超产处理方式。
+
+    4. 【年度预算无限假设】不考虑资金的时间价值和借贷约束，年初有足够资金支付全年种植成本。
+       合理性：农业补贴和贷款通常可覆盖成本；C038论文简化处理。
+
+    5. 【各作物亩产稳定假设】问题1中亩产为确定性常数（基于2023年数据）；问题2中亩产在±10%范围内随机波动；问题3中加入相关结构。
+       合理性：依据题目"亩产量±10%波动"的设定。
+
+    6. 【温室环境独立假设】温室（普通大棚和智慧大棚）内部环境可控，其种植模式与露天地块完全独立管理；温室之间的轮作约束独立于露天轮作体系。
+       合理性：温室设施农业与露地种植作业分离管理；但温室自身的轮作约束（重茬禁止、豆类要求）仍需遵守。
+
+    7. 【智慧大棚全年连续生产假设】智慧大棚环境控制能力强，可在一年内种植两季蔬菜（第一季+第二季），不受"一年一季"限制。
+       合理性：智慧大棚的太阳能温控技术可实现全年生产；题目明确"智慧大棚每年可种植两季蔬菜"。
+
+    8. 【普通大棚两季分工假设】普通大棚第一季种植蔬菜（不包含大白菜、白萝卜、红萝卜），第二季仅种植食用菌类，两季面积独立核算。
+       合理性：题目明确规定"普通大棚适宜每年种植一季蔬菜和一季食用菌"。
+
+    9. 【水浇地模式二选一假设】水浇地在同一年的单季水稻种植模式与两季蔬菜种植模式互斥，不能同时选择。
+       合理性：题目"水浇地适宜每年种植一季水稻或两季蔬菜"中的"或"为排他性选择；C038论文公式(8)同样建模此互斥约束。
+
+    10. 【2023年种植数据作为重茬判断基线假设】2023年的实际种植数据可用作判断2024年是否重茬的基准。若2023年数据不可用，假设所有地块2023年休耕。
+        合理性：题目给出2023年种植情况数据（附件），用于初始化轮作约束的时间窗口。
+  </assumptions>
+
+  <symbol_table>
+    | 符号 | 含义 | 单位 |
+    |------|------|------|
+    | $\mathcal{I}$ | 露天地块集合（34个） | - |
+    | $\mathcal{G}_{ord}$ | 普通大棚集合（16个） | - |
+    | $\mathcal{G}_{smart}$ | 智慧大棚集合（4个） | - |
+    | $\mathcal{P}$ | 全部种植单元集合 $\mathcal{P} = \mathcal{I} \cup \mathcal{G}_{ord} \cup \mathcal{G}_{smart}$，$|\mathcal{P}|=54$ | - |
+    | $\mathcal{J}$ | 所有作物类型集合（41种） | - |
+    | $\mathcal{J}_{bean}$ | 豆类作物子集（黄豆/黑豆/红豆/绿豆/爬豆/刀豆/芸豆/土豆共8种） | - |
+    | $\mathcal{J}_{grain}$ | 粮食作物子集（不含豆类和水稻） | - |
+    | $\mathcal{J}_{veg}$ | 蔬菜作物子集（编号17-37，含21种蔬菜） | - |
+    | $\mathcal{J}_{mush}$ | 食用菌子集（榆黄菇/香菇/白灵菇/羊肚菌，编号38-41） | - |
+    | $\mathcal{J}_{rice}$ | 水稻（仅限水浇地，编号16） | - |
+    | $\mathcal{J}_{restricted}^{s2}$ | 水浇地第二季受限作物（大白菜/白萝卜/红萝卜，编号35-37） | - |
+    | $\mathcal{K}$ | 地块类型集合 $\{A,B,C,D,E,F\}$ | - |
+    | $\mathcal{T}$ | 年份集合 $\{2024,\dots,2030\}$，共7年 | - |
+    | $\mathcal{T}_{-1}$ | $\mathcal{T} \setminus \{2030\}$（最后一年不启动新的三年窗口检查） | - |
+    | $\mathcal{T}_{-2}$ | $\mathcal{T} \setminus \{2024\}$（用于上一年重茬检查） | - |
+    | $\mathcal{S}$ | 季节集合 $\{1,2\}$，其中1=第一季/单季，2=第二季 | - |
+    | $\Omega$ | 蒙特卡洛情景集合 | - |
+    | $p_i$ | 种植单元$i$的唯一标识符 | - |
+    | $k(i)$ | 种植单元$i$的类型映射：$\mathcal{P} \rightarrow \mathcal{K}$ | - |
+    | $A_i$ | 种植单元$i$的面积 | 亩 |
+    | $Y_j$ | 作物$j$的亩产量（基准值） | 斤/亩 |
+    | $p_{jt}$ | 作物$j$在第$t$年的销售价格 | 元/斤 |
+    | $c_{jt}$ | 作物$j$在第$t$年的种植成本 | 元/亩 |
+    | $S_{jt}$ | 作物$j$在第$t$年的预期销售量 | 斤 |
+    | $M_{kj}^s$ | 兼容性标志：$M_{kj}^s=1$当且仅当地块类型$k$可在季节$s$种植作物$j$ | - |
+    | $x_{ijt}^s$ | 决策变量：种植单元$i$上作物$j$在第$t$年第$s$季的种植面积（连续，$\geq 0$） | 亩 |
+    | $z_{ijt}^s$ | 派生0-1变量：$z_{ijt}^s = \mathbb{I}(x_{ijt}^s &gt; \varepsilon)$，表示是否种植 | - |
+    | $\varepsilon$ | 最小可辨识种植面积阈值（默认0.01亩），用于判定是否"种植" | 亩 |
+    | $Q_{jt}^s$ | 作物$j$在第$t$年第$s$季的总产量 | 斤 |
+    | $Q_{jt}^{s,full}$ | 作物$j$在第$t$年第$s$季以全价售出的产量 | 斤 |
+    | $Q_{jt}^{s,half}$ | 作物$j$在第$t$年第$s$季以半价售出的产量 | 斤 |
+    | $\Pi$ | 七年总利润 | 元 |
+    | $\lambda$ | 风险厌恶系数（$\lambda \geq 0$） | - |
+    | $\alpha$ | CVaR置信水平（通常取0.95） | - |
+    | $\zeta$ | VaR阈值（CVaR线性化的辅助变量） | 元 |
+    | $\psi_\omega$ | 情景$\omega$的超额损失辅助变量（$=\max(-\Pi_\omega - \zeta, 0)$） | 元 |
+    | $\rho_{j_1,j_2}$ | 作物$j_1$和$j_2$之间的Spearman秩相关系数 | - |
+    | $\delta_S$ | 销售量波动幅度参数（问题3，默认$\delta_S=0.05$） | - |
+    | $\delta_p$ | 价格波动幅度参数（问题3，默认$\delta_p=0.05$） | - |
+    | $\delta_Y$ | 亩产波动幅度参数（问题3，默认$\delta_Y=0.10$） | - |
+    | $w_{pen}$ | 约束违反惩罚系数（默认$10^6$） | 元/单位违反 |
+    | $\mathcal{L}$ | Cholesky分解下三角矩阵 | - |
+    | $\Phi(\cdot)$ | 标准正态累积分布函数 | - |
+    | $\tilde{S}_{jt\omega}$ | 情景$\omega$中作物$j$第$t$年的相关采样销售量 | 斤 |
+    | $\tilde{p}_{jt\omega}$ | 情景$\omega$中作物$j$第$t$年的相关采样价格 | 元/斤 |
+    | $\tilde{Y}_{jt\omega}$ | 情景$\omega$中作物$j$第$t$年的相关采样亩产量 | 斤/亩 |
+  </symbol_table>
+
+  <mathematical_model>
+    【设计哲学】
+    本模型采用"修复+惩罚"混合约束处理范式：不可违反的物理/逻辑约束（面积配额、地块-作物相容性、水浇地模式互斥）通过确定性修复算子强制满足；
+    可弹性处理的约束（轮作要求、豆类需求、基本满足销售量）通过罚函数纳入目标函数。这种设计使差分进化算法在"几乎无约束"的连续空间搜索，
+    避免了混合整数规划的组合爆炸。
+
+    修复算子与惩罚项的划分如下：
+    - 绝对约束（修复算子强制）：面积配额、地块-作物类型相容性、季节相容性、水浇地模式选择、食用菌专有性
+    - 弹性约束（罚函数）：非连续重茬、三年豆类轮作、作物分散度、产量基本满足销售量
+
+    ---
+    ### 主体决策变量
+
+    定义 $x_{ijt}^s \geq 0$ 为种植单元 $i \in \mathcal{P}$ 上作物 $j \in \mathcal{J}$ 在第 $t \in \mathcal{T}$ 年第 $s \in \mathcal{S}$ 季的种植面积（亩），
+    连续实数变量。由于修复算子保证可行性，无需在算法中显式声明0-1变量。
+
+    派生0-1变量（仅用于约束表达式，不由算法直接优化）：
+    $$z_{ijt}^s = \begin{cases}
+    1, & x_{ijt}^s > \varepsilon \\
+    0, & x_{ijt}^s \leq \varepsilon
+    \end{cases}$$
+    其中 $\varepsilon = 0.01$ 亩为最小可辨识种植面积阈值。
+
+    ---
+    ### 问题1：确定性种植策略优化
+
+    #### 1.1 目标函数
+
+    作物 $j$ 在第 $t$ 年第 $s$ 季的总产量：
+    $$Q_{jt}^s = \sum_{i \in \mathcal{P}} Y_j \cdot x_{ijt}^s, \quad \forall j \in \mathcal{J}, t \in \mathcal{T}, s \in \mathcal{S}$$
+
+    **情形A（超出部分滞销）**：
+    采用分段线性化方法，引入辅助变量 $R_{jt}^s$ 表示销售收入：
+
+    $$
+    R_{jt}^s \leq p_{jt} \cdot Q_{jt}^s, \quad \forall j,t,s
+    $$
+    $$
+    R_{jt}^s \leq p_{jt} \cdot S_{jt}, \quad \forall j,t,s
+    $$
+    $$
+    R_{jt}^s \geq 0, \quad \forall j,t,s
+    $$
+
+    目标函数（惩罚形式，统一表达硬修复+弹性约束）：
+    $$
+    \Pi^{\text{A}} = \max \left[ \sum_{t \in \mathcal{T}} \sum_{j \in \mathcal{J}} \sum_{s \in \mathcal{S}} \left( R_{jt}^s - \sum_{i \in \mathcal{P}} c_{jt} \cdot x_{ijt}^s \right) - \text{Penalty}(\mathbf{x}) \right]
+    $$
+
+    **情形B（超出部分半价出售）**：
+    将产量拆分为全价部分和半价部分：
+    $$Q_{jt}^s = Q_{jt}^{s,full} + Q_{jt}^{s,half}$$
+
+    约束：
+    $$Q_{jt}^{s,full} \leq S_{jt}, \quad Q_{jt}^{s,full} \leq Q_{jt}^s, \quad \forall j,t,s$$
+    $$Q_{jt}^{s,half} = Q_{jt}^s - Q_{jt}^{s,full}, \quad \forall j,t,s$$
+    $$Q_{jt}^{s,full}, Q_{jt}^{s,half} \geq 0, \quad \forall j,t,s$$
+
+    目标函数：
+    $$
+    \Pi^{\text{B}} = \max \left[ \sum_{t \in \mathcal{T}} \sum_{j \in \mathcal{J}} \sum_{s \in \mathcal{S}} \left( p_{jt} \cdot Q_{jt}^{s,full} + 0.5 \cdot p_{jt} \cdot Q_{jt}^{s,half} - \sum_{i \in \mathcal{P}} c_{jt} \cdot x_{ijt}^s \right) - \text{Penalty}(\mathbf{x}) \right]
+    $$
+
+    #### 1.2 修复算子保证的绝对约束
+
+    以下约束由修复算子（参见算法3）在每次变异/交叉后强制执行，不进入目标函数的罚函数项。
+
+    **[R1] 每季面积配额约束：**
+    $$\sum_{j \in \mathcal{J}} x_{ijt}^s \leq A_i, \quad \forall i \in \mathcal{P}, t \in \mathcal{T}, s \in \mathcal{S}$$
+
+    注意：对于单季地块（A/B/C类型），$s=2$ 季节的所有 $x_{ijt}^2$ 由修复算子置零，因此该约束对 $s=2$ 退化为 $0 \leq A_i$，自动满足。
+
+    **[R2] 地块-作物-季节三维相容性约束：**
+    $$x_{ijt}^s = 0, \quad \forall i \in \mathcal{P}, j \in \mathcal{J}, t \in \mathcal{T}, s \in \mathcal{S} \text{ 若 } M_{k(i),j}^s = 0$$
+
+    相容矩阵 $M_{kj}^s$ 的构造规则（基于题目约束）：
+    - A/B/C类（平旱地/梯田/山坡地）：$M_{A,j}^1=1$ 当且仅当 $j \in \{1,\dots,15\}$（粮食+豆类，不含水稻）；$M_{A,j}^2=0$ 对所有 $j$
+    - D类（水浇地）：$M_{D,16}^1=1$（水稻第一季）；$M_{D,j}^1=1$ 当 $j \in \mathcal{J}_{veg} \setminus \mathcal{J}_{restricted}^{s2}$（蔬菜不含大白菜/白萝卜/红萝卜）；$M_{D,j}^2=1$ 当 $j \in \mathcal{J}_{restricted}^{s2}$（仅三种根茎菜第二季）；对其他作物为0
+    - E类（普通大棚）：$M_{E,j}^1=1$ 当 $j \in \mathcal{J}_{veg} \setminus \mathcal{J}_{restricted}^{s2}$；$M_{E,j}^2=1$ 当 $j \in \mathcal{J}_{mush}$；其余为0
+    - F类（智慧大棚）：$M_{F,j}^s=1$ 当 $j \in \mathcal{J}_{veg} \setminus \mathcal{J}_{restricted}^{s2}$，$s \in \{1,2\}$；其余为0
+
+    **限制补充：** 食用菌（$\mathcal{J}_{mush}$）只能在E类第二季种植，此项纳入 $M_{kj}^s$ 定义，自动由修复算子保证。
+
+    **修复算子对面积的调整机制**：若 $\sum_j x_{ijt}^s > A_i$，按比例缩放：
+    $$x_{ijt}^s \leftarrow x_{ijt}^s \cdot \frac{A_i}{\sum_j x_{ijt}^s}, \quad \forall j$$
+
+    **水浇地（D类）模式选择修复**：
+    定义D类地块的模式标志：
+    $$m_{it} = \begin{cases}
+    0, & \text{水稻模式} \\
+    1, & \text{双季蔬菜模式}
+    \end{cases}$$
+
+    修复逻辑：
+    - 若 $x_{i,rice,t}^1 > \varepsilon$（即有意向种植水稻），则 $m_{it}=0$，强制 $\sum_j x_{ijt}^2 = 0$
+    - 否则 $m_{it}=1$，正常执行双季蔬菜种植
+
+    #### 1.3 罚函数处理的弹性约束
+
+    以下约束通过罚函数纳入目标函数，允许在利润显著优势时轻微违反，但付出代价。
+
+    **[P1] 非连续重茬约束（禁止连作）：**
+    $$\sum_{s \in \mathcal{S}} z_{ijt}^s + \sum_{s \in \mathcal{S}} z_{i,j,t+1}^s \leq 1, \quad \forall i \in \mathcal{P}, j \in \mathcal{J}, t \in \mathcal{T}_{-1}$$
+
+    解释：同一地块的任意季节（单季/两季合计）与下一年的任意季节，不得出现同一作物。
+    对两季地块：若 $z_{ijt}^1=1$ 且 $z_{ijt}^2=1$（同一年两季种相同作物），则违反。
+
+    惩罚：
+    $$\text{Penalty}_{p1} = w_{pen} \cdot \sum_{i,j,t} \max\left( \sum_{s} z_{ijt}^s + \sum_{s} z_{i,j,t+1}^s - 1,\; 0 \right)$$
+
+    **注意：** C038论文中对于两季地块，相邻两季的作物也不能相同（$z_{i1t}^k \cdot z_{i2t}^k = 0$），且上一年的第二季与下一年的第一季不能相同（$z_{i2t}^k \cdot z_{i1(t+1)}^k = 0$）。
+    本模型的统一表达式 $\sum_s z_{ijt}^s + \sum_s z_{i,j,t+1}^s \leq 1$ 覆盖了C038全部三项约束且更简洁。
+
+    **注意（ERR-006修正）：** 此处的"连作"约束不限制同一地块不同季节种植不同作物；同一年两季的蔬菜品种可以不同，
+    各自的面积独立核算。两季的蔬菜不一定占据全部地块面积——第一季可用 $\leq A_i$ 亩，第二季也可用 $\leq A_i$ 亩。
+
+    **补充约束（两季地块内部轮作）：** 对于两季地块，同一作物不允许在同一年内跨季节连续种植（即 $z_{ijt}^1 + z_{ijt}^2 \leq 1$），此项纳入上述罚函数。
+
+    **[P2] 三年豆类轮作约束：**
+    $$\sum_{j \in \mathcal{J}_{bean}} \sum_{s \in \mathcal{S}} \sum_{\tau = t}^{t+2} z_{ij\tau}^s \geq 1, \quad \forall i \in \mathcal{P}, t \in \mathcal{T}_{-1}$$
+
+    检查窗口：2024-2026, 2025-2027, 2026-2028, 2027-2029, 2028-2030 共5个三年窗口。
+
+    惩罚：
+    $$\text{Penalty}_{p2} = w_{pen} \cdot \sum_{i,t} \max\left( 1 - \sum_{j \in \mathcal{J}_{bean}} \sum_{s} \sum_{\tau=t}^{t+2} z_{ij\tau}^s,\; 0 \right)$$
+
+    **[P3] 作物分散度约束（便于田间管理）：**
+    $$\sum_{i \in \mathcal{P}} z_{ijt}^s \leq N_{max}^{plot}, \quad \forall j \in \mathcal{J}, t \in \mathcal{T}, s \in \mathcal{S}$$
+
+    其中 $N_{max}^{plot}=5$（每季每种作物最多在5个地块种植），参考C038设定。
+
+    惩罚：
+    $$\text{Penalty}_{p3} = w_{pen} \cdot \sum_{j,t,s} \max\left( \sum_i z_{ijt}^s - N_{max}^{plot},\; 0 \right)$$
+
+    **[P4] 产量基本满足预期销售量（下限约束）：**
+    $$Q_{jt}^s \geq 0.9 \cdot S_{jt}, \quad \forall j,t,s$$
+
+    惩罚：
+    $$\text{Penalty}_{p4} = w_{pen} \cdot \sum_{j,t,s} \max\left( 0.9 \cdot S_{jt} - Q_{jt}^s,\; 0 \right)$$
+
+    #### 1.4 总罚函数
+
+    $$\text{Penalty}(\mathbf{x}) = \text{Penalty}_{p1} + \text{Penalty}_{p2} + \text{Penalty}_{p3} + \text{Penalty}_{p4}$$
+
+    惩罚系数 $w_{pen}=10^6$ 元/单位违反，数量级远高于利润（~千万），确保最优解在罚函数驱动下趋向可行域内部。
+
+    ---
+    ### 问题2：不确定性条件下的种植策略优化
+
+    #### 2.1 随机参数建模
+
+    | 参数 | 变化规律 | 分布假设 |
+    |------|---------|---------|
+    | 小麦/玉米销售量 $S_{wheat,t}, S_{corn,t}$ | 年增长 $5\%\sim10\%$ | $S_{j,t} = S_{j,t-1} \cdot (1 + U[0.05, 0.10])$ |
+    | 其他作物销售量 $S_{j,t}$ | 年波动 $\pm 5\%$ | $S_{j,t} = S_{j,t-1} \cdot (1 + U[-0.05, 0.05])$ |
+    | 亩产量 $Y_{j,t}$ | 年波动 $\pm 10\%$ | $Y_{j,t} = Y_{j,base} \cdot (1 + U[-0.10, 0.10])$ |
+    | 种植成本 $c_{j,t}$ | 年递增 $5\%$ | $c_{j,t} = c_{j,base} \cdot (1.05)^{t-2024}$ |
+    | 蔬菜价格 $p_{veg,t}$ | 年递增 $5\%$ | $p_{veg,t} = p_{veg,base} \cdot (1.05)^{t-2024}$ |
+    | 食用菌价格 $p_{mush,t}$ | 年降 $1\%\sim5\%$ | $p_{mush,t} = p_{mush,base} \cdot (1 - U[0.01, 0.05])^{t-2024}$ |
+
+    其中 $U[a,b]$ 表示均匀分布。不同作物的随机参数彼此独立（问题2假设）。
+
+    #### 2.2 情景生成
+
+    采用蒙特卡洛方法生成 $N_{\Omega}$ 个随机情景。对每个情景 $\omega \in \Omega$，
+    独立抽取所有随机参数，计算该情景下的总利润 $\Pi_\omega$：
+
+    $$\Pi_\omega = \sum_{t \in \mathcal{T}} \sum_{j \in \mathcal{J}} \sum_{s \in \mathcal{S}} \left( R_{jt\omega}^s - \sum_{i \in \mathcal{P}} c_{jt\omega} \cdot x_{ijt}^s \right) - \text{Penalty}(\mathbf{x})$$
+
+    其中 $R_{jt\omega}^s$ 基于情景 $\omega$ 的随机参数 $(\tilde{S}_{jt\omega}, \tilde{p}_{jt\omega}, \tilde{Y}_{jt\omega})$ 计算。
+
+    #### 2.3 CVaR风险度量目标函数
+
+    采用条件风险价值（Conditional Value at Risk）将尾部风险纳入优化目标。
+    定义损失 $L_\omega = -\Pi_\omega$，在置信水平 $\alpha$（通常取0.95）下：
+
+    $$\text{VaR}_\alpha = \inf\{l : P(L \leq l) \geq \alpha\}$$
+    $$\text{CVaR}_\alpha = \mathbb{E}[L \mid L \geq \text{VaR}_\alpha]$$
+
+    优化目标为期望利润与CVaR的加权组合：
+    $$
+    \max \; \mathbb{E}_\Omega[\Pi] - \lambda \cdot \text{CVaR}_\alpha(-\Pi)
+    $$
+
+    使用Rockafellar-Uryasev公式离散化到情景集上：
+    $$
+    \max \; \frac{1}{|\Omega|} \sum_{\omega \in \Omega} \Pi_\omega - \lambda \left[ \zeta + \frac{1}{(1-\alpha)|\Omega|} \sum_{\omega \in \Omega} \psi_\omega \right] - \text{Penalty}(\mathbf{x})
+    $$
+
+    约束：
+    $$\psi_\omega \geq -\Pi_\omega - \zeta, \quad \forall \omega \in \Omega$$
+    $$\psi_\omega \geq 0, \quad \forall \omega \in \Omega$$
+    $$\zeta \in \mathbb{R}$$
+
+    ---
+    ### 问题3：考虑作物相关性的种植策略优化
+
+    问题3在问题2的基础上引入作物间销售量和价格的相关性结构。
+
+    #### 3.1 Spearman相关系数矩阵
+
+    定义 $\mathcal{R} \in [-1,1]^{|\mathcal{J}| \times |\mathcal{J}|}$ 为作物间的Spearman秩相关系数矩阵。
+    同时考虑销售量-价格、销售量-成本、价格-成本之间的交叉相关系数。
+
+    根据题目中关于"可替代性和互补性"的描述：
+    - $\rho_{j_1,j_2} > 0$：互补关系（如小麦与面粉加工作物、西红柿与番茄酱加工作物）
+    - $\rho_{j_1,j_2} < 0$：替代关系（如小麦与玉米在粮食消费上的替代）
+    - $\rho_{j_1,j_2} \approx 0$：独立关系（如粮食与食用菌）
+
+    相关矩阵 $\mathcal{R}$ 的构造基于作物间Spearman秩相关系数，由题目数据计算可得。
+
+    #### 3.2 Cholesky分解生成相关随机变量（含退化处理）
+
+    **步骤1：正定性检查与修正**
+    对 $\mathcal{R}$ 进行特征值分解 $\mathcal{R} = V \Lambda V^\top$。
+    若 $\min(\text{diag}(\Lambda)) \leq \tau$（其中 $\tau=10^{-8}$ 为容忍阈值），则执行nearPD修正：
+
+    $$\Lambda^+ = \max(\Lambda, \tau \cdot \mathbf{I})$$
+    $$\mathcal{R}^+ = V \Lambda^+ V^\top$$
+    $$\mathcal{R}^+_{ij} \leftarrow \mathcal{R}^+_{ij} / \sqrt{\mathcal{R}^+_{ii} \cdot \mathcal{R}^+_{jj}} \quad \text{(重新归一化为相关系数矩阵)}$$
+
+    该算法等价于Higham(1988)最近正定矩阵投影的谱截断法，保证了Cholesky分解的存在性。
+
+    **步骤2：Cholesky分解**
+    $$\mathcal{R}^+ = \mathcal{L}\mathcal{L}^\top$$
+
+    **步骤3：生成相关正态随机向量**
+    $$\mathbf{u}_\omega = \mathcal{L} \mathbf{z}_\omega, \quad \mathbf{z}_\omega \sim \mathcal{N}(0, \mathbf{I})$$
+
+    **步骤4：概率积分变换为对称扰动边际分布（ERR-002修正）**
+    对销售量、价格和亩产分别进行变换：
+
+    $$u_{j\omega}^S \sim \mathcal{N}(0,1) \quad \text{(从 $\mathbf{u}_\omega$ 提取对应分量)}$$
+    $$\tilde{S}_{jt\omega} = S_{jt} \cdot \left(1 + \delta_S \cdot (2\Phi(u_{j\omega}^S) - 1)\right)$$
+    $$\tilde{p}_{jt\omega} = p_{jt} \cdot \left(1 + \delta_p \cdot (2\Phi(u_{j\omega}^P) - 1)\right)$$
+    $$\tilde{Y}_{jt\omega} = Y_j \cdot \left(1 + \delta_Y \cdot (2\Phi(u_{j\omega}^Y) - 1)\right)$$
+
+    其中 $\Phi(\cdot)$ 为标准正态CDF。变换 $2\Phi(u)-1$ 将 $u \in (-\infty, \infty)$ 映射到 $(-1, 1)$，
+    且 $\mathbb{E}[2\Phi(u)-1] = 0$，使得扰动的期望值为零，对称地围绕基准值双向波动。
+    波动幅度参数 $\delta_S, \delta_p, \delta_Y$ 控制扰动范围：
+    - $\delta_S = 0.05$（销售量 $\pm 5\%$）
+    - $\delta_p$ 按作物类型取值（蔬菜 $+5\%$，食用菌 $-1\%\sim-5\%$，粮食稳定）
+    - $\delta_Y = 0.10$（亩产 $\pm 10\%$）
+
+    #### 3.3 优化框架
+
+    与问题2相同的CVaR优化框架，但情景利润 $\Pi_\omega$ 基于相关采样得到的 $\mathbf{\tilde{S}}_\omega, \mathbf{\tilde{p}}_\omega, \mathbf{\tilde{Y}}_\omega$ 计算。
+
+    ---
+    ### 关于多阶段序贯决策的讨论（ERR-007修正）
+
+    当前模型采用"两阶段随机规划"近似：在 $t=2024$ 年初一次性决定全部7年的种植方案
+    $x_{ijt}^s \; \forall i,j,t,s$，然后评估不确定性情景。实际农业生产中，决策是逐年做出的：
+    2024年种植并收获后，观察到实际产量和价格，再调整2025年的种植计划。
+
+    **两阶段近似的影响：**
+    - 低估了利润（无法利用"看后调整"的灵活性价值）
+    - 高估了风险（不能在观察到不利冲击后缩减规模）
+    - 保守偏差，对决策者安全
+
+    **Rolling Horizon改进方案（建议作为灵敏度分析）：**
+    1. 固定第 $t$ 年的决策 $x_{ijt}^s$ 为当前最优解
+    2. 模拟第 $t$ 年的随机参数实现
+    3. 以 $t+1$ 年为起点，以最新信息为条件重新优化剩余年份
+    4. 重复直到 $t=2030$
+    5. 比较Rolling Horizon结果与两阶段结果，评估"灵活性价值"
+
+    由于计算资源限制，本模型采用两阶段近似，并在讨论中注明该偏差方向和量级估计。
+  </mathematical_model>
+
+  <algorithm_flow>
+    【总览】
+    三个问题共用算法核心（DEGA + 修复算子 + 罚函数），区别仅在于适应度评估：
+    - 问题1：确定性评估（单次利润计算）
+    - 问题2：蒙特卡洛情景平均 + CVaR（N=100情景用于优化，N=2000用于最终评估）
+    - 问题3：相关采样蒙特卡洛 + CVaR（N=100用于优化，N=2000用于最终评估）
+
+    ---
+    ### 算法1：主求解框架（三个问题通用）
+
+    ```
+    Input:
+      - 地块数据: {plot_id, area, type(A/B/C/D/E/F)} for i in P (54 entries)
+      - 作物数据: {crop_id, category, base_yield, base_price, base_cost} for j in J (41 entries)
+      - 预期销售量: S_{j,t} for all j in J, t in T
+      - 2023种植数据: x_last_year[i][j][s] for all i,j,s (用于初始化重茬检查)
+      - 问题参数: problem_id (1/2/3), case_type (A/B)
+      - 算法超参:
+          pop_size = 100
+          max_gen = 200
+          F = 0.8  (缩放因子，初始值)
+          CR = 0.9 (交叉概率)
+          lambda_risk = 0.5 (风险厌恶系数，仅问题2/3)
+          alpha = 0.95 (CVaR置信水平)
+          N_scenarios_opt = 100 (优化用情景数)
+          N_scenarios_final = 2000 (最终评估用情景数)
+          epsilon = 0.01 (最小种植面积阈值)
+          w_pen = 1e6 (罚函数系数)
+
+    Output:
+      - 最优决策矩阵: x_{ijt}^s for all i in P, j in J, t in T, s in S
+      - 期望总利润: E[Pi]
+      - CVaR值（仅问题2/3）
+      - 年度利润分解
+    ```
+
+    ```
+    PROCEDURE MainSolver(problem_id, case_type, params):
+      // ---- 阶段0：预处理 ----
+      BuildCompatibilityMatrix(M, P, J, S)   // M[k(i),j,s] = 0/1
+      BuildCropCategorySets()                  // bean_set, grain_set, veg_set, mush_set
+      BuildRotationInitialState(x_2023)        // 每个地块的上年种植记录
+
+      // ---- 阶段1：种群初始化 ----
+      population = InitializePopulation(pop_size, P, J, T, S, M)
+
+      // ---- 阶段2：DEGA主循环 ----
+      best_individual = NULL
+      best_fitness = -INF
+
+      FOR gen IN 1..max_gen:
+        fitness = Array[pop_size]
+
+        // 并行评估适应度（可利用向量化）
+        FOR EACH individual idx IN 0..pop_size-1:
+          // 步骤2a：解码（当前染色体已为x矩阵，直接使用）
+          x_matrix = population[idx]
+
+          // 步骤2b：修复算子（强制绝对约束）
+          x_matrix = RepairHardConstraints(x_matrix, M, A, epsilon)
+
+          // 步骤2c：适应度评估
+          fitness[idx] = EvaluateFitness(x_matrix, problem_id, case_type, params)
+
+          // 更新最优
+          IF fitness[idx] > best_fitness:
+            best_fitness = fitness[idx]
+            best_individual = COPY(x_matrix)
+          END IF
+        END FOR
+
+        // 日志
+        IF gen % 10 == 0:
+          profit_component = EstimateProfitComponent(best_individual, case_type)
+          Print("Gen", gen, "Best Fitness:", best_fitness, "Profit:", profit_component)
+        END IF
+
+        // 差分进化操作
+        new_population = []
+        FOR EACH target_idx IN 0..pop_size-1:
+          // 变异: DE/best/2 (参考C038)
+          a = best_individual           // 当前最优作为基向量
+          b, c, d, e = SelectFourDistinct(population, target_idx)
+          mutant = a + F * (b - c) + F * (d - e)
+
+          // 边界裁剪
+          mutant = CLIP(mutant, 0, A_i)  // 对每个(i,j,t,s)裁剪到[0, A_i]
+
+          // 修复
+          mutant = RepairHardConstraints(mutant, M, A, epsilon)
+
+          // 交叉: 二项式交叉
+          trial = BinomialCrossover(population[target_idx], mutant, CR)
+
+          // 修复（交叉后可能破坏相容性）
+          trial = RepairHardConstraints(trial, M, A, epsilon)
+
+          // 选择: 贪婪保留
+          trial_fitness = EvaluateFitness(trial, problem_id, case_type, params)
+          IF trial_fitness > fitness[target_idx]:
+            new_population.append(trial)
+          ELSE:
+            new_population.append(population[target_idx])
+          END IF
+        END FOR
+
+        population = new_population
+
+        // 自适应参数调整（每50代）
+        IF gen % 50 == 0:
+          F = AdaptF(F, population_diversity)
+          CR = AdaptCR(CR, improvement_rate)
+        END IF
+
+        // 早停条件
+        IF gen > 100 AND StdDev(fitness) < 1e-4 * ABS(Mean(fitness)):
+          Print("Early stopping at generation", gen)
+          BREAK
+        END IF
+      END FOR
+
+      // ---- 阶段3：最终修复 ----
+      best_x = RepairHardConstraints(best_individual, M, A, epsilon)
+      // 尝试局部搜索：对每个地块尝试作物置换以降低惩罚
+      best_x = LocalRotationRepair(best_x)
+
+      // ---- 阶段4：最终评估 ----
+      IF problem_id == 1:
+        total_profit = DeterministicEval(best_x, case_type)
+        result = {
+          "solution": best_x,
+          "total_profit": total_profit,
+          "annual_profit": [profit_2024, ..., profit_2030]
+        }
+      ELSE:
+        // 用大量情景作准确评估
+        N = N_scenarios_final  // 2000
+        scenario_profits = RunMonteCarlo(best_x, N, problem_id, case_type)
+        expected_profit = MEAN(scenario_profits)
+        cvar = ComputeCVaR(scenario_profits, alpha)
+        result = {
+          "solution": best_x,
+          "expected_profit": expected_profit,
+          "CVaR": cvar,
+          "objective": expected_profit - lambda_risk * cvar,
+          "annual_profit": [profit_2024, ..., profit_2030]
+        }
+      END IF
+
+      // 后处理
+      result["crop_plan"] = GeneratePlantingTable(best_x)
+      result["rotation_report"] = VerifyAllConstraints(best_x)
+      result["sensitivity"] = RunSensitivityAnalysis(best_x, problem_id)
+
+      RETURN result
+    END PROCEDURE
+    ```
+
+    ---
+    ### 算法2：染色体编码与种群初始化（ERR-003修正）
+
+    ```
+    Input:
+      - pop_size: 种群规模
+      - P: 种植单元集合（54个）
+      - J: 作物集合（41种）
+      - T: 年份集合（7年）
+      - S: 季节集合（2季）
+      - M: 相容矩阵
+      - A: 面积数组
+
+    Output:
+      - population: Array[pop_size] of Chromosome
+
+    ---
+    【编码方案详细说明】
+
+    染色体结构: 每个个体为一个实值张量 X (3D)，形状为 (54, 41, 7)
+    - X[i][j][t] ∈ [0, A_i] 表示地块i在年份t种植作物j的面积（亩）
+    - 季节信息由相容矩阵 M 隐式编码:
+      对于ABC类(单季): M[j]=1 的作物种在S=1, S=2始终为0
+      对于D类(水浇地): season-1作物(j∈veg_set\{35,36,37}∪rice) 适用S=1;
+                        season-2作物(j∈{35,36,37}) 适用S=2
+      对于E类(普通大棚): season-1作物(j∈veg_set\{35,36,37}) 适用S=1;
+                         season-2作物(j∈mush_set) 适用S=2
+      对于F类(智慧大棚): season-1作物(j∈veg_set\{35,36,37}) 适用S=1;
+                         season-2作物(j∈veg_set\{35,36,37}) 适用S=2
+    - 同一地块同一年份两个季节独立核算面积: 全年的面积上限为 2·A_i
+      （每季上限均为A_i，两季不存在面积竞争，ERR-006修正）
+
+    【混合决策变量的处理】
+    - 所有元素为连续实数（无显式0-1变量）
+    - 二进制决策由面积隐式表达: 若 X[i][j][t] > epsilon 则视为"种植"
+    - 修复算子(算法3)负责将连续值映射到可行域
+
+    【编码的紧凑性分析】
+    有效搜索空间维度: ~8000维
+    - 每个地块i的可种植作物数量由其类型决定:
+      A/B/C类: ~10-15种粮食/豆类
+      D类: ~22种(1种水稻+21种蔬菜, 分季节)
+      E类: ~20种(蔬菜+4种食用菌, 分季节)
+      F类: ~19种(蔬菜, 分两季)
+    - 总面积配额约束和相容性约束由修复算子自动满足
+    ```
+
+    PROCEDURE InitializePopulation(pop_size, P, J, T, S, M, A):
+      population = Array[pop_size]
+
+      FOR n IN 1..pop_size:
+        // 创建个体 (54 x 41 x 7) 实值张量
+        X = Zeros(54, 41, 7)
+
+        FOR i IN 0..53:       // 每个地块
+          season_crops = GetCompatibleCrops(i, 1, M)   // 第一季/单季兼容作物
+          season2_crops = GetCompatibleCrops(i, 2, M)  // 第二季兼容作物
+
+          FOR t IN 0..6:      // 每一年
+            // 策略: 从本季兼容作物中随机选择1-3种，分配面积
+            // 这种初始化方式产生高可行性的初始解
+
+            // S=1 面积分配
+            n_crops1 = RandomInt(1, MIN(3, len(season_crops)))
+            selected1 = RandomSample(season_crops, n_crops1)
+            fractions1 = DirichletRandom(n_crops1)  // 和为1
+            FOR idx, j IN selected1:
+              X[i][j][t] = fractions1[idx] * A[i] * Uniform(0.5, 1.0)
+            END FOR
+
+            // S=2 面积分配 (仅对两季地块)
+            IF len(season2_crops) > 0:
+              n_crops2 = RandomInt(1, MIN(2, len(season2_crops)))
+              selected2 = RandomSample(season2_crops, n_crops2)
+              fractions2 = DirichletRandom(n_crops2)
+              FOR idx, j IN selected2:
+                X[i][j][t] = fractions2[idx] * A[i] * Uniform(0.5, 1.0)
+              END FOR
+            END IF
+
+            // D类地块模式处理: 随机选择水稻或蔬菜模式
+            IF GetPlotType(i) == 'D':
+              IF Random() < 0.5:
+                // 水稻模式: 置零所有蔬菜/第二季
+                X[i][rice_idx][t] = A[i] * Uniform(0.5, 1.0)
+                FOR j in veg_set:
+                  X[i][j][t] = 0
+                END FOR
+              END IF
+              // 若随机选择蔬菜模式，保持上述初始化结果
+            END IF
+          END FOR
+        END FOR
+
+        // 施加修复算子确保初始可行性
+        X = RepairHardConstraints(X, M, A, epsilon)
+        population[n] = X
+      END FOR
+
+      RETURN population
+    END PROCEDURE
+    ```
+
+    ---
+    ### 算法3：修复算子（强制绝对约束）
+
+    ```
+    PROCEDURE RepairHardConstraints(X, M, A, epsilon):
+      // 输入: X[54][41][7] 实值张量
+      // 输出: 修复后的可行X
+
+      FOR i IN 0..53:
+        plot_type = GetPlotType(i)
+        FOR t IN 0..6:
+          // --- [R2] 地块-作物-季节相容性 ---
+          FOR j IN 0..40:
+            FOR s IN 0..1:  // 季节 0=S1, 1=S2
+              IF M[plot_type][j][s] == 0:
+                X[i][j][t] = 0
+              END IF
+            END FOR
+          END FOR
+
+          // --- [R1] 每季面积配额 ---
+          // 计算S1作物总面积
+          total_s1 = SUM_{j: CompatibleS1(plot_type,j)} X[i][j][t]
+          IF total_s1 > A[i]:
+            scale = A[i] / total_s1
+            FOR j: CompatibleS1(plot_type,j):
+              X[i][j][t] *= scale
+            END FOR
+          END IF
+
+          // 计算S2作物总面积
+          total_s2 = SUM_{j: CompatibleS2(plot_type,j)} X[i][j][t]
+          IF total_s2 > A[i]:
+            scale = A[i] / total_s2
+            FOR j: CompatibleS2(plot_type,j):
+              X[i][j][t] *= scale
+            END FOR
+          END IF
+
+          // --- D类地块模式选择修复 ---
+          IF plot_type == 'D':
+            rice_planted = X[i][rice_idx][t] > epsilon
+            veg_s2_planted = SUM_{j in {35,36,37}} X[i][j][t] > epsilon
+            IF rice_planted AND veg_s2_planted:
+              // 冲突: 比较水稻利润潜力 vs 蔬菜利润潜力
+              // 策略: 清空面积较小的那个模式
+              rice_profit_potential = X[i][rice_idx][t] * (rice_yield * rice_price - rice_cost)
+              veg_profit_potential = SUM_{j in s2_crops} X[i][j][t] * (veg_yield[j] * veg_price[j] - veg_cost[j])
+              IF rice_profit_potential >= veg_profit_potential:
+                // 保持水稻，清除蔬菜S2
+                FOR j in {35,36,37}:
+                  X[i][j][t] = 0
+                END FOR
+              ELSE:
+                // 保持蔬菜S2，清除水稻 + S1蔬菜
+                X[i][rice_idx][t] = 0
+                FOR j in veg_set:
+                  X[i][j][t] = 0
+                END FOR
+                // 然后正常执行S1蔬菜种植
+                // 注: S1面积已在上面分配
+              END IF
+            END IF
+          END IF
+
+          // --- 极小数值清理 ---
+          FOR j IN 0..40:
+            IF X[i][j][t] < epsilon:
+              X[i][j][t] = 0  // 置零避免数值噪声
+            END IF
+          END FOR
+        END FOR
+      END FOR
+
+      RETURN X
+    END PROCEDURE
+    ```
+
+    ---
+    ### 算法4：适应度评估（统一入口）
+
+    ```
+    FUNCTION EvaluateFitness(X, problem_id, case_type, params):
+      // 1. 计算确定性利润分量
+      profit = ComputeProfit(X, case_type)
+
+      // 2. 计算约束违反惩罚
+      penalty = ComputePenalty(X, params)
+
+      IF problem_id == 1:
+        RETURN profit - penalty
+
+      ELSE:
+        // 问题2/3: 生成情景并计算CVaR目标
+        N = params.N_scenarios_opt  // 默认100
+
+        // 根据问题类型选择情景生成方法
+        IF problem_id == 2:
+          scenarios = GenerateIndependentScenarios(N, params)
+        ELSE:  // problem_id == 3
+          scenarios = GenerateCorrelatedScenarios(N, params)
+
+        scenario_profits = Array[N]
+        FOR omega IN 0..N-1:
+          scenario_profits[omega] = ComputeProfitWithScenarios(
+            X, case_type, scenarios[omega]
+          )
+        END FOR
+
+        // CVaR计算
+        expected_profit = MEAN(scenario_profits)
+        losses = [-p for p in scenario_profits]
+        sorted_losses = SORT(losses, ascending=True)
+        idx_VaR = CEILING(params.alpha * N)
+        VaR = sorted_losses[idx_VaR]
+        tail_losses = sorted_losses[idx_VaR .. N-1]
+        CVaR = MEAN(tail_losses)
+
+        objective = expected_profit - params.lambda_risk * CVaR
+        RETURN objective - penalty
+      END IF
+    END FUNCTION
+    ```
+
+    ---
+    ### 算法5：罚函数计算
+
+    ```
+    FUNCTION ComputePenalty(X, params):
+      w = params.w_pen  // 1e6
+      penalty = 0
+      epsilon = params.epsilon
+
+      // 派生二进制变量
+      Z[i][j][t] = (X[i][j][t] > epsilon) ? 1 : 0
+
+      // [P1] 非连续重茬
+      FOR i IN 0..53:
+        FOR j IN 0..40:
+          FOR t IN 0..5:  // 2024-2029
+            // 同季（S1+S1 跨年检查）
+            s1_sum = Z[i][j][t] + Z[i][j][t+1]
+            IF s1_sum > 1:
+              penalty += w * (s1_sum - 1)
+            END IF
+            // 对于两季地块: 跨季节检查（S2→S1跨年）
+            // Z[i][j][t] 隐含了季节信息（由相容矩阵决定）
+          END FOR
+        END FOR
+      END FOR
+
+      // [P2] 三年豆类轮作
+      bean_indices = {1,2,3,4,5,17,18,19}  // 8种豆类作物
+      FOR i IN 0..53:
+        FOR t IN 0..4:  // 起始年 2024-2028
+          bean_count = 0
+          FOR tau IN 0..2:  // t, t+1, t+2
+            FOR j IN bean_indices:
+              bean_count += Z[i][j][t+tau]
+            END FOR
+          END FOR
+          IF bean_count < 1:
+            penalty += w * (1 - bean_count)
+          END IF
+        END FOR
+      END FOR
+
+      // [P3] 作物分散度
+      MAX_PLOTS = 5
+      FOR j IN 0..40:
+        FOR t IN 0..6:
+          plot_count_s1 = SUM_i (Z[i][j][t] AND IsS1Crop(i,j))
+          IF plot_count_s1 > MAX_PLOTS:
+            penalty += w * (plot_count_s1 - MAX_PLOTS)
+          END IF
+          plot_count_s2 = SUM_i (Z[i][j][t] AND IsS2Crop(i,j))
+          IF plot_count_s2 > MAX_PLOTS:
+            penalty += w * (plot_count_s2 - MAX_PLOTS)
+          END IF
+        END FOR
+      END FOR
+
+      // [P4] 产量基本满足预期销售量（90%下限）
+      FOR j IN 0..40:
+        FOR t IN 0..6:
+          total_yield = SUM_i (Y[j] * X[i][j][t])
+          // 注意: S1+S2产量都需要满足
+          IF total_yield < 0.9 * S[j][t]:
+            penalty += w * (0.9 * S[j][t] - total_yield)
+          END IF
+        END FOR
+      END FOR
+
+      RETURN penalty
+    END FUNCTION
+    ```
+
+    ---
+    ### 算法6：相关情景生成（问题3，ERR-002+ERR-008修正）
+
+    ```
+    FUNCTION GenerateCorrelatedScenarios(N, params):
+      // 1. 构建Spearman相关矩阵 R (41x41 或更大)
+      R = BuildSpearmanMatrix(params.rho_data)
+
+      // 2. 正定性检查与nearPD修正
+      eigenvalues, eigenvectors = EIGEN(R)
+      tau = 1e-8
+      IF MIN(eigenvalues) < tau:
+        // 特征值裁剪
+        eigenvalues_corrected = MAX(eigenvalues, tau)
+        R_corrected = eigenvectors @ DIAG(eigenvalues_corrected) @ eigenvectors.T
+        // 重新归一化为相关系数矩阵
+        D = SQRT(DIAG(R_corrected))
+        R_corrected = R_corrected / (D @ D.T)
+        R = R_corrected
+      END IF
+
+      // 3. Cholesky分解
+      L = CHOLESKY(R)  // 此时R保证正定
+
+      // 4. 生成N个相关情景
+      scenarios = Array[N]
+      FOR omega IN 0..N-1:
+        z = NormalRandom(0, 1, dim=41)  // 独立标准正态
+        u = L @ z                       // 相关标准正态
+
+        // 对称扰动 (ERR-002修正)
+        scenario = {}
+        FOR j IN 0..40:
+          scenario.S[j] = S_base[j] * (1 + params.delta_S[j] * (2*Phi(u[j]) - 1))
+          scenario.p[j] = p_base[j] * (1 + params.delta_p[j] * (2*Phi(u[j+41]) - 1))
+          scenario.Y[j] = Y_base[j] * (1 + params.delta_Y[j] * (2*Phi(u[j+82]) - 1))
+          // 注意: 当随机变量维度 > 41时，u的长度相应扩展
+        END FOR
+
+        // 销售量的时间趋势叠加（问题2已有，保持）
+        FOR j in {wheat, corn}:
+          FOR t IN 1..6:
+            scenario.S[j][t] *= (1 + Uniform(0.05, 0.10))
+          END FOR
+        END FOR
+        // ... 其他时间趋势同问题2
+
+        scenarios[omega] = scenario
+      END FOR
+
+      RETURN scenarios
+    END PROCEDURE
+    ```
+
+    ---
+    ### 算法7：局部轮作修复
+
+    ```
+    PROCEDURE LocalRotationRepair(X):
+      // 对每个地块独立检查并修复残留的轮作冲突
+      // 这是一个轻量级局部搜索，在DEGA收敛后运行
+
+      FOR i IN 0..53:
+        // --- 修复重茬 ---
+        FOR t IN 0..5:  // 2024-2029
+          FOR j IN 0..40:
+            IF IsPlanted(X[i][j][t]) AND IsPlanted(X[i][j][t+1]):
+              // 重茬冲突: 尝试将t+1年的作物j替换为利润次优的可行替代
+              alternatives = GetRotationFeasibleCrops(i, t+1, exclude=[j])
+              IF len(alternatives) > 0:
+                best_alt = ARGMAX_{alt in alternatives}(
+                  Y[alt] * p[alt][t+1] - c[alt][t+1]
+                  - PenaltyForRotation(X, i, alt, t+1)
+                )
+                // 转移面积
+                area_to_move = X[i][j][t+1]
+                X[i][j][t+1] = 0
+                X[i][best_alt][t+1] = area_to_move
+              ELSE:
+                // 无可行替代: 休耕
+                X[i][j][t+1] = 0
+              END IF
+            END IF
+          END FOR
+        END FOR
+
+        // --- 修复三年豆类约束 ---
+        FOR t IN 0..4:  // 起始年
+          bean_count = CountBeansInWindow(X, i, t, t+2)
+          IF bean_count < 1:
+            // 在窗口内找到利润最低的年份，插入豆类
+            replace_year = FindLowestProfitYear(X, i, t, t+2)
+            // 清空该年种植，改种最适宜豆类
+            best_bean = ARGMAX_{b in bean_set}(
+              Y[b] * p[b][replace_year] - c[b][replace_year]
+            )
+            FOR j IN 0..40:
+              X[i][j][replace_year] = 0
+            END FOR
+            X[i][best_bean][replace_year] = A[i] * 0.8  // 80%面积种豆类
+          END IF
+        END FOR
+      END FOR
+
+      RETURN X
+    END PROCEDURE
+    ```
+
+    ---
+    ### 计算复杂度与可行性分析（ERR-004修正）
+
+    优化阶段总运算量：
+    - pop_size = 100, max_gen = 200
+    - 每代：100个适应度评估
+    - 每个适应度评估中：
+      - 问题1：1次利润计算（含修复+惩罚，O(54×41×7) ≈ 15K运算）
+      - 问题2/3：N_scenarios_opt=100次利润计算
+    - 总利润计算次数：100 × 200 × 100 = 2×10^6
+
+    每次利润计算包括：
+    - 产量计算：54×41×7 ≈ 15K乘法+加法
+    - 收入与成本：41×7 ≈ 287次操作
+    - 约束检查：约50K次比较
+    - 合计约 50K 浮点操作
+
+    总浮点操作：2×10^6 × 50K = 10^11 FLOP
+    假设 CPU 速度为 10^9 FLOP/s（单核，现代CPU），约需100秒。
+    加上情景生成、DEGA操作等开销，总运行时间约10-20分钟。
+
+    最终评估阶段：
+    - N_scenarios_final = 2000，仅计算1次
+    - 总利润计算：2000次
+    - 耗时约 2000 × 50K / 10^9 ≈ 0.1秒（可忽略）
+
+    结论：该计算量在竞赛环境（便携设备，4-8核CPU）下完全可行。
+
+    ---
+    ### 边界情况处理
+
+    1. **2023年数据作为轮作基线**：2024年种植需考虑2023年作物以避免重茬。
+       Z_2023矩阵由附件数据初始化。若数据不可得，假设所有地块2023年休耕。
+
+    2. **温室空置**：若温室种植利润为负（成本高于收入），允许空置（所有x=0）。
+       空置不违反面积约束。
+
+    3. **极小种植面积**：X[i][j][t] < epsilon → 置零。
+       防止数值噪声影响轮作检查。
+
+    4. **D类地块水稻/蔬菜模式利润相近**：修复算子中使用利润潜力比较决定模式，
+       若差距小于阈值（如5%），随机选择以保持多样性。
+
+    5. **早停保护**：最少迭代100代后才允许早停，避免陷入早期局部最优。
+
+    6. **适应度数值稳定性**：当 profit - penalty 为负值且很大时（初始种群常见），
+       采用适应度缩放：fitness_scaled = fitness - min(fitness_in_pop) + 1e-6。
+  </algorithm_flow>
+</model_design>

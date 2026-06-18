@@ -1,0 +1,5 @@
+problem_id,metric_name,value,unit,method,figure_ref,formula_ref
+Q1,有效遮蔽时长,1.391406250000001,s,确定性计算 (几何模拟),fig01_q1_occlusion_timeline.png,Eq.(1)-(7)
+Q1,起爆位置X,17188.0,m,抛体运动公式,fig01_q1_occlusion_timeline.png,Eq.(3)
+Q1,起爆位置Y,7.494838410781801e-14,m,抛体运动公式,fig01_q1_occlusion_timeline.png,Eq.(3)
+Q1,起爆位置Z,1736.496,m,抛体运动公式,fig01_q1_occlusion_timeline.png,Eq.(3)

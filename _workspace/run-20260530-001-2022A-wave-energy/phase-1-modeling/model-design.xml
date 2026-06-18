@@ -1,0 +1,663 @@
+<model_design>
+  <problem_analysis>
+    **问题类型判定**：微分方程动力学建模 + 参数优化（机理驱动型）
+
+    **核心难点识别**：
+    1. **多体耦合动力学**：浮子和振子通过PTO系统（弹簧+阻尼器）耦合，形成二元二阶微分方程组。需将高阶ODE降阶后数值求解。
+    2. **非线性阻尼情形**：问题1(2)中阻尼力与相对速度的|v|^0.5成正比，破坏方程的线性性，需在RK4迭代中实时计算非线性阻尼力。
+    3. **功率的稳态提取**：系统在波浪激励下存在暂态响应（约前60s），需从稳态段（100-180s）提取平均功率，避免暂态污染优化目标。
+    4. **垂荡-纵摇耦合**：问题3-4中，纵摇运动存在转动惯量随相对位移变化的时变特性（振子沿中轴滑动改变回转半径），使方程组变为变系数ODE。
+    5. **双阻尼协同优化**：问题4需要同时优化直线阻尼系数Ch和旋转阻尼系数Cp，二者对总功率的贡献量级不同（纵摇角速度较小导致Cp灵敏度低），需GA求解。
+
+    **降维思路**：
+    - 垂荡运动可独立于纵摇建模（问题1-2暂不考虑纵摇），问题3-4再引入纵摇自由度
+    - 每个问题都采用"降阶→RK4→功率积分→GA优化"的统一流水线
+
+    **多目标冲突分析**：
+    - 问题2和4本质是单目标（平均功率最大化），但功率是阻尼系数的非凸函数，存在全局最优而非单调关系
+    - 阻尼系数过小→相对速度大但阻尼力小→功率小；阻尼系数过大→相对速度被抑制→功率小。因此目标函数存在峰值
+    - 问题4中Ch和Cp对总功率的贡献通过垂荡和纵摇的相对运动耦合，且纵摇角速度量级远小于垂荡速度，导致Pp << Ph
+
+    **知识库引用**：
+    - [[wave-energy-dynamics]]：波浪能装置受力分析与运动方程
+    - [[runge-kutta-method]]：四阶龙格库塔法降阶与递推
+    - [[genetic-algorithm]]：实数编码GA搜索阻尼参数
+  </problem_analysis>
+
+  <assumptions>
+    1. **海水为理想流体**：无粘、无旋、不可压缩，浮子只受线性微幅波作用。合理性：题目明确说明海水为无粘无旋流体，且波浪为线性周期微幅波，是可接受的线性化假设。
+    2. **忽略中轴、底座、隔层及PTO的质量和各种摩擦**。合理性：题目明确要求忽略，这些组件的质量远小于浮子和振子，对动力学行为影响可忽略。
+    3. **暂态-稳态分离假设**：系统在前几个波浪周期内处于暂态响应，60s后进入稳态简谐振动。合理性：基于受迫振动理论，线性系统在简谐激励下的暂态响应以e^{-ζωnt}衰减，约3-5个时间常数后进入稳态。优秀论文验证了100s后周期与激励周期一致。
+    4. **问题1-2中垂荡与纵摇解耦**：仅考虑垂荡运动时，纵摇不影响垂荡动力学。合理性：垂荡的静水恢复力仅依赖于吃水深度变化，与浮子倾角无关；波浪激励力在垂荡方向的分量不受小角度纵摇影响。
+    5. **问题3-4中忽略纵摇对垂荡的反向耦合**：纵摇运动不影响垂荡运动的受力。合理性：在小角度纵摇假设下（|θ| &lt; 5°），垂荡运动的恢复力和激励力变化在1-cosθ ≈ 0.4%以内，可忽略。此假设简化了四元二阶方程组的求解。
+    6. **振子为刚体且沿中轴无摩擦滑动**。合理性：题目未提及振子与中轴间的摩擦，且工程设计中直线轴承可大幅降低摩擦系数至μ&lt;0.01。
+    7. **线性PTO系统假设**：弹簧力与相对位移成正比（胡克定律），阻尼力与相对速度成正比（线性情形）。合理性：机械弹簧在小变形范围内线性度良好，液压阻尼器在低速下可近似为线性。
+    8. **初始时刻浮子和振子静置于平衡位置**。合理性：题目明确给出初始条件，系统在t=0时处于静水平衡，位移和速度均为零。
+  </assumptions>
+
+  <symbol_table>
+    | 符号 | 含义 | 单位 |
+    |------|------|------|
+    | $t$ | 时间变量 | s |
+    | $\omega$ | 波浪圆频率 | rad/s |
+    | $m_f$ | 浮子质量 | kg |
+    | $m_z$ | 振子质量 | kg |
+    | $m'$ | 垂荡附加质量 | kg |
+    | $I_f$ | 浮子绕y轴转动惯量 | kg·m² |
+    | $I_z$ | 振子绕y轴转动惯量 | kg·m² |
+    | $I'$ | 附加转动惯量 | kg·m² |
+    | $x_f(t)$ | 浮子垂荡位移（大地坐标系） | m |
+    | $x_z(t)$ | 振子垂荡位移（大地坐标系） | m |
+    | $x_r(t)$ | 振子相对浮子位移 $x_r = x_z - x_f$ | m |
+    | $u(t)$ | 浮子垂荡速度 $u = \dot{x}_f$ | m/s |
+    | $w(t)$ | 振子垂荡速度 $w = \dot{x}_z$ | m/s |
+    | $\theta_f(t)$ | 浮子纵摇角位移 | rad |
+    | $\theta_z(t)$ | 振子纵摇角位移 | rad |
+    | $\theta_r(t)$ | 振子相对浮子角位移 $\theta_r = \theta_z - \theta_f$ | rad |
+    | $j(t)$ | 浮子纵摇角速度 $j = \dot{\theta}_f$ | rad/s |
+    | $k(t)$ | 振子纵摇角速度 $k = \dot{\theta}_z$ | rad/s |
+    | $f$ | 波浪激励力振幅 | N |
+    | $L$ | 波浪激励力矩振幅 | N·m |
+    | $f_e(t)$ | 波浪激励力 $f_e = f\cos\omega t$ | N |
+    | $M_e(t)$ | 波浪激励力矩 $M_e = L\cos\omega t$ | N·m |
+    | $C_h$ | 直线阻尼器阻尼系数 | N·s/m |
+    | $C_p$ | 旋转阻尼器阻尼系数 | N·m·s |
+    | $C_{xh}$ | 垂荡兴波阻尼系数 | N·s/m |
+    | $C_{xp}$ | 纵摇兴波阻尼系数 | N·m·s |
+    | $K_h$ | 直线弹簧刚度 | N/m |
+    | $K_p$ | 扭转弹簧刚度 | N·m/rad |
+    | $\rho$ | 海水密度 | kg/m³ |
+    | $g$ | 重力加速度 | m/s² |
+    | $A$ | 浮子水线面截面积 | m² |
+    | $B$ | 静水恢复力系数 $B = \rho g A$ | N/m |
+    | $L_r$ | 静水恢复力矩系数 | N·m/rad |
+    | $\alpha$ | 幂次阻尼的幂指数 | 无量纲 |
+    | $P_h(t)$ | 垂荡瞬时功率 | W |
+    | $P_p(t)$ | 纵摇瞬时功率 | W |
+    | $\overline{P}_h$ | 垂荡平均功率 | W |
+    | $\overline{P}_p$ | 纵摇平均功率 | W |
+    | $\overline{P}_{total}$ | 总平均功率 | W |
+    | $h$ | RK4数值积分步长 | s |
+    | $T$ | 波浪周期 $T = 2\pi/\omega$ | s |
+    | $t_0$ | 稳态起始时刻（取100s） | s |
+    | $T_{win}$ | 功率积分时间窗长度（取80s） | s |
+  </symbol_table>
+
+  <mathematical_model>
+
+    ### 通用坐标系定义
+
+    建立大地坐标系 $OXYZ$（惯性系，原点位于初始时刻浮子重心）和固连于浮子的固体坐标系 $oxyz$（随浮子运动）。浮子垂荡位移 $x_f(t)$ 和振子垂荡位移 $x_z(t)$ 均在大地坐标系下度量。振子相对于浮子的位移定义为 $x_r(t) = x_z(t) - x_f(t)$，在固体坐标系下度量。
+
+    ---
+
+    ### 问题1：垂荡运动建模
+
+    #### 1.1 受力分析
+
+    **浮子**（在大地坐标系中）：
+    - 波浪激励力：$f_e(t) = f\cos\omega t$
+    - 兴波阻尼力：$f_{c_x}(t) = -C_{xh}\,\dot{x}_f(t)$
+    - 静水恢复力：$f_r(t) = -\rho g A\,x_f(t) = -B\,x_f(t)$
+    - PTO系统作用力（弹簧力+阻尼力）：$f_{PTO}(t) = K_h\,x_r(t) + f_{damp}(t)$
+
+    **振子**（在大地坐标系中）：
+    - PTO系统作用力（反作用力）：$-f_{PTO}(t)$
+
+    其中阻尼力的形式分两种情形：
+
+    **情形1（常数阻尼）**：$f_{damp}(t) = C_h\,\dot{x}_r(t) = C_h\big(\dot{x}_z(t) - \dot{x}_f(t)\big)$
+
+    **情形2（幂次阻尼）**：$f_{damp}(t) = C_h\,|\dot{x}_r(t)|^{\alpha}\,\text{sgn}\big(\dot{x}_r(t)\big) = C_h\,|\dot{x}_z - \dot{x}_f|^{\alpha}\,\text{sgn}(\dot{x}_z - \dot{x}_f)$
+
+    注意：阻尼力方向始终与相对速度方向相反，因此指数形式的阻尼力为 $f_{damp} = C_h\,|\dot{x}_r|^{\alpha}\,\text{sgn}(\dot{x}_r)$，其中 $\alpha=0.5$ 为题目给定幂指数。
+
+    #### 1.2 运动微分方程
+
+    由牛顿第二定律，建立浮子-振子系统的垂荡运动方程：
+
+    $$
+    \begin{cases}
+    (m_f + m')\,\ddot{x}_f(t) = f\cos\omega t - C_{xh}\dot{x}_f(t) - B\,x_f(t) - K_h\,x_r(t) - C_h\,|\dot{x}_r(t)|^{\alpha}\,\text{sgn}(\dot{x}_r(t)) \\[8pt]
+    m_z\,\ddot{x}_z(t) = K_h\,x_r(t) + C_h\,|\dot{x}_r(t)|^{\alpha}\,\text{sgn}(\dot{x}_r(t))
+    \end{cases}
+    $$
+
+    其中 $x_r(t) = x_z(t) - x_f(t)$，$\dot{x}_r(t) = \dot{x}_z(t) - \dot{x}_f(t)$。
+    情形1中 $\alpha = 0$（阻尼力与相对速度成正比），情形2中 $\alpha = 0.5$。
+
+    **初始条件**（静水平衡）：
+    $$
+    x_f(0) = 0,\quad x_z(0) = 0,\quad \dot{x}_f(0) = 0,\quad \dot{x}_z(0) = 0
+    $$
+
+    #### 1.3 降阶为一阶方程组
+
+    引入中间变量 $u(t) = \dot{x}_f(t)$，$w(t) = \dot{x}_z(t)$，将二阶方程组降为四元一阶方程组：
+
+    $$
+    \begin{cases}
+    \dot{x}_f = u \\[4pt]
+    \dot{x}_z = w \\[4pt]
+    \dot{u} = \dfrac{1}{m_f + m'}\Big[ f\cos\omega t - C_{xh}u - B\,x_f - K_h(x_z - x_f) - C_h\,|w - u|^{\alpha}\,\text{sgn}(w - u) \Big] \\[10pt]
+    \dot{w} = \dfrac{1}{m_z}\Big[ K_h(x_z - x_f) + C_h\,|w - u|^{\alpha}\,\text{sgn}(w - u) \Big]
+    \end{cases}
+    $$
+
+    当 $\alpha = 0$ 时退化为线性情形：$|w-u|^0\,\text{sgn}(w-u) = \text{sgn}(w-u)$，但实际线性阻尼应直接用 $(w-u)$ 而非 $\text{sgn}(w-u)$。修正为：
+
+    **线性阻尼情形（$\alpha=0$，即 $f_{damp}=C_h\dot{x}_r$）**：
+    $$
+    \begin{cases}
+    \dot{u} = \dfrac{1}{m_f + m'}\Big[ f\cos\omega t - C_{xh}u - B\,x_f - K_h(x_z - x_f) - C_h(w - u) \Big] \\[10pt]
+    \dot{w} = \dfrac{1}{m_z}\Big[ K_h(x_z - x_f) + C_h(w - u) \Big]
+    \end{cases}
+    $$
+
+    **幂次阻尼情形（$\alpha=0.5$）**：
+    $$
+    \begin{cases}
+    \dot{u} = \dfrac{1}{m_f + m'}\Big[ f\cos\omega t - C_{xh}u - B\,x_f - K_h(x_z - x_f) - C_h\,|w - u|^{0.5}\,\text{sgn}(w - u) \Big] \\[10pt]
+    \dot{w} = \dfrac{1}{m_z}\Big[ K_h(x_z - x_f) + C_h\,|w - u|^{0.5}\,\text{sgn}(w - u) \Big]
+    \end{cases}
+    $$
+
+    ---
+
+    ### 问题2：最优阻尼系数（垂荡单目标优化）
+
+    #### 2.1 瞬时功率与平均功率
+
+    PTO系统直线阻尼器的瞬时输出功率为阻尼力与相对速度的乘积：
+
+    $$
+    P_h(t) = f_{damp}(t) \cdot \dot{x}_r(t) = \begin{cases}
+    C_h\,\big[\dot{x}_r(t)\big]^2, & \alpha = 0 \\[4pt]
+    C_h\,|\dot{x}_r(t)|^{\alpha+1}, & \alpha \in (0,1]
+    \end{cases}
+    $$
+
+    统一表达式：
+    $$
+    P_h(t) = C_h\,|\dot{x}_r(t)|^{1+\alpha}
+    $$
+
+    取系统进入稳态响应后（$t_0 = 100$ s）一个时间窗口 $T_{win} = 80$ s 内的平均功率：
+
+    $$
+    \overline{P}_h = \frac{1}{T_{win}} \int_{t_0}^{t_0+T_{win}} C_h\,|\dot{x}_r(t)|^{1+\alpha}\,dt
+    $$
+
+    #### 2.2 优化模型
+
+    **情形1（常数阻尼系数）**：
+
+    $$
+    \begin{aligned}
+    \max_{C_h} \quad & \overline{P}_h(C_h) = \frac{1}{T_{win}} \int_{t_0}^{t_0+T_{win}} C_h\,[\dot{x}_r(t)]^2\,dt \\[6pt]
+    \text{s.t.} \quad & 0 \leq C_h \leq 100000 \\[4pt]
+    & \text{垂荡运动方程（问题1模型）}, \; \alpha = 0 \\[4pt]
+    & \text{波浪频率 } \omega = 2.2143\ \text{s}^{-1}
+    \end{aligned}
+    $$
+
+    **情形2（幂次阻尼系数）**：
+
+    $$
+    \begin{aligned}
+    \max_{C_h,\,\alpha} \quad & \overline{P}_h(C_h, \alpha) = \frac{1}{T_{win}} \int_{t_0}^{t_0+T_{win}} C_h\,|\dot{x}_r(t)|^{1+\alpha}\,dt \\[6pt]
+    \text{s.t.} \quad & 0 \leq C_h \leq 100000 \\[4pt]
+    & 0 \leq \alpha \leq 1 \\[4pt]
+    & \text{垂荡运动方程（问题1模型）}, \; \alpha \text{为幂指数} \\[4pt]
+    & \text{波浪频率 } \omega = 2.2143\ \text{s}^{-1}
+    \end{aligned}
+    $$
+
+    #### 2.3 功率的离散化计算
+
+    设RK4数值解的时间离散点为 $\{t_i\}_{i=0}^{N}$，步长 $h = 0.0001$ s。对应的浮子速度 $u_i$、振子速度 $w_i$。采用梯形法离散平均功率积分：
+
+    $$
+    \overline{P}_h \approx \frac{1}{T_{win}} \sum_{i=n_0}^{n_0+N_{win}-1} C_h\,|w_i - u_i|^{1+\alpha} \cdot h
+    $$
+
+    其中 $n_0 = \lfloor t_0 / h \rfloor$，$N_{win} = \lfloor T_{win} / h \rfloor$。
+
+    ---
+
+    ### 问题3：垂荡+纵摇耦合运动建模
+
+    #### 3.1 浮子转动惯量计算
+
+    浮子由圆面、圆柱侧面和圆锥侧面三部分组成。采用平行移轴定理和垂直轴定理计算绕y轴的转动惯量：
+
+    **圆面对y轴**：$I_1 = \frac{M_1}{4}r_1^2 + M_1 d_1^2$
+
+    **圆柱侧面对y轴**：$I_2 = \frac{M_2}{2}\left(r_2^2 + \frac{h_2^2}{6}\right) + M_2 d_2^2$
+
+    **圆锥侧面对y轴**：$I_3 = \frac{M_3}{4}\left(r_3^2 + \frac{2}{9}h_3^2\right) + M_3 d_3^2$
+
+    浮子总转动惯量：$I_f = I_1 + I_2 + I_3$
+
+    振子绕y轴的转动惯量随相对位移 $x_r(t)$ 变化（平行移轴效应）：
+
+    $$
+    I_z(t) = I_{z0} + m_z\,[d_0 + x_r(t)]^2
+    $$
+
+    其中 $I_{z0}$ 为振子在参考位置的转动惯量，$d_0$ 为参考位置到转轴的距离。
+
+    #### 3.2 纵摇受力分析
+
+    **浮子**：
+    - 波浪激励力矩：$M_e(t) = L\cos\omega t$
+    - 兴波阻尼力矩：$M_{c_x}(t) = -C_{xp}\,\dot{\theta}_f(t)$
+    - 静水恢复力矩：$M_r(t) = -L_r\,\theta_f(t)$
+    - PTO系统作用力矩：$M_{PTO}(t) = K_p\,\theta_r(t) + C_p\,\dot{\theta}_r(t)$
+
+    **振子**：
+    - PTO系统反作用力矩：$-M_{PTO}(t)$
+
+    其中 $\theta_r(t) = \theta_z(t) - \theta_f(t)$，$\dot{\theta}_r(t) = \dot{\theta}_z(t) - \dot{\theta}_f(t)$。
+
+    #### 3.3 四元二阶微分方程组
+
+    综合垂荡和纵摇，得到四元二阶微分方程组：
+
+    $$
+    \begin{cases}
+    (m_f + m')\,\ddot{x}_f = f\cos\omega t - C_{xh}\dot{x}_f - B\,x_f - K_h(x_z - x_f) - C_h(\dot{x}_z - \dot{x}_f) \\[6pt]
+    m_z\,\ddot{x}_z = K_h(x_z - x_f) + C_h(\dot{x}_z - \dot{x}_f) \\[6pt]
+    (I_f + I')\,\ddot{\theta}_f = L\cos\omega t - C_{xp}\dot{\theta}_f - L_r\theta_f - K_p(\theta_z - \theta_f) - C_p(\dot{\theta}_z - \dot{\theta}_f) \\[6pt]
+    I_z(t)\,\ddot{\theta}_z = K_p(\theta_z - \theta_f) + C_p(\dot{\theta}_z - \dot{\theta}_f)
+    \end{cases}
+    $$
+
+    其中 $I_z(t) = I_{z0} + m_z\,[d_0 + x_z(t) - x_f(t)]^2$ 是时变转动惯量。
+
+    **初始条件**：
+    $$
+    x_f(0)=0,\; x_z(0)=0,\; \dot{x}_f(0)=0,\; \dot{x}_z(0)=0,\;
+    \theta_f(0)=0,\; \theta_z(0)=0,\; \dot{\theta}_f(0)=0,\; \dot{\theta}_z(0)=0
+    $$
+
+    #### 3.4 降阶为八元一阶方程组
+
+    引入中间变量 $u=\dot{x}_f$, $w=\dot{x}_z$, $j=\dot{\theta}_f$, $k=\dot{\theta}_z$：
+
+    $$
+    \begin{cases}
+    \dot{x}_f = u \\[4pt]
+    \dot{x}_z = w \\[4pt]
+    \dot{\theta}_f = j \\[4pt]
+    \dot{\theta}_z = k \\[10pt]
+    \dot{u} = \dfrac{1}{m_f + m'}\Big[ f\cos\omega t - C_{xh}u - B\,x_f - K_h(x_z - x_f) - C_h(w - u) \Big] \\[10pt]
+    \dot{w} = \dfrac{1}{m_z}\Big[ K_h(x_z - x_f) + C_h(w - u) \Big] \\[10pt]
+    \dot{j} = \dfrac{1}{I_f + I'}\Big[ L\cos\omega t - C_{xp}j - L_r\theta_f - K_p(\theta_z - \theta_f) - C_p(k - j) \Big] \\[10pt]
+    \dot{k} = \dfrac{1}{I_z(t)}\Big[ K_p(\theta_z - \theta_f) + C_p(k - j) \Big]
+    \end{cases}
+    $$
+
+    ---
+
+    ### 问题4：双阻尼协同优化
+
+    总平均输出功率为垂荡功率与纵摇功率之和：
+
+    $$
+    \overline{P}_{total} = \overline{P}_h + \overline{P}_p
+    $$
+
+    其中：
+    $$
+    \overline{P}_h = \frac{1}{T_{win}} \int_{t_0}^{t_0+T_{win}} C_h\,[\dot{x}_z(t) - \dot{x}_f(t)]^2\,dt
+    $$
+
+    $$
+    \overline{P}_p = \frac{1}{T_{win}} \int_{t_0}^{t_0+T_{win}} C_p\,[\dot{\theta}_z(t) - \dot{\theta}_f(t)]^2\,dt
+    $$
+
+    **优化模型**：
+
+    $$
+    \begin{aligned}
+    \max_{C_h,\,C_p} \quad & \overline{P}_{total}(C_h, C_p) = \overline{P}_h + \overline{P}_p \\[6pt]
+    \text{s.t.} \quad & 0 \leq C_h \leq 100000 \\[4pt]
+    & 0 \leq C_p \leq 100000 \\[4pt]
+    & \text{八元一阶微分方程组（问题3模型）} \\[4pt]
+    & \text{波浪频率 } \omega = 1.9806\ \text{s}^{-1}
+    \end{aligned}
+    $$
+
+    **离散化形式**：
+
+    $$
+    \overline{P}_{total} \approx \frac{1}{T_{win}} \left[ C_h \sum_{i=n_0}^{n_0+N_{win}-1} (w_i - u_i)^2\,h \;+\; C_p \sum_{i=n_0}^{n_0+N_{win}-1} (k_i - j_i)^2\,h \right]
+    $$
+
+  </mathematical_model>
+
+  <algorithm_flow>
+    ---
+    ## 全局算法流程
+
+    整体求解策略统一为四个步骤的流水线：
+    **ODE降阶 → RK4数值求解 → 功率离散积分 → 优化器搜索**
+
+    ---
+
+    ### 算法1：四阶龙格库塔法（RK4）求解垂荡运动（问题1）
+
+    **输入**：
+    - 波浪参数：$\omega$, $f$
+    - 物理参数：$m_f$, $m_z$, $m'$, $C_{xh}$, $B=\rho g A$, $K_h$
+    - 阻尼参数：$C_h$, $\alpha$（情形1中$\alpha=0$，情形2中$\alpha=0.5$）
+    - 数值参数：步长 $h = 0.0001$ s，总时间 $T_{total} = 40 \times 2\pi/\omega$
+    - 初始条件：$\mathbf{y}_0 = [x_f(0), x_z(0), u(0), w(0)]^T = [0,0,0,0]^T$
+
+    **输出**：
+    - 时间序列 $\{t_i\}_{i=0}^{N}$，步长为 $h$
+    - 状态矩阵 $\mathbf{Y} \in \mathbb{R}^{N \times 4}$，每列为 $[x_f, x_z, u, w]$
+
+    **步骤**：
+
+    ```
+    1.  N = floor(T_total / h)          // 总步数
+    2.  Y = zeros(N, 4)                  // 初始化状态矩阵
+    3.  Y[0, :] = [0, 0, 0, 0]          // 初始条件
+    4.  t[0] = 0.0
+
+    5.  FOR i = 0 TO N-2:
+    6.      y_n = Y[i, :]                // 当前状态 [xf, xz, u, w]
+    7.      t_n = t[i]
+
+    8.      // --- 计算 k1 ---
+    9.      k1_0 = u_n                   // dxf/dt
+    10.     k1_1 = w_n                   // dxz/dt
+    11.     v_rel = w_n - u_n
+    12.     f_damp1 = C_h * sign(v_rel) * |v_rel|^alpha
+    13.     k1_2 = (f*cos(ω*t_n) - Cxh*u_n - B*xf_n - Kh*(xz_n-xf_n) - f_damp1) / (mf + m')
+    14.     k1_3 = (Kh*(xz_n-xf_n) + f_damp1) / mz
+
+    15.     // --- 计算 k2 (时间中点) ---
+    16.     y_mid = y_n + 0.5*h*[k1_0, k1_1, k1_2, k1_3]
+    17.     t_mid = t_n + 0.5*h
+    18.     v_rel_mid = y_mid[3] - y_mid[2]
+    19.     f_damp2 = Ch * sign(v_rel_mid) * |v_rel_mid|^alpha
+    20.     k2_0 = y_mid[2]
+    21.     k2_1 = y_mid[3]
+    22.     k2_2 = (f*cos(ω*t_mid) - Cxh*y_mid[2] - B*y_mid[0] - Kh*(y_mid[1]-y_mid[0]) - f_damp2) / (mf+m')
+    23.     k2_3 = (Kh*(y_mid[1]-y_mid[0]) + f_damp2) / mz
+
+    24.     // --- 计算 k3 (时间中点，用k2斜率) ---
+    25.     y_mid2 = y_n + 0.5*h*[k2_0, k2_1, k2_2, k2_3]
+    26.     v_rel_mid2 = y_mid2[3] - y_mid2[2]
+    27.     f_damp3 = Ch * sign(v_rel_mid2) * |v_rel_mid2|^alpha
+    28.     k3_0 = y_mid2[2]
+    29.     k3_1 = y_mid2[3]
+    30.     k3_2 = (f*cos(ω*t_mid) - Cxh*y_mid2[2] - B*y_mid2[0] - Kh*(y_mid2[1]-y_mid2[0]) - f_damp3) / (mf+m')
+    31.     k3_3 = (Kh*(y_mid2[1]-y_mid2[0]) + f_damp3) / mz
+
+    32.     // --- 计算 k4 (时间终点) ---
+    33.     y_end = y_n + h*[k3_0, k3_1, k3_2, k3_3]
+    34.     t_end = t_n + h
+    35.     v_rel_end = y_end[3] - y_end[2]
+    36.     f_damp4 = Ch * sign(v_rel_end) * |v_rel_end|^alpha
+    37.     k4_0 = y_end[2]
+    38.     k4_1 = y_end[3]
+    39.     k4_2 = (f*cos(ω*t_end) - Cxh*y_end[2] - B*y_end[0] - Kh*(y_end[1]-y_end[0]) - f_damp4) / (mf+m')
+    40.     k4_3 = (Kh*(y_end[1]-y_end[0]) + f_damp4) / mz
+
+    41.     // --- 加权平均更新 ---
+    42.     Y[i+1, :] = y_n + (h/6)*([k1_0,k1_1,k1_2,k1_3] + 2*[k2_0,k2_1,k2_2,k2_3] + 2*[k3_0,k3_1,k3_2,k3_3] + [k4_0,k4_1,k4_2,k4_3])
+    43.     t[i+1] = t_n + h
+
+    44.  END FOR
+
+    45.  // 后处理：每隔 0.2s 提取结果
+    46.  sample_interval = 0.2          // 题目要求的输出间隔
+    47.  sample_step = round(sample_interval / h)
+    48.  sampled_indices = 0 : sample_step : N-1
+    49.  输出 sampled_indices 对应的 t 和 Y
+    ```
+
+    **边界情况处理**：
+    - 当 $\alpha=0$ 且 $v_{rel}=0$ 时，$|v_{rel}|^0 = 1$，但实际阻尼力应为 $C_h \cdot 0 = 0$。实现时需对 $\alpha=0$ 情形直接使用 $f_{damp} = C_h \cdot v_{rel}$，而非幂公式。
+    - sign(0) 定义为 0，确保零相对速度时阻尼力为零。
+
+    ---
+
+    ### 算法2：四阶龙格库塔法求解垂荡+纵摇耦合运动（问题3）
+
+    **输入**：
+    - 波浪参数：$\omega$, $f$, $L$
+    - 物理参数：$m_f$, $m_z$, $m'$, $I_f$, $I'$, $C_{xh}$, $C_{xp}$, $B$, $L_r$, $K_h$, $K_p$, $I_{z0}$, $d_0$
+    - 阻尼参数：$C_h$, $C_p$
+    - 数值参数：$h = 0.0001$ s，$T_{total} = 40 \times 2\pi/\omega$
+    - 初始条件：$\mathbf{y}_0 = [0,0,0,0,0,0,0,0]^T$
+
+    **输出**：
+    - 时间序列 $\{t_i\}$，状态矩阵 $\mathbf{Y} \in \mathbb{R}^{N \times 8}$
+    - 列顺序：$[x_f, x_z, \theta_f, \theta_z, u, w, j, k]$
+
+    **步骤**：
+
+    ```
+    1.  N = floor(T_total / h)
+    2.  Y = zeros(N, 8)
+    3.  Y[0, :] = [0,0,0,0,0,0,0,0]
+    4.  t[0] = 0.0
+
+    5.  定义右端函数 f_rhs(y, t):
+    6.      xf, xz, thf, thz, u, w, j, k = y
+    7.      xr = xz - xf
+    8.      thr = thz - thf
+    9.      v_rel = w - u
+    10.     omega_rel = k - j
+    11.     Iz = Iz0 + mz * (d0 + xr)^2    // 时变转动惯量
+
+    12.     dxf = u
+    13.     dxz = w
+    14.     dthf = j
+    15.     dthz = k
+
+    16.     du = (f*cos(ω*t) - Cxh*u - B*xf - Kh*xr - Ch*v_rel) / (mf + m')
+    17.     dw = (Kh*xr + Ch*v_rel) / mz
+    18.     dj = (L*cos(ω*t) - Cxp*j - Lr*thf - Kp*thr - Cp*omega_rel) / (If + I')
+    19.     dk = (Kp*thr + Cp*omega_rel) / Iz
+
+    20.     返回 [dxf, dxz, dthf, dthz, du, dw, dj, dk]
+
+    21.  FOR i = 0 TO N-2:
+    22.      y_n = Y[i, :]
+    23.      t_n = t[i]
+
+    24.      k1 = f_rhs(y_n, t_n)
+    25.      k2 = f_rhs(y_n + 0.5*h*k1, t_n + 0.5*h)
+    26.      k3 = f_rhs(y_n + 0.5*h*k2, t_n + 0.5*h)
+    27.      k4 = f_rhs(y_n + h*k3, t_n + h)
+
+    28.      Y[i+1, :] = y_n + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
+    29.      t[i+1] = t_n + h
+    30.  END FOR
+
+    31.  // 0.2s间隔采样（同上）
+    ```
+
+    **边界情况处理**：
+    - $I_z(t)$ 可能在 $t=0$ 时取最小值（$x_r=0$），随运动增大，需在每个时间步重新计算。
+    - 当 $x_r$ 使 $I_z$ 接近零时（物理上不可能），设置下限 $I_z \geq I_{z0}$ 防止数值奇异。
+
+    ---
+
+    ### 算法3：平均功率计算（问题2和4的目标函数）
+
+    **输入**：
+    - 状态矩阵 $\mathbf{Y}$，时间向量 $\mathbf{t}$
+    - 阻尼系数 $C_h$, $C_p$，幂指数 $\alpha$（仅问题2情形2）
+    - 稳态起始时间 $t_0 = 100$ s，时间窗 $T_{win} = 80$ s
+
+    **输出**：
+    - 平均功率 $\overline{P}$
+
+    **步骤**：
+
+    ```
+    1.  找到 t0_idx = min{i | t[i] >= t0}
+    2.  找到 t1_idx = min{i | t[i] >= t0 + Twin}
+    3.  n_win = t1_idx - t0_idx
+
+    4.  sum_power = 0.0
+
+    5.  IF 问题2情形1（常数阻尼）:
+    6.      FOR i = t0_idx TO t1_idx-1:
+    7.          v_rel = Y[i, 3] - Y[i, 2]      // w - u
+    8.          sum_power += Ch * v_rel^2
+    9.      END FOR
+
+    10. ELSE IF 问题2情形2（幂次阻尼）:
+    11.     FOR i = t0_idx TO t1_idx-1:
+    12.         v_rel = Y[i, 3] - Y[i, 2]
+    13.         sum_power += Ch * |v_rel|^(1+alpha)
+    14.     END FOR
+
+    15. ELSE IF 问题4（双阻尼）:
+    16.     FOR i = t0_idx TO t1_idx-1:
+    17.         v_rel = Y[i, 5] - Y[i, 4]      // w - u
+    18.         omega_rel = Y[i, 7] - Y[i, 6]   // k - j
+    19.         sum_power += Ch * v_rel^2 + Cp * omega_rel^2
+    20.     END FOR
+
+    21.  avg_power = sum_power * h / Twin    // 梯形积分（简化为矩形）
+    22.  // 更精确的梯形积分：
+    23.  // sum_power_trap = 0.5*(P[0] + P[n_win-1]) + sum(P[1:n_win-2])
+    24.  // avg_power = sum_power_trap * h / Twin
+
+    25.  返回 avg_power
+    ```
+
+    **注意**：
+    - 推荐使用梯形法而非矩形法以提高积分精度
+    - 确保 $T_{win}$ 覆盖整数个波浪周期，避免截断误差
+
+    ---
+
+    ### 算法4：遗传算法搜索最优阻尼系数（问题2和4）
+
+    **输入**：
+    - 问题编号和情形
+    - 优化变量边界
+    - GA参数：种群大小 $N_{pop}=100$，最大代数 $N_{gen}=200$，交叉概率 $p_c=0.8$，变异概率 $p_m=0.1$
+
+    **输出**：
+    - 最优阻尼系数 $(C_h^*, C_p^*, \alpha^*)$
+    - 最大平均功率 $\overline{P}_{max}$
+
+    **步骤**：
+
+    ```
+    1.  根据问题情形设置决策变量维度和边界：
+        情形    | 变量       | 下界      | 上界
+        Q2(1)  | [Ch]       | [0]       | [100000]
+        Q2(2)  | [Ch, alpha]| [0, 0]    | [100000, 1]
+        Q4     | [Ch, Cp]   | [0, 0]    | [100000, 100000]
+
+    2.  // 初始化种群
+    3.  population = random_uniform(lb, ub, size=N_pop)
+    4.  fitness = zeros(N_pop)
+
+    5.  FOR gen = 1 TO N_gen:
+
+    6.      // 适应度评估（目标函数 = 平均功率）
+    7.      FOR i = 1 TO N_pop:
+    8.          params = population[i]
+    9.          根据 params 设置 Ch, Cp, alpha
+    10.         调用算法1或算法2进行RK4求解
+    11.         调用算法3计算平均功率
+    12.         fitness[i] = 平均功率值
+    13.     END FOR
+
+    14.     // 记录最优个体
+    15.     best_idx = argmax(fitness)
+    16.     best_fitness[gen] = fitness[best_idx]
+    17.     best_individual[gen] = population[best_idx]
+
+    18.     // 选择（锦标赛选择，k=2）
+    19.     selected = []
+    20.     FOR i = 1 TO N_pop:
+    21.         idx1, idx2 = random_choice(N_pop, 2)
+    22.         winner = idx1 if fitness[idx1] > fitness[idx2] else idx2
+    23.         selected.append(population[winner])
+    24.     END FOR
+
+    25.     // 交叉（模拟二进制交叉 SBX）
+    26.     offspring = []
+    27.     FOR i = 0 TO N_pop-1 STEP 2:
+    28.         IF random() < pc:
+    29.             p1, p2 = selected[i], selected[i+1]
+    30.             // SBX 交叉
+    31.             u = random()
+    32.             beta = (2*u)^(1/(η+1)) IF u <= 0.5 ELSE (1/(2*(1-u)))^(1/(η+1))
+    33.             c1 = 0.5*((1+beta)*p1 + (1-beta)*p2)
+    34.             c2 = 0.5*((1-beta)*p1 + (1+beta)*p2)
+    35.             offspring.extend([clip(c1, lb, ub), clip(c2, lb, ub)])
+    36.         ELSE:
+    37.             offspring.extend([selected[i], selected[i+1]])
+    38.     END FOR
+
+    39.     // 变异（多项式变异）
+    40.     FOR i = 1 TO N_pop:
+    41.         IF random() < pm:
+    42.             r = random()
+    43.             delta = (2*r)^(1/(ηm+1)) - 1 IF r < 0.5 ELSE 1 - (2*(1-r))^(1/(ηm+1))
+    44.             offspring[i] = clip(offspring[i] + delta * (ub - lb), lb, ub)
+    45.     END FOR
+
+    46.     // 精英保留（Elite preservation）
+    47.     population[0] = best_individual[gen]    // 替换最差个体
+
+    48.  END FOR
+
+    49.  返回 best_individual[N_gen], best_fitness[N_gen]
+    ```
+
+    **终止条件**：
+    - 达到最大代数 $N_{gen}=200$
+    - 或连续 $30$ 代最优适应度变化 < $10^{-6}$
+
+    ---
+
+    ### 求解各问题所需的调用序列
+
+    **问题1**：
+    ```
+    调用算法1(RK4垂荡):
+      输入: ω=1.4005, f=6250, Ch=10000, alpha=0 (情形1) / alpha=0.5 (情形2)
+      输出: 0.2s间隔采样结果 → 写入 result1-1.xlsx / result1-2.xlsx
+    ```
+
+    **问题2**：
+    ```
+    调用算法4(GA搜索):
+      内嵌调用算法1(RK4垂荡, ω=2.2143, f 查附件3)
+      内嵌调用算法3(功率计算, 稳态段100-180s)
+      输出: 最优Ch/alpha, 最大平均功率
+    ```
+
+    **问题3**：
+    ```
+    调用算法2(RK4耦合):
+      输入: ω=1.7152, f=3640, L=1690, Ch=10000, Cp=1000
+      输出: 0.2s间隔采样结果 → 写入 result3.xlsx
+    ```
+
+    **问题4**：
+    ```
+    调用算法4(GA搜索, 2维[Ch, Cp]):
+      内嵌调用算法2(RK4耦合, ω=1.9806, f/L查附件3)
+      内嵌调用算法3(双阻尼功率计算, 稳态段100-180s)
+      输出: 最优Ch, Cp, 最大总平均功率
+    ```
+
+  </algorithm_flow>
+</model_design>

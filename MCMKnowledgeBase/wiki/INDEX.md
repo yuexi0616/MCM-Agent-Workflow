@@ -1,0 +1,86 @@
+# Wiki Index
+
+## Concepts
+- [[llm-wiki]] — LLM 增量构建持久化、交叉关联的知识库的核心模式
+- [[knowledge-compilation]] — 一次编译 vs 每次检索的权衡
+- [[three-layer-architecture]] — raw / wiki / schema 三层不可变架构
+- [[wiki-operations]] — ingest / query / lint 三大核心操作
+- [[wiki-indexing]] — INDEX.md 与 log.md 双导航文件
+- [[human-llm-collaboration]] — 知识工作中人机分工协作
+- [[obsidian-integration]] — Obsidian 作为 wiki 的 IDE/浏览器
+- [[wiki-links]] — [[双括号]] 交叉引用作为知识连接组织
+- [[schema]] — CLAUDE.md 作为 LLM 行为规范的配置
+- [[rag-vs-compilation]] — RAG 检索 vs 知识编译的适用场景
+- [[cli-tools]] — wiki 操作的搜索引擎与自定义命令行工具
+- [[memex]] — Vannevar Bush 1945 年 Memex 愿景及其与 LLM Wiki 的联系
+- [[line-sphere-occlusion]] — 线段-球体相交的几何遮挡判定模型
+- [[hierarchical-optimization]] — 先分配再优化的分层降维策略
+- [[differential-evolution]] — 差分进化算法及其在优化问题中的应用
+- [[optical-interference-model]] — 双光束干涉与红外厚度测量模型
+- [[spectral-data-preprocessing]] — 光谱数据预处理管线（AsLS/FFT/SG滤波）
+- [[cauchy-dispersion]] — Cauchy 色散模型 n(λ)=A+B/λ²
+- [[linear-mixed-effects]] — 线性混合效应模型处理重复测量层次数据
+- [[gaussian-process-regression]] — 高斯过程回归与遗传算法两阶段框架
+- [[survival-analysis]] — DeepHit 深度学习生存分析模型
+- [[stacking-ensemble]] — LightGBM 堆叠集成分类方法
+- [[genetic-algorithm]] — 遗传算法与进化优化方法综述
+- [[graph-flow-model]] — 矿井巷道图网络水流漫延模型
+- [[dynamic-dijkstra]] — 实时动态 Dijkstra 最短路径规划
+- [[bfs-graph-search]] — BFS 广度优先搜索在图网络中的应用
+- [[runge-kutta-method]] — 四阶龙格库塔法数值求解常微分方程
+- [[wave-energy-dynamics]] — 波浪能装置垂荡+纵摇耦合动力学模型
+- [[bearing-only-localization]] — 纯方位无源定位（正弦定理+计算几何两圆求交）
+- [[heuristic-search]] — 带阈值启发式搜索（IDA* 变体，L2Loss 估价函数）
+- [[archimedean-spiral-model]] — 等距螺线运动学与多体连杆约束
+- [[heliostat-optical-efficiency]] — 定日镜五因子光学效率链与镜场优化
+- [[multibeam-coverage-model]] — 多波束测深覆盖宽度与重叠率三维几何模型
+- [[production-scheduling]] — 畜牧生产周期调度与不确定性分支预案
+- [[monte-carlo-simulation]] — 蒙特卡洛随机模拟的 MCM 应用范式
+- [[greedy-algorithm]] — 贪心算法与模拟退火在测线布设中的应用
+- [[hit-probability-integration]] — 多元正态截尾分布命中概率积分模型
+- [[collision-detection-model]] — 螺线盘入多体碰撞检测与终止条件
+- [[cvar-optimization]] — CVaR 条件风险价值优化（利润-风险权衡）
+- [[bayesian-estimation]] — 贝叶斯 Beta-Binomial 共轭推断
+- [[dynamic-programming]] — 动态规划多阶段决策与 Bellman 方程
+- [[sat-collision-detection]] — 分离轴定理（SAT）矩形碰撞检测
+- [[webster-signal-timing]] — Webster 法信号配时与绿波干线协调
+- [[reinforcement-learning-model]] — DQN+MDP 强化学习交通控制
+- [[hypothesis-testing-sampling]] — 假设检验 (n,c) 抽样方案设计
+- [[latex-reference]] — LaTeX 语法速查（MCM论文写作工具）
+- [[multi-agent-collaboration]] — 多智能体协作系统（四角色链式生成+拦截审计）
+- [[chain-intercept-workflow]] — XML 标签通信协议与三阶段流水线
+- [[agent-role-specialization]] — 建模手/代码手/论文手/破坏者四角色职责定义
+- [[algorithm-codebase]] — 数学建模30个常用算法 Python 代码库索引
+- [[error-taxonomy]] — MCM 流水线 14 类标准漏洞的系统化分类体系
+- [[continuous-improvement-loop]] — 审计→分类→经验→前置注入的四步自优化机制
+- [[agent-vs-human-benchmark]] — Agent 生成论文与历年优秀论文的四维系统性对比
+
+## Entities
+- [[andrej-karpathy]] — Andrej Karpathy，LLM 工作流"分解-验证-组装"哲学的倡导者
+- [[2025-a-smoke-screen]] — A 题：无人机烟幕遮蔽策略优化
+- [[2025-b-sic-thickness]] — B 题：碳化硅外延层厚度红外干涉测量
+- [[2025-c-nipt]] — C 题：NIPT 检测决策优化与异常识别
+- [[2025-d-mine-flood]] — D 题：矿井突水水流漫延与逃生路径优化
+- [[2025-e-long-jump]] — E 题：跳远运动生物力学分析
+- [[2024-a-bench-dragon]] — A 题：板凳龙闹元宵（螺线运动学+SAT碰撞检测+PSO优化）
+- [[2024-b-production-decision]] — B 题：生产过程中的决策问题（抽样+DP+贝叶斯）
+- [[2024-c-crop-strategy]] — C 题：农作物的种植策略（DEGA+CVaR风险优化）
+- [[2024-d-depth-charge]] — D 题：反潜航空深弹命中概率问题（多元积分+阵列优化）
+- [[2024-e-traffic-control]] — E 题：交通流量管控（Webster+DQN+巡游检测）
+- [[2023-a-heliostat-field]] — A 题：定日镜场的优化设计（光学效率链+镜场规划）
+- [[2023-b-multibeam-survey]] — B 题：多波束测线问题（覆盖宽度+测线布设）
+- [[2023-c-vegetable-pricing]] — C 题：蔬菜类商品的自动定价与补货决策
+- [[2023-d-sheep-breeding]] — D 题：圈养湖羊的空间利用率（周期调度+蒙特卡洛）
+- [[2023-e-yellow-river-sediment]] — E 题：黄河水沙监测数据分析
+- [[2022-a-wave-energy]] — A 题：波浪能最大输出功率设计（RK4+GA优化）
+- [[2022-b-drone-formation]] — B 题：无人机编队纯方位无源定位（几何+启发式搜索）
+- [[2022-c-glass-analysis]] — C 题：古代玻璃制品的成分分析与鉴别
+- [[2022-d-satellite-comm]] — D 题：气象报文信息卫星通信传输
+- [[2022-e-material-production]] — E 题：小批量物料的生产安排
+
+## Overviews
+- [[use-cases]] — LLM Wiki 模式的应用领域
+- [[2025-mcm-competition]] — 2025 年 MCM 竞赛五题总览与横向对比
+- [[2024-mcm-competition]] — 2024 年 MCM 竞赛五题总览与横向对比
+- [[2023-mcm-competition]] — 2023 年 MCM 竞赛五题总览与横向对比
+- [[2022-mcm-competition]] — 2022 年 CUMCM 竞赛五题总览与横向对比

@@ -1,0 +1,66 @@
+<devils_advocate_report>
+  <audit_target>code_repo (Phase 2, Rev 2) — solver.py, results/*.csv, figures/*.png</audit_target>
+
+  <flaws>
+
+    ---
+    <!-- HIGH RISK FLAWS -->
+    ---
+
+    - [Risk Level: High] [Category: missing_error_handling] Q3 retry guard threshold bug. 3 bombs produce only 8.19s occlusion (merged interval [9.813, 18.003]), which is 8% LESS than the single-bomb Q1 baseline of 8.90s ([9.000, 17.900]). The code compares `actual_total < T_single * 0.9` (line 1188), where T_single is the first bomb's own single-bomb result (~8.19s from bomb 1's own suboptimal t_d=0.89). Since 8.19 > 8.19 * 0.9 = 7.37, the check `actual_total < T_single * 0.9` is always False, so the retry NEVER triggers even though 3 bombs are worse than the single-bomb optimum. Two compounding failures: (a) the first bomb's t_d=0.89 is already worse than the heuristic t_d=0; (b) bombs 2 and 3 contribute zero additional occlusion. The threshold should compare against the KNOWN BEST single-bomb baseline (8.90s from Q1 heuristic), not against the first bomb's own degraded result. The 0.9 factor is also too lenient. Location: solver.py lines 1180-1247.
+
+    - [Risk Level: High] [Category: overly_strong_assumption] Q5 task assignment uses heading-angle-only score function that is geometrically decoupled from actual occlusion feasibility. All 5 UAVs are assigned to missiles with perpendicular distances of 2600-3041m to the missile line-of-sight, while R_s = 50m. The score_mat[j][m] = arccos(dot(uav_dir, msl_dir)) measures only how well a UAV's initial heading aligns with the direction to a missile, NOT whether the UAV can produce a cloud that intersects the missile's LOS. As a direct consequence, ALL three missile groups produce empty intervals and Q5 = 0.00s. The model design's boundary case paragraph (Algorithm 8 item 11) acknowledges this risk only as a "置信度降低" note for the paper, but does not modify the assignment criterion or add a feasibility pre-filter. The code faithfully implements the flawed model, so this is a model design error that the code cannot fix without deviating from the specification. Location: solver.py lines 1560-1603 (score computation and assignment); model_design > algorithm_flow > Algorithm 8. Diagnostic at lines 1673-1733 correctly detects the problem but only produces a CSV report; it does not alter the assignment.
+
+    - [Risk Level: High] [Category: missing_error_handling] Q2 optimization produced zero improvement over the heuristic default. The optimal solution (theta=3.1416, v_u=30, t_d=0, t_b=9) is IDENTICAL to the Q1 heuristic parameters, giving T_eff = 8.90s. The pattern search (10 starts, 100 iterations each) and DE (50 generations, 50 population) failed to find any better solution. The code correctly falls back to the heuristic via the stage-C comparison (lines 887-898), but this masks the optimization failure. The cascading effect is severe: Q3's 3-bomb DE starts from this same geometry and produces only 8.19s; Q4's 3-UAV coordination achieves only 9.18s (3% better than the 1-UAV baseline). The Q2 failure propagates through the entire pipeline. The root cause may be genuine (heuristic IS near-optimal for this scenario) but the lack of any relative improvement suggests either insufficient search effort or a flat objective landscape. Location: solver.py lines 688-898 (SolveProblem2).
+
+    - [Risk Level: High] [Category: missing_assumption] Q5 scenario geometry makes the defense task fundamentally impossible. With UAVs deployed on a fan at 3000m from origin and missiles approaching from 8000m in 3 different directions, the perpendicular distance from each UAV to the corresponding missile's line-of-sight is 2000-3000m, while the maximum horizontal reach of a smoke bomb (v_b0=10m/s, flight time up to 15s, UAV speed 30m/s) is at most ~600m (the UAV must fly toward the LOS first, then the bomb travels ballistically). The R_s = 50m cloud radius is negligible compared to the 2000-3000m geometric gap. This is NOT solely a task assignment issue -- even an oracle assignment cannot place a cloud within 50m of any missile's LOS using the given UAV deployment and bomb parameters. The problem's default scenario parameters make Q5 unsolvable. This should be explicitly identified as a scenario limitation, not a code error. Location: entire Q5 pipeline; diagnostics at Q5_feasibility_diagnosis.csv confirm perp_dist = 2640-3041m for ALL pairings.
+
+    - [Risk Level: High] [Category: missing_error_handling] Q4 3-UAV coordination achieves only 9.18s, which is just 0.28s (3.1%) more than the single-UAV Q1 baseline of 8.90s despite using 3x the resources. Each additional UAV adds only 0.14s of coverage. The merged interval [8.7115, 17.8915] = 9.18s barely extends Q1's [9.000, 17.900] = 8.90s. This suggests the Phase A3 DE (50 generations, coarse precision Delta_t=0.2, N_pts=30) is insufficient to find good coordinated solutions. The Phase A1 pre-optimization (calling Q2 for each UAV) returns identical solutions for all 3 UAVs because Q2 cannot improve over the heuristic; Phase A2's timing adjustment shifts only by 40% of the gap; Phase A3's DE with reduced precision and 50 generations cannot escape the local region. Location: solver.py lines 1260-1518 (SolveProblem4).
+
+    ---
+    <!-- MEDIUM RISK FLAWS -->
+    ---
+
+    - [Risk Level: Med] [Category: missing_error_handling] Q3_summary_results.csv stores t_d_list and t_b_list as raw Python str() of numpy arrays. The CSV cell reads `"[np.float64(0.8880796247175455), np.float64(12.872201172168632), ...]"`. This is non-portable: standard CSV parsers (Excel, pandas.read_csv, R) cannot parse these values without custom string processing. The same issue affects Q5_summary_results.csv which stores groups and intervals as raw str(list) representations. The ERR-C-006 fix was applied only to Q1's CSV format; Q3 and Q5 CSVs are still affected. Location: solver.py lines 2464-2468 (Q3 summary), 2562-2569 (Q5 summary).
+
+    - [Risk Level: Med] [Category: missing_error_handling] Inconsistent below-ground burst handling between Q2 and Q3/Q4/Q5 code paths. In _evaluate_q2 (line 647-648), when burst point C_b[2] < 0, the code truncates to z=0 and continues to compute occlusion. In compute_single_cloud_intervals (line 541-542), the SAME condition returns empty intervals immediately. This means a given parameter set (t_d, t_b, theta, v_u) that produces a below-ground burst will be treated as "penalized but possibly occluding" in Q2 but "no occlusion" in Q3/Q4/Q5. While the lambda_penalty=1e6 makes any below-ground solution infeasible in practice during optimization, post-hoc evaluation could give inconsistent results. Location: solver.py lines 541-542 vs 647-648.
+
+    - [Risk Level: Med] [Category: reproducibility] Q1 and Q2 both use `np.random.seed(42)` (lines 2320, 2378). Q1 does not use randomness, so the RNG state resets correctly for Q2. However, this is fragile: if any line is added to Q1 that consumes randomness (e.g., a verbose print of a random sample), the Q2 results would silently shift. The Q3/Q4/Q5 pattern of using independent RandomState objects (q3_rng, q4_rng) is more robust and should be applied to Q2 as well. Location: solver.py lines 2320, 2378.
+
+    - [Risk Level: Med] [Category: misleading_viz] fig5_Q5_intersection.png is a stale file from a prior run. The current code correctly skips fig5 generation when all Q5 intervals are empty (line 2579-2581), but the old file persists in the figures directory. A user or paper-writer viewing the directory could mistakenly include the empty-stale figure. The code should delete the stale file before skipping, or use run-specific subdirectories. Location: solver.py lines 2579-2581; file persistence at figures/fig5_Q5_intersection.png.
+
+    ---
+    <!-- LOW RISK FLAWS -->
+    ---
+
+    - [Risk Level: Low] [Category: missing_error_handling] DE diversity threshold (1e-4) in check_diversity is too tight relative to parameter ranges (theta in [0, 2pi], t_d in [0, 60], v_u in [20, 50]). A mean parameter standard deviation of 1e-4 on a theta range of 6.28 means 0.0016% of the search range, indicating virtually zero diversity. The warning will rarely trigger even during genuine population collapse because the threshold requires almost complete homogeneity. Location: solver.py line 113 (check_diversity), line 127.
+
+    - [Risk Level: Low] [Category: missing_assumption] Cloud z=0 truncation in FindOcclusionInterval (line 258-259) and _evaluate_q2 (line 647-648) sets the cloud center to z=0 but retains the full sphere radius R_s=50m. This creates a "half-buried" sphere where the lower hemisphere extends below ground. The occlusion calculation treats this truncated center as physically valid, potentially producing false negatives for cylinder bottom points (z=0) that would actually be in the cloud if physical truncation at ground level were modeled. Location: solver.py lines 258-259, 647-648.
+
+    - [Risk Level: Low] [Category: missing_error_handling] Model boundary case "云团触地" states "在 C_z=0 处截断，云团不再下沉", but the code's C_func (cloud_trajectory, line 507-519) does NOT implement this truncation. The cloud continues to sink below z=0 in C_func, and truncation only happens ad-hoc in FindOcclusionInterval (line 258-259) and in _evaluate_q2 (line 647-648). The code in compute_single_cloud_intervals (line 537-554) does NOT truncate C_func at all, so occlusion checks for clouds below z=0 use physically invalid positions. Location: solver.py lines 507-519 (cloud_trajectory) vs model_design > boundary case (z=0 truncation statement).
+
+  </flaws>
+
+  <correction_directives>
+
+    **REJECT-REQUIRED DIRECTIVES:**
+
+    1. Fix Q3 retry guard threshold (High). The comparison `actual_total < T_single * 0.9` MUST be replaced with a comparison against the KNOWN GLOBAL BEST single-bomb result, not the first bomb's own suboptimal result. The Q1 heuristic baseline (t_d=0, t_b=9, theta=pi, v_u=30) should be evaluated at validation precision for the Q3 scenario. The 3-bomb result MUST exceed this baseline, not just the first bomb's solitary interval. Re-run the Q3 DE if the guard triggers.
+
+    2. Diagnose Q2 optimization failure (High). Investigate why the pattern search (10 starts, 100 iterations) + DE (50 gen, 50 pop) cannot beat the heuristic. Three possibilities: (a) the heuristic IS globally optimal for this scenario, (b) the objective landscape is flat making gradient-less search ineffective, or (c) the search parameters (step_size, initialization spread) produce only local exploration. If (a), document explicitly that Q2 optimum = heuristic, and propagate this finding through Q3 and Q4 pre-optimization baselines. Re-run Q3 and Q4 seeding from the heuristic.
+
+    3. Fix Q3 CSV output format (Med). Replace `str([x_opt_q3[2*k] for k in range(K_bombs)])` with proper JSON or semicolon-delimited string of float values. Apply the same fix to Q5 summary CSV. These files MUST be parseable by `pandas.read_csv` without custom parsing.
+
+    4. Align below-ground burst handling (Med). Choose ONE policy and apply it consistently across _evaluate_q2 and compute_single_cloud_intervals. Either: (a) both return empty intervals (conservative), or (b) both truncate to z=0 and continue (permissive). Document the choice as a modeling assumption.
+
+    5. Clean stale fig5 file (Med). Before skipping fig5 generation, delete any pre-existing fig5_Q5_intersection.png to prevent directory contamination.
+
+    **NON-BLOCKING DIRECTIVES:**
+
+    6. Audit Q4 DE parameters (High). The current Phase A3 DE (N_gen=50, Delta_t=0.2, N_pts=30) uses coarser precision than Q2/Q3 and is too short to escape local optima seeded by Q2 solutions. Consider either: (a) increasing DE generations to 100+, (b) using finer precision for the final phase, or (c) adding a post-DE local refinement step at validation precision.
+
+    7. Check Q5 geometric feasibility at the model level. The heading-angle-only score function produces geometrically infeasible assignments for the default scenario. While the code is faithful to the model, the paper MUST state clearly that Q5=0s for this deployment and discuss alternative deployments (closer to LOS, different altitudes, larger R_s).
+  </correction_directives>
+
+  <status>REJECTED</status>
+</devils_advocate_report>

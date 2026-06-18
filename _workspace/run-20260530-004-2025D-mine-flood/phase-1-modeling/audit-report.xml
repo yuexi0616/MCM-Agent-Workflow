@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<devils_advocate_report>
+  <audit_target>model_design — 2025 MCM D题 矿井突水水流漫延与逃生路径优化模型</audit_target>
+  <summary>
+    审计针对建模手输出的 `<model_design>`，覆盖问题分析、8项假设、符号表、数学模型（含4个子问题）和算法流程（4个算法）。整体结构完整，但发现 4 项 High-risk 漏洞、7 项 Med-risk 漏洞、3 项 Low-risk 漏洞。核心问题集中在：时变 Dijkstra 的干湿条件逻辑错误、双源碰撞检测不完整、伪"实用 Dijkstra"策略的贪心 BFS 不等价于最短路、以及 3D BFS 步骤中存在物理不可能的水流路径。
+  </summary>
+
+  <flaws>
+    <!-- ==================== HIGH RISK ==================== -->
+
+    - [Risk Level: High] [Category: ambiguous_algorithm] **时变 Dijkstra 干湿巷道判定条件逻辑错误 (OR 应为 AND)**
+      位置: `<mathematical_model>` 2.1 节, `<algorithm_flow>` TIME_DEPENDENT_DIJKSTRA 函数
+      代码使用 `if t_arrival[u] > t_min or t_arrival[v] > t_min` 判定"巷道两端均未到达水流"，但 OR 条件意味着只需一端干燥即判定整条巷道为干燥。当一端有水面另一端无（部分湿润巷道）时，矿工通行速度被错误设为 4m/s（干燥速度）而非 1m/s 或 2m/s，系统性地低估逃生时间。正确条件应为 AND。此错误直接影响问题二和问题四的核心输出。
+
+    - [Risk Level: High] [Category: ambiguous_algorithm] **双源碰撞检测仅覆盖节点级碰撞，缺少边级碰撞处理**
+      位置: `<algorithm_flow>` DUAL_SOURCE_FLOOD 函数
+      算法中碰撞检测条件为 `if node in (S_B if source == 'A' else S_A)`，仅检测一股水流到达已被另一股占据的节点。未实现 `<mathematical_model>` 3.2 节描述的边级碰撞场景：e_ij 两端分别被 A、B 占据时水流在巷道内相向相遇。且数学模型中 t_meet 积分方程 `(4Lh0 - integral)/Q_A = integral/Q_B` 在算法伪代码中完全没有实现。双源漫延的核心物理机制（封闭巷道形成）缺失关键一半。
+
+    - [Risk Level: High] [Category: ambiguous_algorithm] **"实用 Dijkstra 策略"为贪心 BFS 扩展，不等价于最短路径算法**
+      位置: `<algorithm_flow>` PRACTICAL_DIJKSTRA_STRATEGY 函数
+      该函数每轮从当前集合 S 中所有节点出发，选择到达邻接新节点中 delta_t 最小的边进行扩展。这是典型的"最近邻贪心"策略，不满足最短路径最优子结构。对于时变图，贪心选择第一步最短的边可能导致全局路径显著变长（如：先走一条稍长的边可使后续路径大幅缩短）。附件一仅 665 节点，标准时变 Dijkstra (O(|E| log |V|)) 可在毫秒级完成，不存在计算资源理由使用此替代方案。若代码手按此实现，逃生路径结果将不可靠。
+
+    - [Risk Level: High] [Category: physics_violation] **3D 模型 BFS 步骤搜索越过了 z>z_A 的高层节点连接 V_low 未覆盖端点**
+      位置: `<algorithm_flow>` SINGLE_SOURCE_FLOOD_3D 函数 Step 3
+      算法从 V_uncovered (z<=z_A 但平面模型未覆盖的节点) 出发执行全局 BFS 搜索，遍历所有邻接节点（含 z>z_A 的高层节点），寻找通往 S_low 的路径。这隐含了"水流先通过高层干燥巷道到达低处"的物理不可能路径——与 Assumption 8 的重力驱动填充逻辑矛盾。若 V_low 中存在被高层节点从中间隔断的连通分量，BFS 将错误预测水流在 0.1m 铺满阶段即通过干燥高层到达这些节点。该步骤逻辑与 Step 5 平行上升阶段的职责重叠且冲突。
+
+    <!-- ==================== MEDIUM RISK ==================== -->
+
+    - [Risk Level: Med] [Category: physics_violation] **点-线段最短距离公式实为点到无限直线的距离**
+      位置: `<mathematical_model>` 第 0 节, 突水点定位公式
+      `d_perp = ||(vj-vi) x (A-vi)|| / ||vj-vi||` 计算的是点 A 到过 vi、vj 无限直线的距离，而非到线段 vi-vj 的距离。若 A 在 vi-vj 延长线上的垂足落在线段外，此公式会给出小于实际线段距离的值，可能导致误判突水点所在巷道。应在公式中添加投影点在线段内外的检查逻辑。
+
+    - [Risk Level: Med] [Category: physics_violation] **流量分配公式未排除上升巷道，与假设 3 矛盾**
+      位置: `<mathematical_model>` 1.1 节, 流量分配公式
+      假设 3 声明"水流向水平巷道和下行巷道平均分流"，但分配公式 `Q_ij = Q_in / (d(v_i) - delta_source)` 将度数的全部分支（含上升巷道）纳入平分。图构建阶段已定义 `flag_up` 属性但从未在分配逻辑中引用。对 V_low 子图来说，所有节点 z<=z_A 但仍可能存在正 dz（如 z=10 到 z=20 的巷道），上升巷道不应在初始铺满阶段获得流量。
+
+    - [Risk Level: Med] [Category: physics_violation] **迭代式贪婪扩展忽略了慢速分支的已填充量**
+      位置: `<algorithm_flow>` SINGLE_SOURCE_FLOOD Phase 2
+      每轮算法从 S 出发对所有候选边计算 `delta_t = V/Q`（整条巷道从零开始填充所需时间），选取最小值。但慢速分支在前几轮中已经接收了一定水量（在旧流量分配率下），流量重分配后剩余填充时间应少于 `V/Q` 的计算值。当多个分支竞争流量时，未跟踪部分填充量会导致后到达节点的填充时间被高估。误差量级经简单测试可达 18%（示例：三分支中长分支的高估）。虽对逃生窗口期（早期时间）影响较小，但影响问题一/三的精确填充时间输出。
+
+    - [Risk Level: Med] [Category: ambiguous_algorithm] **迭代扩展无无限循环保护 — 不连通子图导致死循环**
+      位置: `<algorithm_flow>` SINGLE_SOURCE_FLOOD, while 循环
+      终止条件为 `len(S) < len(V)`，假设所有节点均可被水流到达。若巷道网络存在与突水点不连通的分量，`candidates` 列表将为空但 `|S| < |V|`，循环永不终止。矿井巷道可能存在封闭区域、废弃巷道或隔断，需添加 `if candidates is empty: break` 保护。
+
+    - [Risk Level: Med] [Category: ambiguous_algorithm] **断流模型流量重分配忽略已积累的部分填充**
+      位置: `<algorithm_flow>` trigger_break_flow 函数
+      叶节点断流时，原分配给已完成分支的流量 `Q_ij` 被重新分配到剩余分支。但剩余分支在断流发生前已以旧流量率 `Q_ik_old` 填充了一段时间 `t_elapsed`（从轮次开始到断流事件）。重分配公式 `Q_ik_new = Q_ik_old + Q_ij/(m-1)` 仅更新未来流量率，未结合已填充体积重新计算剩余填充时间。导致剩余填充时间的计算在断流发生后出现系统性误差。
+
+    - [Risk Level: Med] [Category: ambiguous_algorithm] **时变 Dijkstra 未检查行进中水位超标（中途淹没）**
+      位置: `<algorithm_flow>` TIME_DEPENDENT_DIJKSTRA, 边权重判断
+      算法仅在进入巷道时刻 `t_u` 检查水位是否已超过 0.3m。但若巷道较长而矿工行进速度较慢，可能在巷道中途水位超过 0.3m 导致无法继续前进。算法应检查 `t_u + travel_time` 期间水位是否始终 < 0.3m，或添加路径中断时的应急处理。
+
+    - [Risk Level: Med] [Category: overly_strong_assumption] **路径重规划假设原路径在双源模型下仍可通行用于比较**
+      位置: `<algorithm_flow>` REPLAN_PATH 函数
+      重规划算法以 `if new_time < total_time_init[m]: adjusted = new_path else: adjusted = init_path` 作决策，保留了在 t_switch 后继续执行原路径作为备选。但原路径基于单源突水的漫延预测规划，双源突水的漫延将更快、覆盖面积更广，原路径的部分巷道可能已在双源模型预测中提前超过 0.3m 水位而不可通行。保留原路径作为 fallback 会导致矿工被引导至已淹没巷道。
+
+    <!-- ==================== LOW RISK ==================== -->
+
+    - [Risk Level: Low] [Category: dimension_mismatch] **时间单位混用（分钟 vs 秒）文档化不充分**
+      位置: `<algorithm_flow>` TIME_DEPENDENT_DIJKSTRA
+      v_dry=4, v_with=2, v_against=1 单位为 m/s，t_arrival, t_0.3m 等单位为 min。代码中有 `travel_time_min = travel_time_sec / 60.0` 的转换，但不一致：部分计算中 t_u（分钟级）与速度（秒级）直接运算，依赖后续 `/60` 纠正。给代码手带来单位错误风险。
+
+    - [Risk Level: Low] [Category: missing_assumption] **验证参考值未独立核实，依赖"优秀论文"声明**
+      位置: `<model_validation_notes>`
+      关键量化验证值（铺满 0.1m=1672min, 全部 0.3m=5016min, 全部灌满=50162min）标注为"参照优秀论文验证结果"，但 `<information_gaps>` 已声明未直接读取原始 Excel 数据。这些值的正确性有待代码手实现后核实。
+
+    - [Risk Level: Low] [Category: missing_assumption] **矿工已在淹没区起点的边缘情况未完整处理**
+      位置: `<algorithm_flow>` 边界情况处理
+      文档标注了"若 t_switch 时矿工所在位置水位已超过 0.3m，则标记无法生还"，但未处理初始时刻（t_notice=1min）矿工已在淹没区的情形。也未提供替代策略（如等待水位下降、寻找空气囊等，虽然逃生时间已超限）。
+  </flaws>
+
+  <correction_directives>
+    以下为对建模手的修正要求，不提供具体修改文本：
+
+    **必须修正（High-risk）：**
+    1. 将时变 Dijkstra 中干湿巷道判断条件从 OR 改为 AND，确保仅当两端均干燥时才使用无水行进速度。
+    2. 在双源漫延算法中添加边级碰撞检测：当一条巷道两端分别属于 S_A 和 S_B 时触发封闭。实现 t_meet 方程的数值求解或提供可实现的简化判断。
+    3. 删除 "Practical Dijkstra Strategy"（贪心 BFS），仅保留标准时变 Dijkstra。解释为何标准 Dijkstra 已足够处理 665 节点规模（附复杂度分析）。
+    4. 重新设计 3D 模型 BFS 步骤：限制搜索在 V_low 子图内，或阐明 BFS 与平行上升阶段的关系（消除其作为"物理水流路径"的歧义）。附几何论证为什么 BFS 在 V_low 内找到的路径是物理可达的。
+
+    **建议修正（Med-risk）：**
+    5. 将点-线段距离公式补充为分段函数：计算垂足在线段上的投影比例，若比例超出 [0,1] 范围则取点到最近端点的距离。
+    6. 流量分配公式中明确上升巷道的处理方式：在 2D 铺满阶段排除上升巷道（flag_up=1），或在 Assumption 3 中更改措辞承认所有巷道均获分配。
+    7. 为迭代扩展算法添加部分填充量跟踪机制：每轮记录每个候选边已获填充体积，下一轮计算剩余体积所需时间而非从头计算。
+    8. 添加无限循环保护：在 `while len(S) < len(V)` 循环中增加 `if candidates is empty: break`。
+    9. 断流重分配后应重新计算剩余分支的剩余填充时间（需结合已填充体积和最新流量率）。
+    10. 时变 Dijkstra 应检查巷道在预计通过时间内是否会超过 0.3m 水位。若会，标记该路径为高风险路径或计算最大通过距离。
+    11. 路径重规划的比较基准应重新定义：不是与原始路径比总时间，而是将原始路径在 t_switch 后的剩余段放入双源模型判断是否可行，仅当可行时才作为备选。
+
+    **酌情修正（Low-risk）：**
+    12. 统一时间单位体系：全部使用分钟或将速度换算为 m/min，减少单位转换错误风险。
+    13. 待代码手实现后核实验证参考值的正确性。
+    14. 补充矿工初始位置已在淹没区的处理逻辑。
+  </correction_directives>
+
+  <status>REJECTED</status>
+</devils_advocate_report>

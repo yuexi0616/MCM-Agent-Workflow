@@ -1,0 +1,20 @@
+<devils_advocate_report>
+  <audit_target>code_repo + data_vis + numerical_results</audit_target>
+  <flaws>
+
+- [Risk Level: Low] [Category: misleading_viz] Figure numbering skips from fig4 (Q4) to fig6 (Q5 strategy map) because fig5 (Q5 intersection) was correctly suppressed when all Q5 intervals were empty. While the suppression logic itself is correct (line 2629-2633), the resulting gap from fig4 to fig6 is inconsistent and will require the paper writer to either re-number or explain the gap. Neither the code nor a README documents the numbering convention.
+
+- [Risk Level: Low] [Category: missing_error_handling] The Q3 retry guard print message at line 1212 still reads "单弹 {T_single:.3f}s * 0.9" even though the actual comparison threshold was correctly changed to T_q1_baseline - 0.5 (line 1210). The print message describes the old threshold, not the current one. While the retry was NOT triggered in this run (9.32s well above threshold), the stale message would mislead anyone debugging a future scenario where the retry does fire.
+
+- [Risk Level: Med] [Category: missing_error_handling] Q4 result (7.43s at validation precision) is LOWER than Q1's single-UAV baseline (8.90s). The root cause is the scenario geometry: only UAV0 at (3000, 0, 500) is within the missile M0's line-of-sight corridor. UAV1 and UAV2 are at perpendicular distances of 1500m and 2598m from M0's LOS -- far exceeding R_s=50m -- so they are geometrically incapable of producing any occlusion. The code does not detect or flag this. The Q4 Phase A1 calls SolveProblem2 with use_heuristic_fallback=False (line 1314), meaning UAV0's optimization is NOT guaranteed to match the heuristic baseline (8.90s). The 7.43s result is mathematically correct but could mislead a reader into concluding 3-UAV coordination is counterproductive. The paper MUST explain that only 1 of 3 UAVs is geometrically positioned to contribute in this scenario, and that the 7.43s reflects coordination constraints, not a failure of multi-UAV cooperation.
+
+  </flaws>
+  <correction_directives>
+    1. (Low) Fix the Q3 retry guard print message on line 1212 to match the current threshold: replace the reference to "T_single * 0.9" with the actual comparison value "T_q1_baseline - 0.5" to avoid confusion during debugging.
+
+    2. (Med) Add a Q4 baseline regression check: after optimization, compare T_opt_q4 against T_q1_baseline (the known single-UAV maximum for M0). If the 3-UAV result is lower, log a diagnostic explaining why (geometric infeasibility of off-LOS UAVs). Alternatively, at minimum document in a printed summary that only N of N_uavs UAVs are geometrically positioned within R_s of the missile's LOS.
+
+    3. (Cosmetic) Either re-number the figures to be sequential (1,2,3,4,5 where fig5 is the strategy map), or provide a mapping file README that explains the numbering scheme for the paper writer.
+  </correction_directives>
+  <status>APPROVED</status>
+</devils_advocate_report>

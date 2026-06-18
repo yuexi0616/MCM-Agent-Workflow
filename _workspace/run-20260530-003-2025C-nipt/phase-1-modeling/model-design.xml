@@ -1,0 +1,1155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model_design>
+  <meta>
+    <problem>2025 MCM Problem C — NIPT Detection Decision Optimization and Abnormality Identification</problem>
+    <dataset>1687 clinical records (1082 male + 605 female), 31 feature dimensions</dataset>
+    <methodology_references>
+      <source>MCMKnowledgeBase/wiki/entities/2025-c-nipt.md</source>
+      <source>MCMKnowledgeBase/wiki/concepts/linear-mixed-effects.md</source>
+      <source>MCMKnowledgeBase/wiki/concepts/gaussian-process-regression.md</source>
+      <source>MCMKnowledgeBase/wiki/concepts/survival-analysis.md</source>
+      <source>MCMKnowledgeBase/wiki/concepts/stacking-ensemble.md</source>
+      <source>MCMKnowledgeBase/wiki/concepts/genetic-algorithm.md</source>
+      <source>MCMKnowledgeBase/wiki/concepts/bayesian-estimation.md</source>
+      <source>MCMKnowledgeBase/wiki/concepts/monte-carlo-simulation.md</source>
+    </methodology_references>
+  </meta>
+
+  <!-- ================================================================== -->
+  <!--                       PROBLEM ANALYSIS                              -->
+  <!-- ================================================================== -->
+  <problem_analysis>
+    <overall_characterization>
+      本题为"数据驱动型决策优化 + 异常分类"的综合问题，属于 MCM C 类（数据洞察）的典型代表。
+      四问呈递进结构：从双变量相关建模（Q1）→ 单变量分组优化（Q2）→ 多维特征动态决策（Q3）→ 无监督二分类异常检测（Q4）。
+      每一问的输出是下一问的输入，模型复杂度随问题编号递增。
+    </overall_characterization>
+
+    <difficulty_identification>
+      1. 层次数据结构：1687 条记录来自约 600-800 名孕妇，每人 1-5 次重复测量 → 观测非独立，传统 OLS 回归标准误偏小。
+      2. 删失与稀疏观测：部分孕妇仅 1 次检测，无法直接观测"浓度首次达标"的时间点 → 需要概率模型外推。
+      3. 混合多目标冲突：过早检测 → cffDNA 浓度不足导致假阴性；过晚检测 → 错过 12-14 周早期干预窗口 → 需要在"早"与"准"之间权衡。
+      4. 不平衡小样本分类：女胎异常样本比例极低（约 5%），单一分类器易过拟合多数类。
+      5. 无 Y 染色体参考：问题 4 无法使用问题 1-3 的 Y 浓度信号，需完全依赖常染色体指标。
+    </difficulty_identification>
+
+    <dimensionality_reduction_strategy>
+      问题 1：依知识库 [[linear-mixed-effects]] 的推荐，用线性混合效应模型将个体差异纳入随机效应，等效于"降维至固定效应层面"解读群体规律。
+      问题 2-3：先通过 GPR / DeepHit 将高维观测压缩为每位孕妇的"达标时间后验分布"，再在低维的"时间-分组"空间上做优化。
+      问题 4：用堆叠集成将 30+ 原始特征压缩为 5-8 个元特征（各分类器的预测概率），避免高维稀疏导致的过拟合。
+    </dimensionality_reduction_strategy>
+
+    <multi_objective_conflict_analysis>
+      四个问题涉及三类冲突：
+      - 时效性 vs 准确性（Q2-Q3）：越早检测则 DNA 浓度越低、失败风险越高；越晚检测则干预价值越低。
+      - 群体泛化 vs 个体个性化（Q2-Q3）：BMI 分组是群体层面的统计决策，但每位孕妇的实际达标时间受个体差异影响。
+      - 灵敏性 vs 特异性（Q4）：异常检测中，提高召回率通常以降低精确率为代价，需在 ROC 曲线上寻找最优折中点。
+    </multi_objective_conflict_analysis>
+
+    <problem_type_classification>
+      | 问题 | 类型 | 子类型 |
+      |------|------|--------|
+      | Q1   | 统计推断 + 机理建模 | 层次线性模型、假设检验 |
+      | Q2   | 预测 + 组合优化 | 高斯过程回归 + 遗传算法 |
+      | Q3   | 生存分析 + 优化 | DeepHit 深度学习生存网络 + GA |
+      | Q4   | 分类 | 堆叠集成（LightGBM 基学习器 + 元模型） |
+    </problem_type_classification>
+  </problem_analysis>
+
+  <!-- ================================================================== -->
+  <!--                       ASSUMPTIONS                                   -->
+  <!-- ================================================================== -->
+  <assumptions>
+
+    <!-- ---------------------------------------------------------------- -->
+    <!--  Problem 1 Assumptions                                           -->
+    <!-- ---------------------------------------------------------------- -->
+    <assumption_group id="Q1" label="Y染色体浓度相关性建模">
+      <assumption id="Q1-A1">
+        Y 染色体片段浓度 $Y_{\text{conc}}$ 与孕周 $GW$ 呈单调递增关系，且增长速率可能随孕周增加而加速（二次效应）。
+        <rationale>基于胎儿游离 DNA 在母体血浆中的生物学释放机制：随孕周增加，胎盘凋亡细胞释放增多，cffDNA 浓度自然上升；且孕晚期胎盘体积增大，释放速率加快。</rationale>
+      </assumption>
+      <assumption id="Q1-A2">
+        同一孕妇的多次测量之间存在组内相关性，但给定随机效应后，残差项 $\epsilon_{ij}$ 条件独立。
+        <rationale>LMM 的标准假设：随机效应吸收了"个体间基线差异"，使得条件分布下重复测量相互独立。这是 LMM 可识别的前提条件。</rationale>
+      </assumption>
+      <assumption id="Q1-A3">
+        随机截距 $u_i$ 服从均值为零的正态分布 $N(0, \sigma_u^2)$，残差 $\epsilon_{ij} \sim N(0, \sigma_\epsilon^2)$，且两者相互独立。
+        <rationale>这是经典 LMM 的分布假设。若残差正态性不满足（可通过 QQ 图检验），可考虑对 $Y_{\text{conc}}$ 做 Box-Cox 变换或使用广义线性混合模型（GLMM）。</rationale>
+      </assumption>
+      <assumption id="Q1-A4">
+        BMI 和身高在观测窗口内视为时间不变协变量（取基线值）。
+        <rationale>孕妇在孕早期至中期的 BMI 变化通常 < 5%，相较于个体间差异（BMI 跨度 > 15 kg/m^2）可忽略；身高为固定值。</rationale>
+      </assumption>
+    </assumption_group>
+
+    <!-- ---------------------------------------------------------------- -->
+    <!--  Problem 2 Assumptions                                           -->
+    <!-- ---------------------------------------------------------------- -->
+    <assumption_group id="Q2" label="BMI分组优化">
+      <assumption id="Q2-A1">
+        Y 染色体浓度 $Y_{\text{conc}}$ 随孕周 $GW$ 的变化过程可用高斯过程回归建模，核函数选择 Matern(3/2) 以平衡平滑性与计算效率。
+        <rationale>GPR 的贝叶斯特性提供后验方差，适合后续风险量化。Matern(3/2) 比 RBF 更稳健于局部波动，避免过度平滑导致达标时间偏差。</rationale>
+      </assumption>
+      <assumption id="Q2-A2">
+        存在一个临床认可的 cffDNA 浓度阈值 $T_{\text{min}}$（如 4% 或根据测序深度动态确定），低于该阈值则检测结果不可靠。
+        <rationale>临床共识：NIPT 的 cffDNA 浓度需 ≥ 3.5-4% 才能保证检测准确性。该阈值可由 ROC 分析或文献确定。</rationale>
+      </assumption>
+      <assumption id="Q2-A3">
+        孕妇个体差异主导达标时间变异，而 BMI 分组可以解释大部分组间变异。
+        <rationale>知识库 [[linear-mixed-effects]] 中 ICC = 74.3% 支持了个体差异的主导地位。BMI 作为可干预的临床指标，分组具有实际指导意义。</rationale>
+      </assumption>
+      <assumption id="Q2-A4">
+        每组内孕妇的达标时间服从对数正态分布，允许用分位数（如 90% 分位数）定义组推荐时点。
+        <rationale>达标时间为正数、右偏分布，对数正态是合理且常用的参数化假设。采用较高分位数（而非均值）体现了临床决策的风险规避偏好。</rationale>
+      </assumption>
+    </assumption_group>
+
+    <!-- ---------------------------------------------------------------- -->
+    <!--  Problem 3 Assumptions                                           -->
+    <!-- ---------------------------------------------------------------- -->
+    <assumption_group id="Q3" label="多维特征扩展与动态调整">
+      <assumption id="Q3-A1">
+        影响 cffDNA 浓度达标时间的因素可分为静态变量（年龄、BMI、身高、孕次）和动态时序变量（各次检测的浓度变化轨迹），两者通过不同的网络分支处理。
+        <rationale>DeepHit 架构设计的核心理念：静态变量影响基线风险，动态变量反映当前趋势。分开处理可避免 LSTM 被重复的静态输入稀释。</rationale>
+      </assumption>
+      <assumption id="Q3-A2">
+        删失数据机制为非信息删失（即删失时间与事件时间独立，给定协变量）。
+        <rationale>标准生存分析假设。若存在信息删失（如检测失败与 cffDNA 浓度偏低相关），需改用竞争风险模型。本数据集删失主要由检测次数限制导致，近似非信息删失。</rationale>
+      </assumption>
+      <assumption id="Q3-A3">
+        时序特征按孕周等间距采样，或通过插值转换为等间距序列以便 LSTM 处理。
+        <rationale>LSTM 要求固定时间步长的输入序列。实际采样间隔不等（如 12 周、16 周、20 周），需使用线性插值或样条插值进行时间对齐。</rationale>
+      </assumption>
+    </assumption_group>
+
+    <!-- ---------------------------------------------------------------- -->
+    <!--  Problem 4 Assumptions                                           -->
+    <!-- ---------------------------------------------------------------- -->
+    <assumption_group id="Q4" label="女胎异常判定">
+      <assumption id="Q4-A1">
+        21/18/13 号染色体的 Z 分数、GC 含量、唯一比对读段数（UMR）等指标在健康与异常妊娠之间存在系统性差异，且各染色体之间可能存在交互效应。
+        <rationale>临床已知：三体妊娠中，目标染色体的 Z 分数显著偏离 ±3 范围；GC 含量影响比对效率；各染色体读段比例可相互校验。交互项可捕捉联合异常模式。</rationale>
+      </assumption>
+      <assumption id="Q4-A2">
+        异常妊娠的标签存在但分布极度不平衡（异常率 < 10%），堆叠集成的多专家设计可缓解类不平衡问题。
+        <rationale>女胎中真正的染色体异常比例在自然人群中约 0.1-0.5%。本数据集的异常比例可能更高（病例-对照设计），但仍属于不平衡分类问题。</rationale>
+      </assumption>
+      <assumption id="Q4-A3">
+        各染色体异常是互斥事件（即一条样本不可能同时为 13 三体和 18 三体），但多个染色体指标可同时偏离。
+        <rationale>实际中一条染色体三体的诊断即可确认异常。多个染色体同时偏离应视为"严重异常信号"，而非多类标签。</rationale>
+      </assumption>
+    </assumption_group>
+
+    <!-- ---------------------------------------------------------------- -->
+    <!--  Global Assumptions                                              -->
+    <!-- ---------------------------------------------------------------- -->
+    <assumption_group id="global" label="全局假设">
+      <assumption id="G-A1">
+        数据集的 1687 条记录无系统性的记录/测量错误，缺失值机制为随机缺失（MAR）。
+        <rationale>临床数据采集经过质量控制；若存在非随机缺失（如因浓度低未检测到），须在模型中引入缺失指示变量。</rationale>
+      </assumption>
+      <assumption id="G-A2">
+        孕周计算基于末次月经法（LMP），所有记录使用统一的孕周计算标准。
+        <rationale>临床数据通常规范化记录，不同医院可能使用 LMP 或 B 超校正。需要检查数据一致性。</rationale>
+      </assumption>
+    </assumption_group>
+  </assumptions>
+
+  <!-- ================================================================== -->
+  <!--                       SYMBOL TABLE                                 -->
+  <!-- ================================================================== -->
+  <symbol_table>
+    <table>
+      <row><symbol>$i$</symbol><meaning>孕妇个体索引，$i = 1, 2, \ldots, N$</meaning><unit>无量纲</unit></row>
+      <row><symbol>$j$</symbol><meaning>该孕妇第 $j$ 次检测，$j = 1, 2, \ldots, n_i$</meaning><unit>无量纲</unit></row>
+      <row><symbol>$GW_{ij}$</symbol><meaning>孕妇 $i$ 第 $j$ 次检测时的孕周</meaning><unit>周 (weeks)</unit></row>
+      <row><symbol>$BMI_i$</symbol><meaning>孕妇 $i$ 的孕早期 BMI</meaning><unit>kg/m^2</unit></row>
+      <row><symbol>$H_i$</symbol><meaning>孕妇 $i$ 的身高</meaning><unit>cm</unit></row>
+      <row><symbol>$Age_i$</symbol><meaning>孕妇 $i$ 的年龄</meaning><unit>岁 (years)</unit></row>
+      <row><symbol>$Y_{ij}$</symbol><meaning>孕妇 $i$ 第 $j$ 次检测的 Y 染色体片段浓度</meaning><unit>% 或 reads/百万</unit></row>
+      <row><symbol>$Y_{ij}^{\text{norm}}$</symbol><meaning>Box-Cox 或对数变换后的 Y 染色体浓度</meaning><unit>无量纲</unit></row>
+      <row><symbol>$T_{\min}$</symbol><meaning>临床认可的 cffDNA 最低有效浓度阈值</meaning><unit>%</unit></row>
+      <row><symbol>$T_i^{\text{attain}}$</symbol><meaning>孕妇 $i$ 的 cffDNA 浓度首次达到 $T_{\min}$ 的孕周（达标时间）</meaning><unit>周</unit></row>
+      <row><symbol>$\boldsymbol{\beta}$</symbol><meaning>固定效应系数向量</meaning><unit>因变量单位/自变量单位</unit></row>
+      <row><symbol>$u_i$</symbol><meaning>孕妇 $i$ 的随机截距</meaning><unit>同 $Y_{ij}$ 单位</unit></row>
+      <row><symbol>$v_i$</symbol><meaning>孕妇 $i$ 的随机斜率（对孕周的随机效应）</meaning><unit>同 $Y_{ij}$ / 周</unit></row>
+      <row><symbol>$\sigma_u^2$</symbol><meaning>随机截距的方差</meaning><unit>($Y_{ij}$ 单位)^2</unit></row>
+      <row><symbol>$\sigma_v^2$</symbol><meaning>随机斜率的方差</meaning><unit>($Y_{ij}$ 单位 / 周)^2</unit></row>
+      <row><symbol>$\sigma_\epsilon^2$</symbol><meaning>残差方差</meaning><unit>($Y_{ij}$ 单位)^2</unit></row>
+      <row><symbol>$\mathcal{ICC}$</symbol><meaning>组内相关系数</meaning><unit>无量纲 [0,1]</unit></row>
+      <row><symbol>$k(\cdot, \cdot)$</symbol><meaning>高斯过程的核函数（Matern 3/2）</meaning><unit>无量纲</unit></row>
+      <row><symbol>$l$</symbol><meaning>GPR 核函数的长度尺度参数</meaning><unit>周</unit></row>
+      <row><symbol>$\sigma_f^2$</symbol><meaning>GPR 核函数的信号方差</meaning><unit>($Y_{ij}$ 单位)^2</unit></row>
+      <row><symbol>$m(\cdot)$</symbol><meaning>高斯过程的均值函数</meaning><unit>$Y_{ij}$ 单位</unit></row>
+      <row><symbol>$K$</symbol><meaning>BMI 分组数（Q2 决策变量）</meaning><unit>无量纲</unit></row>
+      <row><symbol>$b_1, b_2, \ldots, b_{K-1}$</symbol><meaning>BMI 分组边界（按升序排列）</meaning><unit>kg/m^2</unit></row>
+      <row><symbol>$t_1^{\text{opt}}, \ldots, t_K^{\text{opt}}$</symbol><meaning>各 BMI 组的最佳 NIPT 推荐时点</meaning><unit>周</unit></row>
+      <row><symbol>$R(\cdot)$</symbol><meaning>风险函数（失败率 + 过晚检测惩罚）</meaning><unit>无量纲</unit></row>
+      <row><symbol>$F_{\text{ail}}(t \mid g)$</symbol><meaning>给定 BMI 组 $g$，时点 $t$ 检测的失败概率（浓度不足）</meaning><unit>无量纲 [0,1]</unit></row>
+      <row><symbol>$P_{\text{enalty}}(t)$</symbol><meaning>时点 $t$ 的过晚检测惩罚（随孕周递增）</meaning><unit>无量纲</unit></row>
+      <row><symbol>$S(t \mid \mathbf{X})$</symbol><meaning>给定特征 $\mathbf{X}$ 的生存函数 $P(T &gt; t \mid \mathbf{X})$</meaning><unit>无量纲 [0,1]</unit></row>
+      <row><symbol>$h(t \mid \mathbf{X})$</symbol><meaning>风险函数</meaning><unit>周^{-1}</unit></row>
+      <row><symbol>$Z_{i}^{(21)}$</symbol><meaning>孕妇 $i$ 的 21 号染色体 Z 分数</meaning><unit>无量纲</unit></row>
+      <row><symbol>$Z_{i}^{(18)}$</symbol><meaning>孕妇 $i$ 的 18 号染色体 Z 分数</meaning><unit>无量纲</unit></row>
+      <row><symbol>$Z_{i}^{(13)}$</symbol><meaning>孕妇 $i$ 的 13 号染色体 Z 分数</meaning><unit>无量纲</unit></row>
+      <row><symbol>$GC_i$</symbol><meaning>孕妇 $i$ 的 GC 含量</meaning><unit>%</unit></row>
+      <row><symbol>$UMR_i$</symbol><meaning>唯一比对读段数（唯一比对率）</meaning><unit>百万 reads 或 %</unit></row>
+      <row><symbol>$p_i^{(m)}$</symbol><meaning>第 $m$ 个基模型对孕妇 $i$ 的异常预测概率</meaning><unit>无量纲 [0,1]</unit></row>
+      <row><symbol>$\mathbf{M}_i$</symbol><meaning>堆叠集成中样本 $i$ 的元特征向量（由各基模型输出拼接）</meaning><unit>无量纲</unit></row>
+      <row><symbol>$f_{\text{meta}}(\cdot)$</symbol><meaning>元分类器函数</meaning><unit>无量纲</unit></row>
+      <row><symbol>$\lambda$</symbol><meaning>风险函数中过期惩罚的指数增长速率参数</meaning><unit>周^{-1}</unit></row>
+      <row><symbol>$q$</symbol><meaning>达标时间分位数水平（如 $q=0.9$ 表示 90% 可覆盖）</meaning><unit>无量纲 [0,1]</unit></row>
+      <row><symbol>$w_{\text{early}}, w_{\text{late}}$</symbol><meaning>早检风险与晚检风险的相对权重</meaning><unit>无量纲</unit></row>
+      <row><symbol>$AUROC$</symbol><meaning>ROC 曲线下面积，模型判别能力的综合度量</meaning><unit>无量纲 [0,1]</unit></row>
+    </table>
+  </symbol_table>
+
+  <!-- ================================================================== -->
+  <!--                   MATHEMATICAL MODEL                               -->
+  <!-- ================================================================== -->
+  <mathematical_model>
+
+    <!-- ############################################################## -->
+    <!--  PROBLEM 1: LMM for Y-chromosome concentration                 -->
+    <!-- ############################################################## -->
+    <problem id="Q1" title="Y染色体浓度与孕周、BMI的相关性建模">
+
+      <model_type>线性混合效应模型（Linear Mixed Effects Model, LMM）</model_type>
+      <estimation_method>限制性最大似然估计（REML）</estimation_method>
+
+      <model_equation>
+        <description>完整模型（含随机截距 + 随机斜率 + 二次固定效应）：</description>
+        <equation>
+          \begin{aligned}
+          Y_{ij}^{\text{norm}} = \;& \beta_0 + \beta_1 GW_{ij} + \beta_2 GW_{ij}^2 + \beta_3 BMI_i + \beta_4 H_i \\
+          &+ \beta_5 (GW_{ij} \times BMI_i) \\
+          &+ u_i + v_i GW_{ij} + \epsilon_{ij}
+          \end{aligned}
+        </equation>
+        <description>其中：
+          \begin{itemize}
+            \item 固定效应部分（$\beta$ 向量）：捕获群体层面的平均趋势
+            \item 交互项 $\beta_5 (GW_{ij} \times BMI_i)$：捕获 BMI 对 Y 浓度增长速率的调节效应
+            \item 随机截距 $u_i \sim N(0, \sigma_u^2)$：个体基线差异
+            \item 随机斜率 $v_i \sim N(0, \sigma_v^2)$：个体间增长速率差异
+            \item 残差 $\epsilon_{ij} \sim N(0, \sigma_\epsilon^2)$：测量误差与瞬时波动
+          \end{itemize}
+        </description>
+      </model_equation>
+
+      <model_diagnostics>
+        <equation>
+          \text{组内相关系数:} \quad \mathcal{ICC} = \frac{\sigma_u^2 + \sigma_v^2 \cdot \overline{GW}^2}{\sigma_u^2 + \sigma_v^2 \cdot \overline{GW}^2 + \sigma_\epsilon^2}
+        </equation>
+        <equation>
+          \text{似然比检验（随机效应必要性）:} \quad
+          \Lambda = -2 \left[ \log L_{\text{OLS}} - \log L_{\text{LMM}} \right] \sim \chi^2_{\nu}
+        </equation>
+      </model_diagnostics>
+
+      <hypothesis_testing>
+        <description>对每个固定效应系数 $\beta_k$，进行 Wald t 检验：</description>
+        <equation>
+          H_0: \beta_k = 0 \quad \text{vs} \quad H_1: \beta_k \neq 0, \qquad
+          t_k = \frac{\hat{\beta}_k}{\text{SE}(\hat{\beta}_k)}
+        </equation>
+        <description>对 $\beta_1$（孕周效应）和 $\beta_3$（BMI 效应）的联合显著性做 F 检验：</description>
+        <equation>
+          F = \frac{(\text{SSE}_{\text{reduced}} - \text{SSE}_{\text{full}}) / \text{df}_{\text{diff}}}{\text{SSE}_{\text{full}} / \text{df}_{\text{full}}}
+        </equation>
+      </hypothesis_testing>
+
+      <model_selection>
+        <description>从简到繁逐步拟合四个嵌套模型，通过 AIC/BIC 和似然比检验选择最优：</description>
+        <equation>
+          \begin{aligned}
+          M_0 &: \text{OLS: } Y = \beta_0 + \beta_1 GW + \beta_2 GW^2 + \beta_3 BMI + \beta_4 H + \epsilon \quad (\text{无随机效应})\\
+          M_1 &: \text{随机截距: } + u_i \\
+          M_2 &: \text{随机截距 + 随机斜率: } + u_i + v_i GW \\
+          M_3 &: \text{完整模型: } M_2 + \text{交互项 } GW \times BMI
+          \end{aligned}
+        </equation>
+      </model_selection>
+
+      <variable_transformation>
+        <description>若残差正态性不满足，对 Y 浓度做 Box-Cox 变换：</description>
+        <equation>
+          Y_{ij}^{(\lambda)} = \begin{cases}
+          \dfrac{Y_{ij}^\lambda - 1}{\lambda}, & \lambda \neq 0 \\[6pt]
+          \ln(Y_{ij}), & \lambda = 0
+          \end{cases}, \quad
+          \lambda = \arg\max_{\lambda \in [-2,2]} \left[ -\frac{n}{2} \ln \hat{\sigma}_\epsilon^2(\lambda) \right]
+        </equation>
+      </variable_transformation>
+    </problem>
+
+    <!-- ############################################################## -->
+    <!--  PROBLEM 2: BMI Grouping + Optimal Timing                     -->
+    <!-- ############################################################## -->
+    <problem id="Q2" title="基于BMI分组的最佳NIPT时点优化">
+
+      <model_type>两阶段框架：高斯过程回归（GPR）+ 遗传算法（GA）</model_type>
+
+      <stage id="Q2-S1" title="GPR 个体达标时间推断">
+
+        <description>
+          对每位孕妇 $i$，利用其 $n_i$ 次观测 $\{(GW_{ij}, Y_{ij})\}_{j=1}^{n_i}$，
+          用 GPR 外推全孕周范围 $[8, 24]$ 周的 Y 浓度预测与后验不确定性。
+        </description>
+
+        <equation>
+          \textbf{GPR 先验:} \quad Y(GW) \sim \mathcal{GP}(m(GW), k(GW, GW'))
+        </equation>
+
+        <equation>
+          \textbf{Matern 3/2 核函数:} \quad
+          k(r) = \sigma_f^2 \left(1 + \frac{\sqrt{3} r}{l}\right) \exp\left(-\frac{\sqrt{3} r}{l}\right), \quad r = |GW - GW'|
+        </equation>
+
+        <equation>
+          \textbf{给定观测数据后的后验预测:} \quad
+          \begin{aligned}
+          Y_* \mid \mathbf{Y}_i &\sim N(\mu_*, \Sigma_*) \\[4pt]
+          \mu_* &= m(GW_*) + k(GW_*, GW_i) [k(GW_i, GW_i) + \sigma_n^2 I]^{-1} (\mathbf{Y}_i - m(GW_i)) \\[4pt]
+          \Sigma_* &= k(GW_*, GW_*) - k(GW_*, GW_i) [k(GW_i, GW_i) + \sigma_n^2 I]^{-1} k(GW_i, GW_*)
+          \end{aligned}
+        </equation>
+
+        <equation>
+          \textbf{个体达标时间定义:} \quad
+          T_i^{\text{attain}} = \min \left\{ GW \in [8, 24] \; \middle| \; \mu_*(GW) + z_{\alpha} \cdot \sigma_*(GW) \geq T_{\min} \right\}
+        </equation>
+        <description>
+          其中 $z_{\alpha}$ 为标准正态 $\alpha$ 分位数（如 $\alpha = 0.1$ 表示 90% 置信水平时已达标）。
+          此定义将后验不确定性纳入达标判定，避免点预测的虚假精确性。
+        </description>
+
+        <parameter_estimation>
+          <description>
+            GPR 超参数 $\boldsymbol{\theta} = \{l, \sigma_f^2, \sigma_n^2\}$ 通过对数边际似然最大化估计：
+          </description>
+          <equation>
+            \log p(\mathbf{Y} \mid GW, \boldsymbol{\theta}) = -\frac{1}{2} \mathbf{Y}^T \mathbf{K}_y^{-1} \mathbf{Y} - \frac{1}{2} \log |\mathbf{K}_y| - \frac{n}{2} \log 2\pi
+          </equation>
+          <description>其中 $\mathbf{K}_y = k(GW, GW) + \sigma_n^2 I$。</description>
+        </parameter_estimation>
+      </stage>
+
+      <stage id="Q2-S2" title="GA 联合优化分组边界与检测时点">
+
+        <description>
+          将问题形式化为混合整数-连续优化问题。决策变量为 $2K-1$ 个连续变量
+          （$K-1$ 个 BMI 边界 + $K$ 个检测时点），$K$ 为整数超参数。
+        </description>
+
+        <objective_function>
+          <description>联合风险最小化（核心目标函数）：</description>
+          <equation>
+            \min_{K, \{b_k\}, \{t_k^{\text{opt}}\}} \mathcal{R}(K, \{b_k\}, \{t_k^{\text{opt}}\}) =
+            \sum_{g=1}^{K} \frac{N_g}{N} \left[ w_{\text{early}} \cdot F_{\text{ail}}(t_g^{\text{opt}} \mid g) + w_{\text{late}} \cdot P_{\text{enalty}}(t_g^{\text{opt}}) \right]
+          </equation>
+          <description>
+            其中 $N_g$ 为第 $g$ 组的孕妇数，$N$ 为总样本数。两项风险定义如下：
+          </description>
+        </objective_function>
+
+        <failure_risk>
+          <description>早检失败风险（浓度不足概率）：</description>
+          <equation>
+            F_{\text{ail}}(t \mid g) = \frac{1}{N_g} \sum_{i \in \text{group } g} \mathbb{I}\left( T_i^{\text{attain}} > t \right)
+          </equation>
+          <description>
+            或改为使用 GPR 后验的连续形式：
+          </description>
+          <equation>
+            F_{\text{ail}}^{\text{(smooth)}}(t \mid g) = \frac{1}{N_g} \sum_{i \in \text{group } g} \Phi\left( \frac{T_{\min} - \mu_*(t)}{\sigma_*(t)} \right)
+          </equation>
+          <description>
+            其中 $\Phi(\cdot)$ 为标准正态累积分布函数。连续形式可导，适合基于梯度的优化。
+          </description>
+        </failure_risk>
+
+        <late_penalty>
+          <description>过期惩罚（随孕周指数递增）：</description>
+          <equation>
+            P_{\text{enalty}}(t) = \exp\left( \lambda \cdot (t - t_{\text{ideal}}) \right) - 1, \quad t \geq t_{\text{ideal}}
+          </equation>
+          <description>
+            其中 $t_{\text{ideal}}$ 为理想的最早检测窗口（如 10 周），$\lambda > 0$ 控制紧迫度。
+          </description>
+        </late_penalty>
+
+        <constraints>
+          <equation>
+            \begin{aligned}
+            \text{边界单调性:} \quad & b_1 < b_2 < \cdots < b_{K-1} \\
+            \text{时点可行域:} \quad & 8 \leq t_1^{\text{opt}}, \ldots, t_K^{\text{opt}} \leq 24 \\
+            \text{覆盖率约束:} \quad & 1 - F_{\text{ail}}(t_g^{\text{opt}} \mid g) \geq q_{\min}, \quad \forall g=1,\ldots,K \\
+            \text{分位数水平:} \quad & \text{可选设定 } q_{\min} \in \{0.5, 0.7, 0.9, 0.95\} \text{ 作为灵敏度分析}
+            \end{aligned}
+          </equation>
+        </constraints>
+
+        <ga_encoding>
+          <description>
+            遗传算法的染色体编码方案：
+            \begin{itemize}
+              \item 实数编码：染色体向量为 $\mathbf{c} = [b_1, \ldots, b_{K-1}, t_1^{\text{opt}}, \ldots, t_K^{\text{opt}}] \in \mathbb{R}^{2K-1}$
+              \item 边界单调性约束通过编码时排序保证：对 $b_1,\ldots,b_{K-1}$ 做升序排列后再解码
+              \item 适应度函数：$F(\mathbf{c}) = -\mathcal{R}(\mathbf{c})$（负风险，最大化）
+            \end{itemize}
+          </description>
+        </ga_encoding>
+
+        <cross_validation_for_K>
+          <description>
+            分组数 $K$ 的选取通过肘部法或 BIC 准则确定：
+          </description>
+          <equation>
+            \text{BIC}(K) = 2\mathcal{R}^*(K) + (2K-1) \cdot \ln(N)
+          </equation>
+          <description>
+            其中 $\mathcal{R}^*(K)$ 为给定 $K$ 时的最小风险值。
+            $K \in \{2, 3, 4, 5\}$ 分别求解，选择 BIC 最小或风险下降趋于平缓的 $K$。
+          </description>
+        </cross_validation_for_K>
+      </stage>
+    </problem>
+
+    <!-- ############################################################## -->
+    <!--  PROBLEM 3: Multi-dimensional Dynamic Optimization            -->
+    <!-- ############################################################## -->
+    <problem id="Q3" title="多维特征扩展与动态时点调整">
+
+      <model_type>
+        DeepHit 深度学习生存网络 + 遗传算法（与 Q2-S2 结构兼容但个体模型升级）
+      </model_type>
+
+      <stage id="Q3-S1" title="DeepHit 生存网络">
+
+        <description>
+          DeepHit 架构由两条分支组成：（1）MLP 编码静态协变量；
+          （2）LSTM 编码动态时序轨迹。融合后生成每个离散时间点的条件风险概率。
+        </description>
+
+        <feature_encoding>
+
+          <static_branch_mlp>
+            <equation>
+              \mathbf{h}_s = \text{ReLU}(\mathbf{W}_s \mathbf{x}_s + \mathbf{b}_s), \quad
+              \mathbf{x}_s = [BMI_i, Age_i, H_i, \text{Gravidity}_i, \ldots]
+            </equation>
+          </static_branch_mlp>
+
+          <temporal_branch_lstm>
+            <equation>
+              \begin{aligned}
+              \mathbf{x}_t^{(j)} &= [GW_{ij}, Y_{ij}, \Delta Y_{ij}, GC_{ij}, \ldots] \in \mathbb{R}^{D_t} \\[4pt]
+              (\mathbf{h}_t^{(1)}, \mathbf{c}_t^{(1)}) &= \text{LSTM}_1(\mathbf{x}_t^{(j)}, \mathbf{h}_t^{(j-1)}, \mathbf{c}_t^{(j-1)}) \\[4pt]
+              (\mathbf{h}_t^{(2)}, \mathbf{c}_t^{(2)}) &= \text{LSTM}_2(\mathbf{h}_t^{(1)}, \mathbf{c}_t^{(1)})
+              \end{aligned}
+            </equation>
+          </temporal_branch_lstm>
+
+          <fusion_layer>
+            <equation>
+              \mathbf{h}_{\text{fused}} = \text{ReLU}\left( \mathbf{W}_f [\mathbf{h}_s \oplus \mathbf{h}_t^{(2)}(T)] + \mathbf{b}_f \right)
+            </equation>
+            <description>$\oplus$ 表示向量拼接，$T$ 为最后一个观测时间点的 LSTM 隐藏状态。</description>
+          </fusion_layer>
+        </feature_encoding>
+
+        <survival_output>
+          <description>
+            将时间轴离散化为 $L$ 个区间 $\{ \tau_1, \tau_2, \ldots, \tau_L \}$（如按周离散化，8-24 周对应 17 个区间）。
+            输出层为每个离散时间点的条件风险概率：
+          </description>
+          <equation>
+            h(\tau_l \mid \mathbf{X}_i) = P(T = \tau_l \mid T \geq \tau_l, \mathbf{X}_i) =
+            \frac{\exp(\mathbf{w}_l^T \mathbf{h}_{\text{fused}} + b_l)}{\sum_{k=l}^{L} \exp(\mathbf{w}_k^T \mathbf{h}_{\text{fused}} + b_k)}
+          </equation>
+
+          <equation>
+            \text{累积生存函数:} \quad
+            S(t \mid \mathbf{X}_i) = P(T > t \mid \mathbf{X}_i) = \prod_{\tau_l \leq t} \left[ 1 - h(\tau_l \mid \mathbf{X}_i) \right]
+          </equation>
+
+          <equation>
+            \text{累积达标概率:} \quad
+            F(t \mid \mathbf{X}_i) = 1 - S(t \mid \mathbf{X}_i) = P(T \leq t \mid \mathbf{X}_i)
+          </equation>
+        </survival_output>
+
+        <loss_function>
+          <equation>
+            \mathcal{L} = \mathcal{L}_{\text{likelihood}} + \alpha \cdot \mathcal{L}_{\text{ranking}}
+          </equation>
+          <equation>
+            \mathcal{L}_{\text{likelihood}} = -\sum_{i=1}^{N} \left[ (1 - \delta_i) \log S(T_i \mid \mathbf{X}_i) + \delta_i \log h(T_i \mid \mathbf{X}_i) \right]
+          </equation>
+          <equation>
+            \mathcal{L}_{\text{ranking}} = \sum_{i \neq j} \mathbb{I}(T_i < T_j) \cdot \exp\left( \frac{S(T_i \mid \mathbf{X}_j) - S(T_i \mid \mathbf{X}_i)}{\sigma} \right)
+          </equation>
+          <description>
+            其中 $\delta_i$ 为删失指示变量（1=观测到事件，0=删失），$\alpha$ 为排名损失权重。
+          </description>
+        </loss_function>
+      </stage>
+
+      <stage id="Q3-S2" title="动态最优时点决策">
+
+        <description>
+          基于 DeepHit 输出的个体化生存曲线，第 2 阶段的优化框架与 Q2-S2 类似，
+          但有以下关键改进：
+        </description>
+
+        <equation>
+          F_{\text{ail}}^{\text{(DeepHit)}}(t \mid \mathcal{G}) =
+          \frac{1}{|\mathcal{G}|} \sum_{i \in \mathcal{G}} S(t \mid \mathbf{X}_i)
+        </equation>
+        <description>
+          其中 $\mathcal{G}$ 为按多维特征（BMI + 年龄 + 身高 + ...）聚类后的分组。
+          替代 Q2 中基于 GPR 点估计的失败率计算。
+        </description>
+
+        <equation>
+          \min_{K, \{b_k^{(m)}\}, \{t_k^{\text{opt}}\}} \mathcal{R}_{\text{DeepHit}}(K, \{b_k^{(m)}\}, \{t_k^{\text{opt}}\}) =
+          \sum_{g=1}^{K} \frac{N_g}{N} \left[ w_{\text{early}} \cdot \frac{1}{N_g}\sum_{i \in g} S(t_g^{\text{opt}} \mid \mathbf{X}_i) + w_{\text{late}} \cdot P_{\text{enalty}}(t_g^{\text{opt}}) \right]
+        </equation>
+        <description>
+          决策变量 $b_k^{(m)}$ 可扩展至多维特征空间的决策边界（如 BMI-age 二维划分）。
+        </description>
+
+        <feature_clustering>
+          <equation>
+            \text{用 K-medoids 或 GMM 对特征向量 } \mathbf{x}_s = [BMI_i, Age_i, H_i, W_i, \ldots] \text{ 聚类，} \\
+            \text{聚类数 } K \text{ 由轮廓系数（Silhouette Score）确定。}
+          </equation>
+        </feature_clustering>
+      </stage>
+    </problem>
+
+    <!-- ############################################################## -->
+    <!--  PROBLEM 4: Female Fetus Abnormality Detection                -->
+    <!-- ############################################################## -->
+    <problem id="Q4" title="女胎染色体异常判定">
+
+      <model_type>LightGBM 堆叠集成（Stacking Ensemble）</model_type>
+
+      <architecture>
+        <description>
+          两阶段堆叠架构：阶段一为 4 个并行基模型（3 个染色体专项 + 1 个交互效应模型）；
+          阶段二为元模型训练。
+        </description>
+      </architecture>
+
+      <stage id="Q4-S1" title="基模型训练（Level-0）">
+
+        <base_model_1 label="13号染色体异常模型">
+          <equation>
+            \text{输入特征: } \mathbf{x}^{(13)} = [Z^{(13)}, Z^{(18)} - Z^{(13)}, GC, UMR,
+            \text{chr13\_reads\_ratio}, \ldots]
+          </equation>
+          <equation>
+            \hat{p}_i^{(13)} = f_{\text{LGB}}^{(13)}(\mathbf{x}_i^{(13)} ; \boldsymbol{\theta}_{13}^*)
+          </equation>
+        </base_model_1>
+
+        <base_model_2 label="18号染色体异常模型">
+          <equation>
+            \text{输入特征: } \mathbf{x}^{(18)} = [Z^{(18)}, Z^{(21)} - Z^{(18)}, GC, UMR,
+            \text{chr18\_reads\_ratio}, \ldots]
+          </equation>
+          <equation>
+            \hat{p}_i^{(18)} = f_{\text{LGB}}^{(18)}(\mathbf{x}_i^{(18)} ; \boldsymbol{\theta}_{18}^*)
+          </equation>
+        </base_model_2>
+
+        <base_model_3 label="21号染色体异常模型">
+          <equation>
+            \text{输入特征: } \mathbf{x}^{(21)} = [Z^{(21)}, Z^{(13)} - Z^{(21)}, GC, UMR,
+            \text{chr21\_reads\_ratio}, \ldots]
+          </equation>
+          <equation>
+            \hat{p}_i^{(21)} = f_{\text{LGB}}^{(21)}(\mathbf{x}_i^{(21)} ; \boldsymbol{\theta}_{21}^*)
+          </equation>
+        </base_model_3>
+
+        <base_model_4 label="交互影响模型">
+          <equation>
+            \text{输入特征: } \mathbf{x}^{(\text{inter})} = [Z^{(13)}, Z^{(18)}, Z^{(21)},
+            Z^{(13)} \cdot Z^{(18)}, Z^{(18)} \cdot Z^{(21)}, Z^{(13)} \cdot Z^{(21)},
+            GC, UMR, \text{各染色体 read-depth 比例}]
+          </equation>
+          <equation>
+            \hat{p}_i^{(\text{inter})} = f_{\text{LGB}}^{(\text{inter})}(\mathbf{x}_i^{(\text{inter})} ; \boldsymbol{\theta}_{\text{inter}}^*)
+          </equation>
+        </base_model_4>
+
+        <optuna_optimization>
+          <description>
+            每个基模型的超参数 $\boldsymbol{\theta}^*$ 通过 Optuna 框架的 Tree-structured Parzen Estimator (TPE) 优化：
+          </description>
+          <equation>
+            \boldsymbol{\theta}^* = \arg\min_{\boldsymbol{\theta} \in \Theta} \text{AUC}_{\text{CV}}(\boldsymbol{\theta})
+          </equation>
+          <equation>
+            \text{搜索空间 } \Theta \text{ 包括: } \text{learning\_rate} \in [0.01, 0.3], \;
+            \text{num\_leaves} \in [8, 127], \;
+            \text{subsample} \in [0.6, 1.0], \;
+            \text{colsample\_bytree} \in [0.6, 1.0], \;
+            \text{reg\_alpha} \in [0, 10], \;
+            \text{reg\_lambda} \in [0, 10], \;
+            \text{min\_child\_samples} \in [5, 50]
+          </equation>
+        </optuna_optimization>
+
+        <imbalance_handling>
+          <equation>
+            \text{损失函数加权重: } \ell(y_i, \hat{p}_i) = -[w_1 \cdot y_i \log(\hat{p}_i) + w_0 \cdot (1-y_i) \log(1-\hat{p}_i)]
+          </equation>
+          <equation>
+            w_1 / w_0 = N_{\text{neg}} / N_{\text{pos}} \quad (\text{类别权重反比于频率})
+          </equation>
+        </imbalance_handling>
+      </stage>
+
+      <stage id="Q4-S2" title="元模型训练（Level-1 Stacking）">
+
+        <meta_feature_construction>
+          <equation>
+            \mathbf{M}_i = [\hat{p}_i^{(13)}, \hat{p}_i^{(18)}, \hat{p}_i^{(21)}, \hat{p}_i^{(\text{inter})}] \in \mathbb{R}^4
+          </equation>
+          <equation>
+            \text{增强元特征: } \tilde{\mathbf{M}}_i = [\mathbf{M}_i, \mathbf{x}_i^{\text{(core)}}] \in \mathbb{R}^{4 + d_{\text{core}}}
+          </equation>
+          <description>
+            其中 $\mathbf{x}_i^{\text{(core)}} \subset \mathbb{R}^{d_{\text{core}}}$ 为原始特征中最关键的 $d_{\text{core}}$ 个
+            （通过基模型的特征重要性筛选，如 Top-5 Z 分数）。
+          </description>
+        </meta_feature_construction>
+
+        <meta_learner>
+          <equation>
+            \hat{y}_i = f_{\text{meta}}(\tilde{\mathbf{M}}_i ; \boldsymbol{\phi}^*) =
+            \begin{cases}
+            1 & \text{若 } g_{\boldsymbol{\phi}^*}(\tilde{\mathbf{M}}_i) \geq \tau \\
+            0 & \text{否则}
+            \end{cases}
+          </equation>
+          <description>
+            元分类器 $g$ 选用 Logistic Regression（防止过拟合）或 LightGBM（若数据量充足）。
+            阈值 $\tau \in [0,1]$ 在验证集上通过最大化 Youden 指数 $J = \text{Sens} + \text{Spec} - 1$ 确定。
+          </description>
+        </meta_learner>
+
+        <prevention_of_data_leakage>
+          <equation>
+            \text{基模型训练集} \cap \text{元模型训练集} = \varnothing
+          </equation>
+          <description>
+            使用 5 折交叉验证生成元特征：在每一折中，基模型在训练折上训练、在验证折上预测；
+            所有验证折的预测拼接起来作为完整的元特征集。此即"堆叠集成的标准防泄漏方案"。
+          </description>
+        </prevention_of_data_leakage>
+      </stage>
+
+      <evaluation_metrics>
+        <equation>
+          \begin{aligned}
+          \text{准确率} &= \frac{TP + TN}{TP + TN + FP + FN} \\
+          \text{精确率} &= \frac{TP}{TP + FP} \\
+          \text{召回率（灵敏度）} &= \frac{TP}{TP + FN} \\
+            \text{F1 分数} &= 2 \cdot \frac{\text{精确率} \cdot \text{召回率}}{\text{精确率} + \text{召回率}} \\
+            \text{AUROC} &= \int_0^1 \text{TPR}(\text{FPR}^{-1}(x)) \, dx
+          \end{aligned}
+        </equation>
+      </evaluation_metrics>
+
+      <ablation_study>
+        <description>
+          为验证基模型贡献，逐一移除各基模型并评估 AUROC 下降幅度：
+        </description>
+        <equation>
+          \Delta \text{AUROC}^{(m)} = \text{AUROC}_{\text{full}} - \text{AUROC}_{\text{without } m}, \quad m \in \{13, 18, 21, \text{inter}\}
+        </equation>
+      </ablation_study>
+    </problem>
+
+  </mathematical_model>
+
+  <!-- ================================================================== -->
+  <!--                   ALGORITHM FLOW                                   -->
+  <!-- ================================================================== -->
+  <algorithm_flow>
+
+    <!-- ############################################################## -->
+    <!--  ALGORITHM 1: LMM Fit and Diagnostics                         -->
+    <!-- ############################################################## -->
+    <algorithm id="ALG-Q1" name="线性混合效应模型拟合与诊断">
+      <input>
+        训练数据 $\mathcal{D} = \{(GW_{ij}, BMI_i, H_i, Y_{ij})\}_{i=1,j=1}^{N,n_i}$；
+        显著性水平 $\alpha = 0.05$
+      </input>
+      <output>
+        固定效应系数估计 $\hat{\boldsymbol{\beta}}$，标准误，p 值；
+        随机效应方差 $\hat{\sigma}_u^2, \hat{\sigma}_v^2, \hat{\sigma}_\epsilon^2$；
+        ICC；最优模型选择结果
+      </output>
+
+      <steps>
+        <step id="Q1-S1">
+          <description>数据预处理与变量变换</description>
+          <pseudocode>
+1.1  计算 Y 浓度原始分布的偏度 Skewness
+1.2  IF Skewness > 1.5 THEN:
+       通过 Box-Cox 变换(式 10)计算最优 λ，生成 Y^{norm}
+     ELSE:
+       Y^{norm} = Y
+1.3  对 GW 做中心化处理: GW_centered = GW - mean(GW)
+     （降低固定效应与随机效应的相关性，改善 REML 收敛性）
+1.4  将 BMI 和身高按 Z-score 标准化
+          </pseudocode>
+        </step>
+
+        <step id="Q1-S2">
+          <description>模型比较与选择（依次拟合 M0 → M1 → M2 → M3）</description>
+          <pseudocode>
+2.1  拟合 M0（OLS 基准模型）
+     存储 logLik_{M0}, AIC_{M0}, BIC_{M0}
+2.2  拟合 M1（随机截距）
+     存储 logLik_{M1}, AIC_{M1}, BIC_{M1}
+     执行似然比检验: Λ_{01} = -2(logLik_{M0} - logLik_{M1})
+     p_{01} = 1 - χ²_cdf(Λ_{01}, df=1)
+     IF p_{01} < α THEN: 拒绝 H0，随机截距效应显著
+2.3  拟合 M2（随机截距 + 随机斜率）
+     存储参数，执行似然比检验 M1 vs M2
+     IF 随机斜率效应显著 THEN: 继续
+     ELSE: 退回 M1
+2.4  拟合 M3（M2 + GW×BMI 交互项）
+     用 Wald 检验交互项系数 β₅ 的显著性
+2.5  选择 AIC/BIC 最小的模型作为最终模型 M*
+          </pseudocode>
+        </step>
+
+        <step id="Q1-S3">
+          <description>最终模型诊断</description>
+          <pseudocode>
+3.1  残差正态性检验: QQ 图 + Shapiro-Wilk 检验
+     IF p < α THEN: 记录警告，考虑使用稳健标准误
+3.2  同方差性检验: 残差 vs 拟合值散点图 + Breusch-Pagan 检验
+3.3  随机效应正态性: 随机截距/斜率的 QQ 图
+3.4  计算 ICC = σ²_u / (σ²_u + σ²_ϵ)，解释个体差异占总变异的比例
+3.5  条件 R² 与边际 R²:
+     R²_marginal = 固定效应解释的方差 / 总方差
+     R²_conditional = (固定+随机效应解释的方差) / 总方差
+          </pseudocode>
+        </step>
+
+        <step id="Q1-S4">
+          <description>显著性结论报告</description>
+          <pseudocode>
+4.1  输出固定效应系数表: β̂ ± 1.96·SE, t 值, p 值
+4.2  特别报告: β₁（孕周效应）和 β₃（BMI 效应）的方向与显著性
+4.3  若交互项 β₅ 显著:
+     "BMI 每增加 1 个标准差，Y 浓度随孕周的增长速率变化 β₅ 单位"
+4.4  输出方差组分饼图: σ²_u, σ²_v, σ²_ϵ 的相对占比
+          </pseudocode>
+        </step>
+      </steps>
+
+      <edge_cases>
+        - 若某孕妇仅 1 次测量(n_i=1)：无法估计随机斜率，将该样本的随机斜率 v_i 设为 0
+        - 若 REML 不收敛：尝试改用 ML 估计，或用优化器 BOBYQA 替代默认的 EM 算法
+        - 若残差严重非正态：对 Y 做 Box-Cox 变换后重跑全流程 (M0-M3)
+      </edge_cases>
+    </algorithm>
+
+    <!-- ############################################################## -->
+    <!--  ALGORITHM 2: GPR + GA for BMI Group Optimization             -->
+    <!-- ############################################################## -->
+    <algorithm id="ALG-Q2" name="高斯过程回归 + 遗传算法联合优化">
+      <input>
+        男胎孕妇数据集 $\mathcal{D}_{\text{male}} = \{(GW_{ij}, Y_{ij}, BMI_i)\}_{i=1,j=1}^{N_m, n_i}$；
+        浓度阈值 $T_{\min}$；
+        惩罚参数 $w_{\text{early}}, w_{\text{late}}, \lambda$；
+        分位数水平组 $q_{\min} \in \{0.5, 0.7, 0.9, 0.95\}$
+      </input>
+      <output>
+        最优分组数 $K^*$、分组边界 $\{b_k^*\}$、最佳检测时点 $\{t_k^{\text{opt}*}\}$；
+        每组的覆盖率 $1 - F_{\text{ail}}(t_k^{\text{opt}} \mid g)$；
+        灵敏度分析表（不同 $q_{\min}$ 下的结果）
+      </output>
+
+      <steps>
+        <step id="Q2-S1" label="GPR个体达标时间推算">
+          <pseudocode>
+--- 阶段一: 对每位孕妇独立拟合 GPR，推断达标时间 ---
+
+1.1  FOR 每位孕妇 i = 1 to N_m:
+       IF n_i >= 3 THEN:
+         使用 Matern 3/2 核拟合 GPR
+         超参数初始化: l = 5.0, σ²_f = var(Y_i), σ²_n = 0.01·var(Y_i)
+         通过对数边际似然最大化(式 14)优化超参数
+         (优化器: L-BFGS-B, 最多 200 次迭代)
+       ELSE IF n_i == 2 THEN:
+         使用线性核或固定长度尺度 l=4 的 GPR（仅估计 σ²_f 和 σ²_n）
+       ELSE (n_i == 1):
+         使用群体均值函数 + 个体残差的简单外推
+         标记"低置信度"供后续分析
+
+1.2  FOR 每位孕妇 i:
+       在 [8, 24] 周范围内以步长 0.5 周生成预测点 GW_*
+       计算后验均值 μ_*(GW_*) 和后验标准差 σ_*(GW_*)
+       由式 13 计算 T_i^{attain}（首次满足 μ_* + z_α·σ_* ≥ T_min 的孕周）
+       存储 T_i^{attain} 及其不确定性指标 CI_width_i = σ_*(T_i^{attain})
+
+1.3  报告达标时间分布: 直方图 + QQ 图（与对数正态分布对比）
+          </pseudocode>
+        </step>
+
+        <step id="Q2-S2" label="GA 联合优化">
+          <pseudocode>
+--- 阶段二: 遗传算法求解 K, {b_k}, {t_k^{opt}} ---
+
+2.1  FOR K in {2, 3, 4, 5}:
+
+       GA 参数设置:
+       - 种群大小: N_pop = 100
+       - 最大代数: N_gen = 200
+       - 交叉概率: p_cross = 0.85 (模拟二进制交叉 SBX)
+       - 变异概率: p_mut = 0.15 (多项式变异)
+       - 锦标赛选择: 锦标赛大小 = 3
+       - 精英保留: 2 个最佳个体直接保留
+
+       初始化种群:
+       FOR each individual in population:
+         b = 在 BMI 范围内随机采样 K-1 个有序值
+         t = 在 [10, 22] 周内随机采样 K 个值
+         染色体 = [sorted(b), t]  // 长度 2K-1
+
+       FOR gen = 1 to N_gen:
+         FOR each individual in population:
+           a. 根据 BMI 边界 b 将孕妇分配到各组
+           b. 对每组 g:
+              计算 F_ail(t_g | g) (式 16 或 17 的连续近似)
+              计算 P_enalty(t_g) (式 18)
+           c. 计算总风险 R (式 15)
+           d. 检查覆盖率约束是否满足 (式 19)
+           e. IF 约束不满足 THEN:
+                适应度 = -R - penalty_violation
+              ELSE:
+                适应度 = -R
+
+         下一代生成:
+         a. 按适应度排序，保留前 2 个精英
+         b. 锦标赛选择: 选出 N_pop - 2 个父代
+         c. 交叉: 对选出的父代随机配对，以 p_cross 执行 SBX
+         d. 变异: 对子代以 p_mut 执行多项式变异
+         e. 边界修正: 确保 b 单调递增，t 在 [8,24] 范围内
+
+         收敛判断:
+         IF best_fitness 连续 20 代改进 < 1e-4 THEN:
+           提前终止
+
+       记录 K 的最优解: R*(K), {b_k^*(K)}, {t_k^{opt*}(K)}
+
+2.2  选择最优 K*:
+    计算 BIC(K) = 2·R*(K) + (2K-1)·ln(N_m)
+    选择 BIC(K) 最小的 K；若 BIC 下降幅度在 K 处趋于平缓，选较小的 K
+
+2.3  根据选定的 K* 输出最终结果
+          </pseudocode>
+        </step>
+
+        <step id="Q2-S3" label="灵敏度分析">
+          <pseudocode>
+3.1  对 T_min 做 ±20% 扰动:
+     重新运行 Q2-S1 和 Q2-S2
+     记录分组边界和时点是否稳定
+
+3.2  对不同分位数水平 q_min ∈ {0.5, 0.7, 0.9, 0.95}:
+     重新运行 Q2-S2
+     绘制"准确率要求 vs 推荐时点"的关系曲线
+     (预期: 准确率越高 → 推荐时点越晚, 与知识库结果一致)
+
+3.3  对权重 w_early / w_late 做 3 组敏感性测试:
+     1:1, 1:2, 2:1
+     评估 Pareto 前沿
+          </pseudocode>
+        </step>
+      </steps>
+
+      <edge_cases>
+        - 若某组孕妇数 N_g < 5：合并到相邻组（避免统计不可靠）
+        - 若 GA 多次运行结果不一致：增大种群到 200 或代数到 300
+        - BMI 边界若出现极端值（如 < 16 或 > 40）：做截断处理
+      </edge_cases>
+    </algorithm>
+
+    <!-- ############################################################## -->
+    <!--  ALGORITHM 3: DeepHit Survival Network                        -->
+    <!-- ############################################################## -->
+    <algorithm id="ALG-Q3" name="DeepHit 生存网络训练与动态决策">
+      <input>
+        完整数据集（含男胎和女胎的静态+时序特征）；
+        删失指示变量 $\delta_i$（是否观察到"达标"事件）
+      </input>
+      <output>
+        个体生存曲线 $S(t \mid \mathbf{X}_i)$；
+        多维分组方案与推荐时点；
+        模型预测精度（C-index、Brier Score）
+      </output>
+
+      <steps>
+        <step id="Q3-S1" label="数据准备">
+          <pseudocode>
+1.1  静态特征 x_s: BMI, Age, Height, Weight, Gravidity, Parity, ...
+     标准化为 Z-score
+
+1.2  时序特征 x_t: 按孕周排序的序列
+     插值对齐: 对每位孕妇的观测插值到统一时间网格 [8, 10, 12, ..., 24] 周
+     若某时间点无观测: 使用前向填充 + 后向填充
+     时序特征维度: [GW, Y_conc, ΔY_conc(相邻周变化量), GC_content, ...]
+
+1.3  事件时间定义:
+     若孕妇在某个观测时点 Y_ij >= T_min: T_i = 首次达标孕周, δ_i = 1
+     若所有观测时点均未达标: T_i = 最后一次观测孕周, δ_i = 0 (右删失)
+
+1.4  时间离散化:
+     将 [8, 24] 周按周离散为 L = 17 个区间
+     编码为 one-hot 时间标签
+          </pseudocode>
+        </step>
+
+        <step id="Q3-S2" label="DeepHit 架构与训练">
+          <pseudocode>
+2.1  网络参数:
+     MLP 隐层: [64, 32], ReLU 激活, Dropout=0.3
+     LSTM 层: 2 层, 每层 32 个单元
+     融合层: 64 个单元, ReLU
+     输出层: L=17 个单元（对应 L 个离散时间点的条件风险概率）
+
+2.2  训练配置:
+     优化器: Adam (lr=0.001, weight_decay=1e-4)
+     Batch size: 32
+     最大 Epoch: 200
+     早停: 验证集损失连续 15 epoch 不下降则停止
+     损失函数: L = L_likelihood + α·L_ranking (α=0.2)
+     数据划分: 60% 训练, 20% 验证, 20% 测试
+
+2.3  CV 策略:
+     5 折交叉验证评估 C-index 和 IBS (Integrated Brier Score)
+     每折存储测试集的生存曲线
+
+2.4  输出个体化预测:
+     FOR 每位测试集孕妇:
+       输出 S(t | X_i) for t = 8, 9, ..., 24
+       输出 F(t | X_i) = 1 - S(t | X_i) 为累积达标概率曲线
+          </pseudocode>
+        </step>
+
+        <step id="Q3-S3" label="多维分组与优化">
+          <pseudocode>
+3.1  对静态特征向量 x_s 做聚类:
+     K-medoids, 距离度量: 欧氏距离
+     K 由轮廓系数确定 (搜索范围 2-6)
+     将孕妇分为 K 个特征同质组
+
+3.2  对每组 g:
+     汇总组内生存曲线: S_avg(t | g) = (1/N_g) Σ_{i∈g} S(t | X_i)
+     计算风险函数 R_g(t) = w_early·S_avg(t|g) + w_late·P_penalty(t)
+     通过一维搜索(步长 0.5 周)最小化 R_g(t):
+        t_g^{opt} = argmin_{t∈[8,24]} R_g(t)
+
+3.3  输出:
+     各组特征剖面 (age, BMI, height 的均值±sd)
+     各组推荐时点及对应的理论失败率 S_avg(t_g^{opt}|g)
+     可视化: 各组的生存曲线 + 最优时点标注
+          </pseudocode>
+        </step>
+      </steps>
+
+      <edge_cases>
+        - 若大部分样本为删失数据 (δ_i=0 占比 > 80%)：降低排名损失权重 α 至 0.05
+        - 若 LSTM 训练不稳定：梯度裁剪 max_norm=1.0
+        - 若某组样本数 < 5：合并到最近邻组（基于特征空间欧氏距离）
+      </edge_cases>
+    </algorithm>
+
+    <!-- ############################################################## -->
+    <!--  ALGORITHM 4: Stacking Ensemble for Abnormality Detection     -->
+    <!-- ############################################################## -->
+    <algorithm id="ALG-Q4" name="LightGBM 堆叠集成异常分类">
+      <input>
+        女胎数据集 $\mathcal{D}_{\text{female}} = \{ \mathbf{x}_i, y_i \}_{i=1}^{605}$；
+        $\mathbf{x}_i$ 包含 21/18/13 号染色体 Z 分数、GC 含量、UMR 等 31 个特征；
+        $y_i \in \{0, 1\}$（0=健康，1=任意染色体异常）
+      </input>
+      <output>
+        最终元分类器 $f_{\text{meta}}$；
+        测试集预测标签 $\hat{y}_i$ 及概率 $\hat{p}_i$；
+        分类性能指标：AUROC, F1, 灵敏度, 特异度；
+        特征重要性排序
+      </output>
+
+      <steps>
+        <step id="Q4-S1" label="基模型训练与元特征生成（5 折 Stacking）">
+          <pseudocode>
+--- 阶段一: Level-0 基学习器 ---
+
+1.1  数据划分:
+     将 605 条样本按分层抽样 (保持异常比例) 分为 5 折
+     FOR fold = 1 to 5:
+       训练集 = 除 fold 外的 4 折 (约 484 条)
+       验证集 = fold (约 121 条)
+
+1.2  对每个基模型类型 m ∈ {chr13, chr18, chr21, inter}:
+     FOR fold = 1 to 5:
+       a. 根据 m 类型构造输入特征 (式 23-26)
+       b. 用训练集训练 LightGBM 分类器
+          超参数: 先用 Optuna 在第一个 fold 上搜索最优 θ (搜索 50 次)
+          锁定 θ 后在所有 fold 上使用相同超参数
+          LightGBM 参数:
+            objective='binary'
+            metric='auc'
+            boosting_type='gbdt'
+            class_weight='balanced'
+            verbosity=-1
+            early_stopping_rounds=50
+       c. 在验证集上预测概率 p^{(m)}_i
+       将 p^{(m)}_i 存入元特征矩阵 M 的第 m 列
+
+1.3  元特征矩阵构建:
+     M 为 605×4 矩阵, 每行 M_i = [p^{chr13}_i, p^{chr18}_i, p^{chr21}_i, p^{inter}_i]
+
+1.4  特征筛选:
+     用 Shapley Additive Explanations (SHAP) 分析各基模型特征重要性
+     若某个基因模型的 SHAP 贡献 < 0.01: 标记为低贡献, 保留但降低权重
+          </pseudocode>
+        </step>
+
+        <step id="Q4-S2" label="元模型训练与阈值优化">
+          <pseudocode>
+--- 阶段二: Level-1 元学习器 ---
+
+2.1  构建增强元特征:
+     X_meta = 水平拼接 [M, 核心原始特征]
+     核心原始特征: 基于基模型的特征重要性, 选择 Top-5 最重要的原始特征
+     (如 Z_21, GC_content, Z_18, UMR, Z_13)
+
+2.2  元分类器选择与训练:
+     (a) 首选: Logistic Regression (L2 正则化, C=1.0)
+         原因: 简单, 可解释, 小样本防过拟合
+     (b) 备选: LightGBM (learning_rate=0.01, num_leaves=16)
+         使用 5 折交叉验证比较两者性能, 选择验证集 AUROC 更高的
+
+2.3  阈值优化:
+     在验证集上计算所有可能阈值 τ ∈ [0, 1] 的 (灵敏度, 1-特异度) 对
+     选择最大化 Youden 指数 J(τ) = Sensitivity(τ) + Specificity(τ) - 1 的 τ*
+     同时报告 AUROC
+
+2.4  独立验证集评估:
+     若有独立的验证集 (如数据集的 20%):
+       计算最终性能指标
+       绘制混淆矩阵 + ROC 曲线 + PR 曲线
+          </pseudocode>
+        </step>
+
+        <step id="Q4-S3" label="消融实验与解释">
+          <pseudocode>
+3.1  消融实验:
+     FOR m in {chr13, chr18, chr21, inter}:
+       移除基模型 m
+       用剩余 3 个基模型重新生成元特征
+       重新训练元分类器
+       记录 ΔAUROC_m = AUROC_full - AUROC_without_m
+       报告每个基模型的边际贡献
+
+3.2  SHAP 全局解释:
+     对最终元模型计算 SHAP 值
+     绘制 Summary Plot (所有样本的 SHAP 值分布)
+     绘制 Bar Plot (各特征的平均 |SHAP|)
+
+3.3  个体解释 (可选):
+     选取 2-3 个典型样本 (1 个真阳性, 1 个真阴性, 1 个假阳性)
+     展示其 Force Plot (哪些特征将其推向异常/正常)
+          </pseudocode>
+        </step>
+      </steps>
+
+      <edge_cases>
+        - 若某染色体模型表现极差 (AUROC < 0.6)：检查该染色体特征的数据质量，考虑合并到交互模型
+        - 若元特征与原始特征高度共线性：在 Logistic Regression 中增加更强的 L2 正则化 (C=0.1)
+        - 若预测概率集中在 0.5 附近：表明基模型区分能力不足，改用 XGBoost 替代 LightGBM
+      </edge_cases>
+    </algorithm>
+
+    <!-- ############################################################## -->
+    <!--  INTER-PROBLEM DATA FLOW                                      -->
+    <!-- ############################################################## -->
+    <data_flow>
+      <description>四个算法之间的数据依赖关系与传递协议</description>
+      <flow_diagram>
+        <edge from="Q1" to="Q2">
+          传递: 最优 LMM 模型的固定效应系数方向和显著性。
+          用途: Q2 的 GPR 可以复用 Q1 确定的显著影响因素（尤其是 BMI 效应），
+                作为 GPR 均值函数的先验信息 m(GW) = β̂₀ + β̂₁·GW + β̂₂·GW² + β̂₃·BMI。
+        </edge>
+        <edge from="Q2" to="Q3">
+          传递: Q2 的 GPR 个体达标时间分布特征、最佳分组数 K 的范围。
+          用途: Q3 的 DeepHit 将达标时间分布的域知识（对数正态形态、中位数约 13-15 周）
+                作为网络初始化的先验约束。
+        </edge>
+        <edge from="Q1-3" to="Q4">
+          传递: 前三问中确认的正常/异常分布模式、特征基线范围。
+          用途: Q4 利用男胎数据中学习到的"正常"分布参数作为女胎异常检测的参考基线。
+        </edge>
+      </flow_diagram>
+    </data_flow>
+
+  </algorithm_flow>
+
+  <!-- ================================================================== -->
+  <!--                       VERIFICATION & VALIDATION PROTOCOL            -->
+  <!-- ================================================================== -->
+  <verification_protocol>
+    <cross_validation>
+      <description>所有四个问题均采用交叉验证评估泛化性能</description>
+      <Q1>留一孕妇交叉验证（LOOCV）或 5 折基于个体的折叠</Q1>
+      <Q2>GPR 部分: 留一法外推精度验证；GA 部分: 随机分割重运行 10 次稳定性检查</Q2>
+      <Q3>5 折交叉验证 C-index；生存曲线校准度（Calibration plot）</Q3>
+      <Q4>5 折分层交叉验证（保持各类别比例）+ 独立测试集</Q4>
+    </cross_validation>
+
+    <robustness_checks>
+      <Q1>
+        - 对异常值（Y 浓度 > 均值+3σ）做剔除后重跑，检验系数稳定性
+        - 将随机效应结构改为随机截距-only，检查 AIC 增量
+      </Q1>
+      <Q2>
+        - 对 T_min 阈值做 ±20% 扰动，观察分组边界变化
+        - 对 GA 重复运行 10 次，报告最优解的均值 ± sd
+      </Q2>
+      <Q3>
+        - 改变 LSTM 隐层维度（16, 32, 64）观察 C-index 稳定性
+        - 改变排名损失权重 α ∈ {0, 0.1, 0.2, 0.5} 观察损失函数敏感性
+      </Q3>
+      <Q4>
+        - 用不同的随机种子重复 Stacking 5 次，报告 AUROC 的 95% CI
+        - 用 SMOTE 过采样方法替换加权损失，比较两种不平衡处理策略的结果
+      </Q4>
+    </robustness_checks>
+
+    <error_prevention>
+      <self_check>
+        - 每条假设均有明确依据（生物物理/临床/统计），无空泛假设（对应 error-taxonomy 的 missing_assumption）
+        - 所有公式量纲一致（对应 error-taxonomy 的 dimension_mismatch）
+        - 算法流程包含具体初始化参数和终止条件（对应 error-taxonomy 的 ambiguous_algorithm）
+        - 数据划分严格防止信息泄露（对应 error-taxonomy 的 data_leakage）
+      </self_check>
+    </error_prevention>
+  </verification_protocol>
+
+</model_design>

@@ -1,0 +1,25 @@
+<devils_advocate_report>
+  <audit_target>draft_paper</audit_target>
+  <flaws>
+    - [Risk Level: Med] [Category: data_mismatch] Q5_feasibility_diagnosis.csv is stale data (file timestamp 15:41 vs ~20:33 for all other results files). It contains only 5 of 15 UAV-missile pairs, all with perp distances of 2640-3041 m. The paper cites the global minimum perp distance as ~444 m (UAV 0 to M0's LOS), but this pair is absent from the CSV. The final run's geometric feasibility pre-check (Fix 6 in the code) caused an early return before the diagnostic code executed, so the old CSV persists unmodified. A reviewer cross-checking the paper against the CSV data would find numbers that do not reconcile.
+
+    - [Risk Level: Med] [Category: overfitting_conclusion] The explanation for Q4's degraded performance (Section 5.4: T_eff=7.43 s vs Q1's 8.90 s) attributes the loss to "DE fine-tuning shifting the single effective UAV's parameters away from the Q1 optimum in an unsuccessful attempt to generate cross-UAV synergy." This is a causal claim about optimizer intent ("attempted to generate synergy") that is not supported by any evidence. The paper does not present the actual Q4 decision variable values side-by-side with the Q1/Q2 optimum, nor does it show that the DE attempted to optimize cross-UAV coupling. The degradation could equally be due to random seed effects, DE convergence properties, or constraint interactions from the spatial overlap penalty.
+
+    - [Risk Level: Med] [Category: missing_quantitative_claim] Section 6.1 (Cloud Radius R_s Sensitivity) discusses the effect of R_s on occlusion using qualitative language only: "Increasing R_s from 50 m to 100 m would bring some marginal UAV-missile pairs into geometric feasibility" and "A larger R_s widens this window approximately linearly in the feasible regime." No table, plot, or numerical data is provided to quantify the functional relationship between R_s and T_eff for Q1 or Q2. The model design identified R_s as a key parameter for sensitivity analysis, but the paper does not deliver any quantitative sensitivity results for it.
+
+    - [Risk Level: Low] [Category: data_mismatch] Q3 and Q4 have optimization values (T_eff_opt_s: 9.40, 7.50) that differ from validation values (T_eff_val_s: 9.32, 7.43). The paper reports only the validation values (9.32, 7.43) without acknowledging the gap or explaining why a finer search (N_pts=300, Delta_t=0.01) produces different results than the optimization (N_pts=50, Delta_t=0.1). A transparent paper should at minimum note this discrepancy.
+
+    - [Risk Level: Low] [Category: missing_error_handling] The paper body contains developer/internal comment blocks (lines 279-295: the "Humanizer-zh Self-Check" and "论文手自查" sections in HTML comments). These are internal process notes that must be stripped from the submission version.
+
+    - [Risk Level: Low] [Category: misleading_viz] Figure numbering jumps from Figure 4 (referenced in Section 5.4) to Figure 6 (referenced in Section 5.5) with no Figure 5. While the code correctly suppresses Figure 5 when Q5 intervals are empty, the gap in numbering is confusing to readers. The paper should either renumber Figure 6 to Figure 5, or include an explicit note explaining that Figure 5 was omitted (e.g., "Figure 5 is omitted because the Q5 pre-check aborted interval generation").
+  </flaws>
+  <correction_directives>
+    1. Clean the Q5_feasibility_diagnosis.csv: it must be regenerated or removed. If the pre-check prevents diagnostic generation, either (a) modify the code to write the pre-check results to the CSV before the early return, or (b) remove the stale CSV file so reviewers are not misled.
+    2. Rewrite Section 5.4's Q4 explanation: strip the speculative causal language about "attempting to generate synergy." Replace with a factual statement: report the actual decision variable values from the Q4 solution versus Q1/Q2, or acknowledge that the layered optimization found a locally (not globally) optimal solution for the multi-UAV problem.
+    3. Add quantitative data to Section 6.1: provide a table or plot of T_eff vs R_s for Q1 (e.g., R_s = 10, 25, 40, 50, 75, 100 m), or acknowledge that the sensitivity analysis is qualitative only.
+    4. Acknowledge the optimization-validation discrepancy in Section 7 ("Limitations"): note that Q3 and Q4 validation produced slightly different T_eff values than optimization (coarse vs fine discretization), and explain which value is reported.
+    5. Remove HTML comment blocks (lines 279-295) from the paper body.
+    6. Either renumber Figure 6 to Figure 5, or add an explicit paragraph in Section 5.5 explaining that the figure skip is intentional (no Q5 intervals were generated).
+  </correction_directives>
+  <status>APPROVED</status>
+</devils_advocate_report>

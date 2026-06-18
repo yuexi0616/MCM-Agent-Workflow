@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<devils_advocate_report>
+  <audit_target>model_design revision 1 — 2025 MCM Problem C NIPT Detection Decision Optimization and Abnormality Identification</audit_target>
+
+  <!-- ================================================================ -->
+  <!--  VERIFIED: 19 ORIGINAL ISSUES — ALL RESOLVED                    -->
+  <!-- ================================================================ -->
+  <verification_summary>
+    <![CDATA[
+    第1轮审计的19条意见验证结果：19/19 已正确修正（5 High + 8 Med + 6 Low）。
+    修正确认如下：
+
+    HIGH-RISK (5/5):
+    (H1) Y_conc-cffDNA 映射 — ✓ 公式 cffDNA% = 2·Y_conc·f_GC(GC%)，GC偏倚LOESS校正，
+         阈值统一在 Y_conc 尺度 T_min^(Y) = T_min / (2·f_GC(GC_i))
+    (H2) BIC 替换 — ✓ 肘部法(δ=0.05) + 轮廓系数联合选择K
+    (H3) MAR→MNAR — ✓ 缺失指示变量 δ_ij^miss 纳入符号表和Q3特征，
+         logistic回归检验缺失与BMI/Age的相关性
+    (H4) DeepHit 简化 — ✓ 单层LSTM(16)+单隐层MLP(16)，~3000参数，
+         参数/样本比~7.5:1，CoxPH基线(提升<0.03则退回)
+    (H5) penalty_violation — ✓ 静态-自适应混合罚函数 ρ=ρ₀(1+N_violating/K), ρ₀=100
+
+    MEDIUM-RISK (8/8):
+    (M1) n_i=1均值函数 — ✓ LMM固定效应预测值，方差σ_f²+σ_n²，标记低置信度
+    (M2) 信息删失敏感性 — ✓ 乐观边界(T_i=T_i_last) + 悲观边界(T_i=24)，1周稳健性标准
+    (M3) λ校准 — ✓ 临床驱动(λ≤ln3/6≈0.183) + 数据驱动网格搜索(0.05-0.5, 步长0.05)，取重叠中点
+    (M4) Q4复杂度 — ✓ 元特征仅ℝ⁴，元模型固定L2-Logistic(5参数)，bootstrap 95%CI
+    (M5) F_ail形式 — ✓ 明确选用连续Φ形式，说明可导性优势
+    (M6) 损失函数冲突 — ✓ 移除class_weight='balanced'，仅用自定义加权交叉熵
+    (M7) GPR实现方式 — ✓ sklearn残差法 + GPyTorch自定义Mean模块
+    (M8) 孕周标准 — ✓ Q0预处理含间隔检测、斜率方向、Mann-Whitney U检验三层校验
+
+    LOW-RISK (6/6):
+    (L1) BMI变化 — ✓ 灵敏度分析含BMI>5%亚组KS检验
+    (L2) Optuna次数 — ✓ 50→200，num_leaves上限127→63
+    (L3) 因果插值 — ✓ 仅前向填充，禁止后向填充使用未来数据
+    (L4) KB引用 — ✓ 未使用的bayesian-estimation/monte-carlo-simulation已删除
+    (L5) 权重量纲 — ✓ λ校准控制P_penalty量级，与F_ail在同一范围
+    (L6) 互斥假设 — ✓ Z_diff局限性讨论，交互模型保留原始Z分数
+    ]]>
+  </verification_summary>
+
+  <!-- ================================================================ -->
+  <!--  NEW ISSUES INTRODUCED BY REVISION                              -->
+  <!-- ================================================================ -->
+  <flaws>
+
+    <!-- NEW High-risk: none -->
+
+    <!-- NEW Med-risk -->
+    - [Risk Level: Med] [Category: data_leakage]
+      Q4堆叠集成的交叉验证在记录级别而非患者级别进行数据划分。
+      证据：ALG-Q4伪代码第1386行("将605条样本按分层抽样分为5折")在记录级(605条)分割，
+      而Q4假设第222行明确识别出约240名孕妇(每条2.5次记录)。
+      当同一个孕妇的多条相关记录分布在训练集与验证集中时：
+      (a) LightGBM基模型可学习患者特异性模式(如个体基线Z分数偏移)；
+      (b) 验证集AUROC将因信息泄露而被高估；
+      (c) 报告的性能指标(bootstrap 95%CI)同样受此影响。
+      验证协议第1496行对Q1提到"基于个体的折叠"，但Q4缺乏同等规范。
+
+    - [Risk Level: Med] [Category: algorithm_inconsistency]
+      GPR均值函数在数学模型与伪代码之间存在不一致。
+      证据：数学模型第429行定义的均值函数包含交互项β₅·(GW × BMI_i)：
+      m(GW) = β̂₀ + β̂₁·GW + β̂₂·GW² + β̂₃·BMI_i + β̂₄·H_i + β̂₅·(GW × BMI_i)
+      但ALG-Q2伪代码第1121行定义的均值函数不包含β₅项：
+      m(GW) = β̂₀ + β̂₁·GW + β̂₂·GW² + β̂₃·BMI_i + β̂₄·H_i
+      第426-427行注明"使用M2或M3中AIC最优者"——若M3(含交互项)被选中，
+      则伪代码与数学模型矛盾。对于高BMI孕妇，缺失GW×BMI交互项将导致GPR预测
+      的Y浓度增长速率被系统性地低估或高估，进而偏移T_attain估计。
+
+    <!-- NEW Low-risk -->
+    - [Risk Level: Low] [Category: boundary_condition]
+      GA伪代码中P_penalty未施加t ≥ t_ideal保护。
+      证据：数学模型第513行正确规定了"t ≥ t_ideal"约束，但ALG-Q2伪代码第1177行
+      直接使用P_penalty(t)=exp(λ·(t - t_ideal))-1而未检查t ≥ t_ideal。
+      GA初始化约束t∈[10,22](≥t_ideal=10)，但边界修正(第1190行)允许t∈[8,24]。
+      若变异产生t < t_ideal的子代，P_penalty变为负值(降低风险)，GA将获得
+      不合理的激励去搜索过早检测时点。在实践中，高F_ail值在早孕周会抵消此效应，
+      但数学上这是模拟缺陷。
+
+    - [Risk Level: Low] [Category: ambiguous_protocol]
+      Q4堆叠集成的元模型评估协议不完整。
+      证据：ALG-Q4第1437行声称"5折交叉验证(保持堆叠防泄漏结构)"，但未指定具体机制。
+      标准的堆叠防泄漏评估需要嵌套交叉验证(外层折评估元模型，内层折生成元特征)
+      或独立的留出测试集。当前描述可能被解释为"直接复用生成元特征时的同一5折"，这
+      会在元模型评估中引入乐观偏差。伪代码未展示嵌套CV结构或独立的测试集划分步骤。
+
+  </flaws>
+
+  <correction_directives>
+    --- NEW MED-RISK 修正要求 ---
+
+    1. Q4交叉验证的患者级折叠：将ALG-Q4第1.1步的数据划分从记录级改为患者级。
+       具体地：按孕妇ID分层抽样划分5折，确保同一孕妇的所有记录在同一折中。
+       这要求将605条记录按患者ID聚合成240个群组再进行折叠。
+       同时在验证协议中明确标注"基于个体的5折分层交叉验证"。
+
+    2. GPR均值函数一致性：修正ALG-Q2伪代码第1.1步，使其与数学模型第429行一致。
+       若Q1选定的LMM模型为M3(含交互项)，均值函数须包含β₅·(GW × BMI_i)。
+       建议在伪代码中添加条件分支：
+       IF Q1选定的模型包含GW×BMI交互项:
+         m(GW)=β̂₀+β̂₁·GW+β̂₂·GW²+β̂₃·BMI_i+β̂₄·H_i+β̂₅·(GW×BMI_i)
+       ELSE:
+         m(GW)=β̂₀+β̂₁·GW+β̂₂·GW²+β̂₃·BMI_i+β̂₄·H_i
+
+    --- NEW LOW-RISK 记录要求 ---
+
+    3. P_penalty的t≥t_ideal保护：在GA伪代码的P_penalty计算前增加条件判断：
+       IF t_g < t_ideal THEN P_penalty = 0
+
+    4. 堆叠评估协议明确化：在Q4的评估部分补充具体机制描述——
+       (a) 嵌套5折交叉验证的具体步骤，或
+       (b) 使用70%/30%训练-测试集划分进行最终评估，
+       并说明元特征生成与元模型评估之间的数据隔离关系。
+  </correction_directives>
+
+  <recommendation>
+    <![CDATA[
+    原19条审计意见已全部正确修正。修订版模型设计在假设合理性、量纲一致性、
+    算法明确性和复杂度控制方面有实质性提升。
+
+    新发现的4个问题均为本次修正引入的次级问题：
+    - 2个Med-risk(数据泄露风险、模型-伪代码不一致)
+    - 2个Low-risk(边界条件、协议明确性)
+
+    不存在High-risk漏洞。建议APPROVED以进入Phase 2代码实现阶段，
+    但要求在代码实现中优先解决Med-risk问题#1(患者级CV折叠)和#2(GPR均值函数一致性)。
+    ]]>
+  </recommendation>
+
+  <status>APPROVED</status>
+</devils_advocate_report>

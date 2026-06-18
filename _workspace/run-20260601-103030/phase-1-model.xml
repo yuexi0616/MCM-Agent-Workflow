@@ -1,0 +1,952 @@
+<model_design>
+
+<problem_analysis>
+
+## 核心难点识别
+
+1. **三维遮挡判定的高效计算**：每时刻需对导弹-目标圆柱上所有采样点做线段-球体相交测试，若逐点遍历则计算量巨大（300个离散点 × 2个圆周 × 多朵云团 × 时间采样点）。
+2. **多弹幕时序协调**（Q3/Q4/Q5）：多朵云团的遮蔽区间可能重叠或留有间隙，目标函数（总遮蔽时长）是多个区间的并集测度，非凸、不连续、不可微，且依赖云团投放/起爆时刻与导弹位置的复杂几何耦合。
+3. **高维优化**（Q4: 12维, Q5: 决策变量总数随弹数线性增长）：直接做全局搜索面临维度灾难。
+4. **问题类型判定**：Q1 为确定性机理计算（无优化），Q2-Q5 均为**连续决策变量的非凸黑箱优化问题**，目标函数通过几何模拟求取。
+
+## 降维思路
+
+1. **遮蔽区间连续性**（引自知识库 [[line-sphere-occlusion]] 中的证明）：单朵云团的有效遮蔽时间区间是**连续区间**，故只需二分查找区间端点，无需全时间轴细粒度采样。
+2. **圆柱降维至两圆周**：若能完全遮蔽圆柱上、下底面圆周的全部采样点，则整圆柱被完全遮蔽。将无穷维圆柱面问题降至 600 个离散点。
+3. **分层优化**（Q5，引自 [[hierarchical-optimization]]）：先按空间邻近性分配无人机→导弹，将全局问题分解为 3 个独立子问题（分别针对 M1/M2/M3 的最优遮蔽），再合并取最大交叠时段。
+4. **Q2 低维搜索策略**：4 维问题（θ, v, t_d, t_b）可采用多起点网格搜索 + 局部爬山/Nelder-Mead 收敛，避免进化算法开销。
+
+## 多目标冲突分析
+
+本题为**单目标优化**（最大化总有效遮蔽时长），无多目标冲突。但存在以下内在制衡：
+- 投放越早 → 云团可能消散前导弹尚未到达遮蔽最佳位置
+- 投放越晚 → 导弹可能已越过云团
+- 速度越快 → 无人机可更快到达理想投放点，但投放点精度下降（投放时间窗口变窄）
+- 对于 Q3/Q5，云团**间距过大**（产生间隙）vs **间距过小**（重叠浪费）的权衡
+
+## 本次已主动避免的历史错误
+
+- **ERR-003 (ambiguous_algorithm)**：算法流程将给出每个步骤的输入、输出、终止条件和参数，确保代码手无需猜测
+- **ERR-004 (计算可行性)**：Q2 多起点搜索控制在约 10^4 次目标函数评估内，DE 种群规模 ≤ 100、迭代 ≤ 200，评估总量 ≤ 2×10^4，单次评估（600 点线段球交）约 10^5 浮点运算，总量约 10^9 量级，在竞赛时限内可行
+- **ERR-005 (模型定义矛盾)**：优化目标函数严格使用罚函数表达约束，与算法实现中的约束处理方式一致
+- **ERR-009 (符号管理)**：所有符号均进入符号表，记法统一
+- **M-20260530-001 (dimension_mismatch)**：每个公式的左右两侧量纲已逐项核对
+- **M-20260530-004 (missing_assumption)**：每条假设均给出物理或几何依据
+
+</problem_analysis>
+
+<assumptions>
+
+1. **假设一：导弹做匀速直线运动**（合理性说明：赛题明确"导弹飞行速度 300 m/s"且"飞行方向直指假目标"，导弹在末段惯性飞行阶段可视为匀速直线，忽略末制导机动。该假设与历年优秀论文一致。）
+
+2. **假设二：无人机做等高匀速直线运动，瞬时完成航向调整**（合理性说明：赛题原文"可根据需要瞬时调整飞行方向，然后以 70~140 m/s 的速度等高度匀速直线飞行"，"一旦确定就不再调整"，故航向切换时间为零，飞行过程无变速/变高。）
+
+3. **假设三：烟幕干扰弹脱离无人机后仅在重力作用下运动，无空气阻力影响水平速度**（合理性说明：烟幕弹质量较大，在短时间（数秒）自由落体过程中水平方向空气阻力远小于重力作用。且赛题仅提及"在重力作用下运动"，未要求考虑空气阻力。该假设保守估计了炸弹落地前的水平位移，对实际遮蔽效果影响有限。）
+
+4. **假设四：烟幕云团起爆后瞬时形成半径 R_s=10m 的均匀球状遮蔽体，持续 T_c=20s，以 v_sink=3 m/s 匀速下沉**（合理性说明：赛题原文给定参数。）
+
+5. **假设五：导弹对真目标的"发现"判定为几何可见性——若导弹位置到真目标圆柱表面任一点的线段未被任何云团拦截，则目标被发现；只要有一个表面点未被遮挡，即视为遮蔽失效**（合理性说明：导弹传感器分辨率通常足够分辨圆柱边缘特征，保守地取"全遮蔽"为有效遮蔽条件。该定义与优秀论文一致。）
+
+6. **假设六：仅需检验圆柱上、下底面圆周的遮蔽状态即可判定整圆柱的遮蔽状态**（合理性说明：引自 [[line-sphere-occlusion]] 中优秀论文的证明——圆柱侧面上任意点到导弹的视线必然穿过上/下底面圆周某点的视线所扫过的扇区，故两圆周全遮蔽蕴含整圆柱全遮蔽。该引理在球状遮挡体场景下成立。）
+
+7. **假设七：云团之间无光学相互作用，多朵云团的遮蔽效果为各云团遮蔽效果的并集**（合理性说明：烟幕为物理遮挡而非干涉/衍射效应，云团间不存在协同增强或减弱的物理机制。遮蔽效果的并集特性由"任一云团遮挡即实现遮蔽"的判定逻辑直接导出。）
+
+8. **假设八：重力加速度 g=9.8 m/s²**（合理性说明：标准重力加速度，接近中纬度海平面值。）
+
+</assumptions>
+
+<symbol_table>
+
+| 符号 | 含义 | 单位 |
+|------|------|------|
+| $i$ | 导弹编号，$i \in \{1,2,3\}$ | — |
+| $j$ | 无人机编号，$j \in \{1,2,3,4,5\}$ | — |
+| $k$ | 烟幕弹序号，$k \in \{1,2,\ldots,K_j\}$ | — |
+| $K_j$ | 无人机 $j$ 投放的烟幕弹总数 | — |
+| $\mathbf{M}_i(0) = (x_{i0}, y_{i0}, z_{i0})$ | 导弹 $i$ 的初始位置 | m |
+| $\mathbf{d}_i$ | 导弹 $i$ 飞行方向单位向量（指向假目标原点） | — |
+| $v_m = 300$ | 导弹飞行速率 | m/s |
+| $\mathbf{M}_i(t)$ | 导弹 $i$ 在时刻 $t$ 的位置 | m |
+| $\mathbf{F}_j = (X_j, Y_j, Z_j)$ | 无人机 $j$ 的初始位置 | m |
+| $\theta_j$ | 无人机 $j$ 的航向角（相对于 $+x$ 轴，逆时针为正） | rad |
+| $v_j$ | 无人机 $j$ 的飞行速率 | m/s |
+| $\mathbf{P}_j(t)$ | 无人机 $j$ 在时刻 $t$ 的位置 | m |
+| $t_{d,jk}$ | 无人机 $j$ 投放第 $k$ 枚烟幕弹的时刻 | s |
+| $t_{b,jk}$ | 第 $(j,k)$ 枚烟幕弹的起爆时刻 | s |
+| $\Delta t_{jk} = t_{b,jk} - t_{d,jk}$ | 第 $(j,k)$ 枚弹的坠落时长 | s |
+| $g = 9.8$ | 重力加速度 | m/s² |
+| $\mathbf{B}_{jk}$ | 第 $(j,k)$ 枚弹的起爆位置（云团初始中心） | m |
+| $v_{\text{sink}} = 3$ | 云团中心匀速下沉速率 | m/s |
+| $R_s = 10$ | 云团有效遮蔽半径 | m |
+| $T_c = 20$ | 云团有效遮蔽持续时间 | s |
+| $\mathbf{C}_{jk}(t)$ | 第 $(j,k)$ 朵云团在时刻 $t$ 的中心位置 | m |
+| $r_t = 7$ | 真目标圆柱底面半径 | m |
+| $H_t = 10$ | 真目标圆柱高度 | m |
+| $\mathbf{O}_t = (0, 200, 0)$ | 真目标下底面圆心 | m |
+| $N_\phi = 300$ | 底面圆周离散采样点数 | — |
+| $\mathbf{T}_l^{(b)}, \mathbf{T}_l^{(t)}$ | 下底面/上底面圆周上的第 $l$ 个采样点 | m |
+| $\mathcal{O}_{jk}$ | 第 $(j,k)$ 朵云团的有效遮蔽时间区间（连续） | s |
+| $\mathcal{O}_{\text{total}}$ | 全体云团产生的总有效遮蔽时间的并集 | s |
+| $T_{\text{eff}}$ | 总有效遮蔽时长 | s |
+| $L(s; \mathbf{A}, \mathbf{B})$ | 从点 $\mathbf{A}$ 到点 $\mathbf{B}$ 的参数化线段，$s \in [0,1]$ | — |
+| $\tau_{d,\min} = 1$ | 同机相邻投弹最小间隔 | s |
+| $v_{\min}=70, v_{\max}=140$ | 无人机速率范围 | m/s |
+
+</symbol_table>
+
+<mathematical_model>
+
+### 1. 统一运动学模型 (Kinematic Framework)
+
+#### 1.1 导弹运动
+
+导弹 $i$ 以恒定速率 $v_m=300$ m/s 直指假目标原点 $(0,0,0)$ 飞行。飞行方向单位向量：
+
+$$\mathbf{d}_i = -\frac{\mathbf{M}_i(0)}{\|\mathbf{M}_i(0)\|} = -\frac{(x_{i0}, y_{i0}, z_{i0})}{\sqrt{x_{i0}^2 + y_{i0}^2 + z_{i0}^2}} \quad [\text{无量纲}]$$
+
+导弹 $i$ 在时刻 $t \geq 0$ 的位置：
+
+$$\boxed{\mathbf{M}_i(t) = \mathbf{M}_i(0) + v_m t \cdot \mathbf{d}_i} \quad [\text{m}]$$
+
+各导弹初始位置与方向向量的具体数值见 `problem_data.json`。
+
+#### 1.2 无人机运动
+
+无人机 $j$ 在 $t=0$ 时刻（警戒雷达发现来袭导弹）受领任务，瞬时调整航向后，以恒定速率 $v_j$ 做等高直线飞行。无人机 $j$ 在时刻 $t \geq 0$ 的位置：
+
+$$\boxed{\mathbf{P}_j(t) = (X_j + v_j t \cos\theta_j,\; Y_j + v_j t \sin\theta_j,\; Z_j)} \quad [\text{m}]$$
+
+其中 $\theta_j \in [0, 2\pi)$ 为航向角（相对 $+x$ 轴），$v_j \in [v_{\min}, v_{\max}] = [70, 140]$ m/s。
+
+#### 1.3 烟幕弹运动（投放至起爆）
+
+无人机 $j$ 在时刻 $t_{d,jk}$ 投放第 $k$ 枚烟幕弹。投放瞬间，烟幕弹继承无人机的速度矢量。脱机后，烟幕弹仅在重力作用下运动（假设三），其起爆位置为：
+
+$$\boxed{\mathbf{B}_{jk} = \begin{pmatrix}
+X_j + v_j t_{b,jk} \cos\theta_j \\[4pt]
+Y_j + v_j t_{b,jk} \sin\theta_j \\[4pt]
+Z_j - \frac{1}{2}g (t_{b,jk} - t_{d,jk})^2
+\end{pmatrix}} \quad [\text{m}]$$
+
+推导：水平方向以 $v_j(\cos\theta_j, \sin\theta_j)$ 匀速运动，总水平飞行时间 $t_{b,jk}$；垂直方向从 $t_{d,jk}$ 时刻开始自由落体，下落时长 $\Delta t_{jk} = t_{b,jk} - t_{d,jk}$。
+
+#### 1.4 云团中心运动（起爆后）
+
+云团起爆后瞬时形成球体，中心以 $v_{\text{sink}}=3$ m/s 匀速下沉。时刻 $t \geq t_{b,jk}$ 的云团中心位置：
+
+$$\boxed{\mathbf{C}_{jk}(t) = \mathbf{B}_{jk} - \begin{pmatrix} 0 \\ 0 \\ v_{\text{sink}} (t - t_{b,jk}) \end{pmatrix}} \quad [\text{m}]$$
+
+云团仅在 $t \in [t_{b,jk},\; t_{b,jk} + T_c]$ 期间有效（$T_c = 20$ s）。
+
+---
+
+### 2. 遮挡判定模型 (Occlusion Detection)
+
+#### 2.1 线段-球体相交判定
+
+给定导弹位置 $\mathbf{M}$、目标圆柱表面采样点 $\mathbf{T}$、云团中心 $\mathbf{C}$ 及半径 $R_s$。定义从导弹射向目标点的线段（参数 $s \in [0,1]$）：
+
+$$L(s) = \mathbf{M} + s (\mathbf{T} - \mathbf{M})$$
+
+代入球面方程 $\|L(s) - \mathbf{C}\|^2 = R_s^2$，得关于 $s$ 的一元二次方程：
+
+$$\boxed{a s^2 + b s + c = 0}$$
+
+其中：
+
+$$\begin{aligned}
+a &= \|\mathbf{T} - \mathbf{M}\|^2 \quad [\text{m}^2] \\
+b &= 2 (\mathbf{M} - \mathbf{C}) \cdot (\mathbf{T} - \mathbf{M}) \quad [\text{m}^2] \\
+c &= \|\mathbf{M} - \mathbf{C}\|^2 - R_s^2 \quad [\text{m}^2]
+\end{aligned}$$
+
+**量纲一致性验证**：$a$ 为长度平方，$b$ 为两向量点积（长度 × 长度 = 长度平方），$c$ 为长度平方减长度平方，量纲均一致为 $[\text{m}^2]$。方程各项量纲一致。
+
+判别式 $\Delta = b^2 - 4ac$。
+
+**遮挡判定条件**：线段与球体相交的充要条件为：
+
+$$\boxed{\Delta \geq 0 \quad \land \quad \frac{-b - \sqrt{\Delta}}{2a} \leq 1 \quad \land \quad \frac{-b + \sqrt{\Delta}}{2a} \geq 0}$$
+
+解释：
+- $\Delta \geq 0$：直线与球有实交点
+- 较小的根 $s_1 = (-b - \sqrt{\Delta})/(2a) \leq 1$：至少一个交点不在线段远端点之外
+- 较大的根 $s_2 = (-b + \sqrt{\Delta})/(2a) \geq 0$：至少一个交点不在线段近端点之外
+
+当 $c \leq 0$（导弹在球内）时自动满足 $s_2 \geq 0$；当 $a + b + c \leq 0$（目标点在球内）时自动满足 $s_1 \leq 1$。
+
+#### 2.2 目标圆柱面离散化
+
+基于假设六，将圆柱面降维至上下两底面的圆周：
+
+$$\begin{aligned}
+\mathbf{T}_l^{(b)} &= \bigl(r_t \cos \phi_l,\; 200 + r_t \sin \phi_l,\; 0\bigr) \quad [\text{m}] \\
+\mathbf{T}_l^{(t)} &= \bigl(r_t \cos \phi_l,\; 200 + r_t \sin \phi_l,\; H_t\bigr) \quad [\text{m}]
+\end{aligned}$$
+
+其中 $\phi_l = 2\pi l / N_\phi$，$l = 0, 1, \ldots, N_\phi-1$，$N_\phi = 300$，$r_t = 7$ m，$H_t = 10$ m。
+
+#### 2.3 单朵云团对目标的遮蔽判定
+
+在时刻 $t$（$t \in [t_{b,jk}, t_{b,jk}+T_c]$），云团 $(j,k)$ 对来袭导弹 $i$ 形成**完全遮蔽**当且仅当：
+
+$$\boxed{\text{Occlude}(i, j, k, t) = \bigwedge_{l=0}^{N_\phi-1} \Bigl[ \text{SegmentIntersect}\bigl(\mathbf{M}_i(t), \mathbf{T}_l^{(b)}, \mathbf{C}_{jk}(t), R_s\bigr) \Bigr] \;\land\; \bigwedge_{l=0}^{N_\phi-1} \Bigl[ \text{SegmentIntersect}\bigl(\mathbf{M}_i(t), \mathbf{T}_l^{(t)}, \mathbf{C}_{jk}(t), R_s\bigr) \Bigr]}$$
+
+其中 $\text{SegmentIntersect}(\mathbf{M}, \mathbf{T}, \mathbf{C}, R_s)$ 返回真当且仅当 2.1 节判定条件成立。
+
+#### 2.4 多朵云团的联合遮蔽判定
+
+基于假设七（并集遮蔽），在时刻 $t$，对导弹 $i$ 而言目标被完全遮蔽当且仅当**存在至少一朵**有效云团形成完全遮蔽：
+
+$$\boxed{\text{Occluded}(i, t) = \bigvee_{(j,k):\, t \in [t_{b,jk},\, t_{b,jk}+T_c]} \text{Occlude}(i, j, k, t)}$$
+
+---
+
+### 3. 有效遮蔽时长计算 (Effective Occlusion Duration)
+
+#### 3.1 单朵云团的遮蔽区间
+
+对于给定的导弹 $i$ 和云团 $(j,k)$，定义遮蔽指示函数在时域上的连续区间。基于遮蔽区间连续性的数学性质（已由优秀论文严格证明——导弹和云团均做匀速/匀变速运动时，遮蔽状态仅在线段-球体恰好相切时切换），单朵云团的遮蔽区间 $\mathcal{O}_{jk}$ 为单一连续闭区间（或空集）：
+
+$$\mathcal{O}_{jk} = \Bigl[t_{jk}^{\text{start}},\; t_{jk}^{\text{end}}\Bigr] \subset [t_{b,jk},\; t_{b,jk}+T_c]$$
+
+端点通过二分查找确定（见算法流程 4.1 节）。
+
+#### 3.2 多朵云团的遮蔽区间并集
+
+来袭导弹 $i$ 的总有效遮蔽时长 $T_{\text{eff}}^{(i)}$ 为所有云团遮蔽区间的并集测度：
+
+$$\boxed{T_{\text{eff}}^{(i)} = \mu\left( \bigcup_{j,k} \mathcal{O}_{jk} \right) = \sum_{m=1}^{M} (t_m^{\text{end}} - t_m^{\text{start}})}$$
+
+其中 $\mu(\cdot)$ 为 Lebesgue 测度（即区间总长度），$M$ 为合并后的不相交遮蔽区间个数。区间合并算法（见 4.2 节）将重叠或相邻区间合并后求和。
+
+---
+
+### 4. 问题一：单机单弹给定参数验证 (Q1 — Deterministic)
+
+#### 4.1 给定决策变量
+
+| 变量 | 值 | 说明 |
+|------|-----|------|
+| $j$ | FY1 | 无人机编号 |
+| $i$ | M1 | 来袭导弹 |
+| $\theta_1$ | $\pi$ | 朝向假目标（$-x$ 方向），$\cos\pi = -1, \sin\pi = 0$ |
+| $v_1$ | $120$ m/s | 给定速率 |
+| $t_{d,11}$ | $1.5$ s | 投放时刻 |
+| $t_{b,11}$ | $5.1$ s | 起爆时刻（$1.5 + 3.6$） |
+| $K_1$ | 1 | 仅投 1 枚 |
+
+#### 4.2 计算步骤
+
+**Step 1**：计算导弹 M1 轨迹 $\mathbf{M}_1(t)$ 和云团中心轨迹 $\mathbf{C}_{11}(t)$。
+
+**Step 2**：在 $t \in [5.1, 25.1]$ 内寻找遮蔽区间（若存在）。利用遮蔽连续性，通过以下步骤确定区间端点：
+
+- **定位 $t_{\text{start}}$**：从 $t_{b,11}=5.1$ 开始，以步长 $\delta t = 0.1$ s 向前推进，找到第一个满足 $\text{Occlude}(1, 1, 1, t) = \text{True}$ 的时刻 $t_a$；然后以 $t_a - 0.1$ 为下界、$t_a$ 为上界，对 $[t_a-0.1, t_a]$ 二分查找至精度 $\varepsilon = 10^{-3}$ s，得到 $t_{11}^{\text{start}}$。
+
+- **定位 $t_{\text{end}}$**：从 $t_{11}^{\text{start}}$ 开始继续推进，找到第一个 $\text{Occlude}$ 变回 False 的时刻 $t_b$；在 $[t_b-0.1, t_b]$ 二分得 $t_{11}^{\text{end}}$。
+
+**Step 3**：输出 $T_{\text{eff}}^{(1)} = t_{11}^{\text{end}} - t_{11}^{\text{start}}$。
+
+---
+
+### 5. 问题二：单机单弹策略优化 (Q2 — 4D Optimization)
+
+#### 5.1 决策变量与约束
+
+$$\begin{aligned}
+\text{minimize} \quad & -T_{\text{eff}}^{(1)}(\theta_1, v_1, t_{d,11}, t_{b,11}) \\
+\text{subject to} \quad & \theta_1 \in [0, 2\pi) \\
+& v_1 \in [70, 140] \quad [\text{m/s}] \\
+& t_{d,11} \geq 0 \quad [\text{s}] \\
+& t_{b,11} > t_{d,11} \quad [\text{s}] \\
+& t_{b,11} \leq t_{\text{max}} \quad (\text{云团需在导弹飞越拦截区前形成})
+\end{aligned}$$
+
+其中 $t_{\text{max}}$ 为导弹到达目标区域的时间上界，保守取 $t_{\text{max}} = \|\mathbf{M}_1(0)\| / v_m \approx 67$ s。$T_{\text{eff}}^{(1)}(\cdot)$ 的定义见第 3 节。
+
+目标函数 $T_{\text{eff}}^{(1)}$ 是通过几何模拟求取的黑箱函数，不可微、非凸，但维度较低（4 维），适合用**多起点直接搜索**策略。
+
+#### 5.2 多起点网格搜索 + 局部爬山策略
+
+**第一阶段：粗粒度多起点网格搜索**
+
+在 4 维决策空间中布设网格：
+
+| 变量 | 范围 | 网格数 | 步长 |
+|------|------|--------|------|
+| $\theta_1$ | $[0, 2\pi)$ | 36 | $\pi/18$ (10°) |
+| $v_1$ | $[70, 140]$ | 8 | 10 m/s |
+| $t_{d,11}$ | $[0, 15]$ | 16 | 1 s |
+| $t_{b,11}$ | $[t_{d,11}+1, 40]$ | — | 由 $t_{d,11}$ 确定 |
+
+总网格点数 $\approx 36 \times 8 \times 16 \times 10 \approx 4.6 \times 10^4$。由于单次评估耗时约 0.1--1 ms（600 点线段球交），总计算量约 5--50 s，在竞赛环境可承受。对于不可行组合（如起爆后导弹尚未进入有效遮蔽距离），快速跳过。
+
+选取目标函数值最高的前 $N_{\text{top}} = 20$ 个网格点作为局部搜索起点。
+
+**第二阶段：Nelder-Mead 局部爬山**
+
+从每个 Top-20 起点出发，运行 Nelder-Mead 单纯形搜索（无梯度）至收敛容差 $\tau = 10^{-3}$。4 维 Nelder-Mead 每次迭代评估 $O(d)$ 次（约 5--6 次），收敛约需 50--200 次迭代，20 个起点总计约 $10^4$ 次额外评估。
+
+取所有局部最优中的全局最佳。
+
+**第三阶段：PSO 交叉验证**
+
+以 40 粒子、100 次迭代运行 PSO，验证 Nelder-Mead 搜索结果是否接近全局最优。若 PSO 结果优于 Nelder-Mead 最佳结果 $> 5\%$，则采纳 PSO 结果。
+
+---
+
+### 6. 问题三：单机三弹时序优化 (Q3 — Single UAV, Multi-Bomb)
+
+#### 6.1 决策变量与约束
+
+无人机 FY1 投放 $K_1 = 3$ 枚烟幕弹，航向 $\theta_1$ 和速率 $v_1$ 对所有弹幕共用，每枚弹有独立的投放时刻 $t_{d,1k}$ 和起爆时刻 $t_{b,1k}$。决策变量共 $2 + 3 \times 2 = 8$ 维。
+
+$$\begin{aligned}
+\text{minimize} \quad & -T_{\text{eff}}^{(1)}(\theta_1, v_1, \{t_{d,1k}\}_{k=1}^{3}, \{t_{b,1k}\}_{k=1}^{3}) \\
+\text{subject to} \quad & \theta_1 \in [0, 2\pi) \\
+& v_1 \in [70, 140] \\
+& t_{d,1k} \geq 0, \quad t_{b,1k} > t_{d,1k} \quad \forall k \\
+& t_{d,1(k+1)} - t_{d,1k} \geq \tau_{d,\min} = 1 \quad \forall k = 1, 2 \\
+& t_{b,1(k+1)} \geq t_{b,1k} \quad (\text{起爆时序约束})
+\end{aligned}$$
+
+#### 6.2 差分进化算法 (DE)
+
+鉴于 8 维连续空间且目标函数黑箱，采用差分进化（DE，引自 [[differential-evolution]]）。
+
+**编码方案**：
+
+$$\mathbf{x} = [\theta_1, v_1, t_{d,11}, t_{d,12}, t_{d,13}, t_{b,11}, t_{b,12}, t_{b,13}] \in \mathbb{R}^8$$
+
+**边界修复**：对违反约束的个体，在评估前进行修复：
+- $v_1 \leftarrow \text{clip}(v_1, 70, 140)$
+- $\theta_1 \leftarrow \theta_1 \bmod 2\pi$
+- 对投放时间施加排序修复：排序后若间隔不足 1s，向后平移以满足约束
+- $t_{b,1k} \leftarrow \max(t_{b,1k},\; t_{d,1k} + \varepsilon)$，其中 $\varepsilon = 0.01$ s
+
+**DE 参数**：
+
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| 种群规模 $N_p$ | 60 | $N_p \approx 7.5 \times D$（$D=8$） |
+| 缩放因子 $F$ | 0.8 | DE/rand/1 变异 |
+| 交叉概率 $CR$ | 0.9 | 二项式交叉 |
+| 最大代数 $G_{\max}$ | 150 | 收敛条件：连续 30 代最优值无改进 |
+| 独立运行次数 | 5 | 取最优结果，应对多模态 |
+
+---
+
+### 7. 问题四：三机单弹空间协同 (Q4 — Multi-UAV, Single-Bomb)
+
+#### 7.1 决策变量
+
+FY1、FY2、FY3 各投 1 枚弹，每架无人机有独立航向 $\theta_j$ 和速率 $v_j$（$j=1,2,3$），每枚弹有独立投放/起爆时刻。共 $3 \times (2 + 2) = 12$ 维。
+
+$$\mathbf{x} = [\theta_1, v_1, t_{d,11}, t_{b,11},\; \theta_2, v_2, t_{d,21}, t_{b,21},\; \theta_3, v_3, t_{d,31}, t_{b,31}]$$
+
+约束同上（$K_j=1$，无弹间约束）。
+
+#### 7.2 优化策略：DE + 降维分解
+
+12 维直接优化难度较高。采用两步策略：
+
+**Step 1 — 降维分解**：将 3 架无人机的参数分为 3 组，分别对各组做 4 维优化（同 Q2 方法），得到每组的最优解作为 DE 的优质初始种群成员，与随机个体混合形成初始种群。
+
+**Step 2 — 差分进化**：DE 参数 $N_p = 100$，$F = 0.8$，$CR = 0.9$，$G_{\max} = 200$，独立运行 3 次。
+
+**协同效应处理**：由于多朵云团遮蔽效果为并集，各无人机的最优参数间存在弱耦合（某朵云团的遮蔽区间可能与另一朵重叠而"浪费"）。DE 的全局搜索天然捕获这种协同效应。
+
+---
+
+### 8. 问题五：多机多弹多目标 (Q5 — Full Scenario)
+
+#### 8.1 分层优化框架 (Hierarchical Optimization)
+
+采用 [[hierarchical-optimization]] 描述的三层分解策略。
+
+**Layer 1 — 任务分配（UAV → Missile）**
+
+基于空间邻近性原则，将 5 架无人机分配给 3 枚来袭导弹：
+
+$$\text{Alloc}: \{1,\ldots,5\} \to \{1,2,3\}$$
+
+分配函数 $\text{Alloc}(j) = i$ 表示无人机 $j$ 负责干扰导弹 $i$。
+
+基于初始几何的启发式分配（通过无人机与导弹飞行轨迹的最短距离排序）：
+
+| 导弹 | 轨迹特征 | 候选 UAV |
+|------|----------|----------|
+| M1 | 沿 $x$ 轴（$y=0$） | FY1(17800,0,1800), FY2(12000,1400,1400) |
+| M2 | $y>0$ 方向 | FY2(12000,1400,1400), FY4(11000,2000,1800) |
+| M3 | $y<0$ 方向 | FY3(6000,-3000,700), FY5(13000,-2000,1300) |
+
+为增强全局性，对 FY2（处于 M1 和 M2 路径之间）枚举两种分配方案：
+- 方案 A：FY1→M1, FY2→M2, FY3→M3, FY4→M2, FY5→M3
+- 方案 B：FY1→M1, FY2→M1, FY3→M3, FY4→M2, FY5→M3
+- 方案 C：FY1→M1, FY2→M3, FY3→M3, FY4→M2, FY5→M2
+
+每种方案下进入 Layer 2。
+
+**Layer 2 — 逐导弹子问题优化**
+
+对于分配方案 $A$ 下导弹 $i$ 的分配无人机集合 $\mathcal{J}_i$，求解子问题：此子问题为 Q3 或 Q4 的泛化形式。各子问题独立求解后，得到对应导弹 $i$ 的最大遮蔽时长 $T_{\text{eff}}^{(i)}$。
+
+由于三枚导弹从不同方向来袭，其遮蔽需求在时域上可能重叠。每个子问题采用 DE 求解（同 Q3 参数配置），独立运行。
+
+**Layer 3 — 全局合并与调整**
+
+三个子问题的解合并为全局解。因每架 UAV 在给定分配中只服务于一个导弹，Layer 1 分配后已天然解耦，无需额外协调。
+
+总目标：
+
+$$T_{\text{eff}}^{\text{global}} = \min_{i \in \{1,2,3\}} T_{\text{eff}}^{(i)}$$
+
+取三枚导弹中的最短遮蔽时长作为全局指标（"木桶效应"——任一导弹突破遮蔽即任务失败）。该指标驱动 Layer 1 中的分配倾向于平衡各导弹的遮蔽时长。
+
+---
+
+### 9. 目标函数评估子程序（所有问题的通用底层）
+
+所有优化问题共享以下目标函数评估流程。输入为完整决策向量 $\mathbf{x}$，输出为 $T_{\text{eff}}$。
+
+```
+FUNCTION EvaluateOcclusionTime(x, missile_idx):
+    // 1. 解码决策向量，得到 θ_j, v_j, {t_d,jk}, {t_b,jk}
+    // 2. 生成时间轴采样点
+    //    t_min = min_k(t_b,jk)  // 最早起爆时刻
+    //    t_max = max_k(t_b,jk) + T_c  // 最晚失效时刻
+    //    t_max = min(t_max, T_flight)  // 导弹到达目标区前
+    //    以 δt = 0.05 s 步长采样，约 500-1340 个点
+    // 3. 对每个 t，调用 Occluded(missile_idx, t) 判定
+    // 4. 扫描时间轴，标记遮蔽/未遮蔽的切换点
+    // 5. 对每个遮蔽区间做局部二分精确化端点（至 1e-3 s）
+    // 6. 合并重叠区间，求和
+    RETURN T_eff
+```
+
+---
+
+### 10. 量纲一致性总结
+
+| 方程 | 左侧量纲 | 右侧量纲 | 一致性 |
+|------|---------|---------|--------|
+| 导弹位置 | [m] | [m] + [m/s] × [s] = [m] | ✓ |
+| 无人机位置 | [m] | [m] + [m/s] × [s] = [m] | ✓ |
+| 起爆位置 (水平) | [m] | [m] + [m/s] × [s] = [m] | ✓ |
+| 起爆位置 (垂直) | [m] | [m] − [m/s²] × [s²] = [m] | ✓ |
+| 云团中心 | [m] | [m] − [m/s] × [s] = [m] | ✓ |
+| 交点方程系数 $a$ | [m²] | $\|\mathbf{d}\|^2$ | ✓ |
+| 交点方程系数 $b$ | [m²] | $(\mathbf{M}-\mathbf{C})\cdot(\mathbf{T}-\mathbf{M})$ | ✓ |
+| 交点方程系数 $c$ | [m²] | $\|\mathbf{M}-\mathbf{C}\|^2 - R_s^2$ | ✓ |
+| 遮蔽时长 | [s] | $t_{\text{end}} - t_{\text{start}}$ | ✓ |
+
+</mathematical_model>
+
+<algorithm_flow>
+
+### 算法 1：Q1 确定性遮蔽时长计算
+
+```
+ALGORITHM Q1_ComputeOcclusionDuration:
+    INPUT:
+        missile_id = 1
+        uav_id = 1
+        theta = π
+        v = 120
+        t_d = 1.5
+        t_b = 5.1
+
+    OUTPUT:
+        T_eff  -- 有效遮蔽时长 (s)
+        [t_start, t_end]  -- 遮蔽区间端点 (s)
+
+    PARAMETERS:
+        g = 9.8, v_sink = 3, R_s = 10, T_c = 20
+        N_phi = 300  -- 圆周离散点数
+        r_t = 7, H_t = 10, target_center = (0, 200, 0)
+        N_t = 300  -- 时间扫描采样点数
+
+    STEPS:
+    1. 初始化:
+       M1_0 = (20000, 0, 2000)
+       d1 = normalize(-M1_0)  // 指向原点的单位向量
+       v_m = 300
+       FY1_0 = (17800, 0, 1800)
+
+    2. 计算云团中心轨迹参数:
+       B = (FY1_0.x + v*cos(theta)*t_b,
+            FY1_0.y + v*sin(theta)*t_b,
+            FY1_0.z - 0.5*g*(t_b - t_d)^2)
+       // 数值: B = (17800 + 120*cos(π)*5.1, 0 + 0, 1800 - 4.9*3.6^2)
+       //         = (17800 - 612, 0, 1800 - 63.504)
+       //         = (17188, 0, 1736.496)
+
+    3. 生成目标表面采样点 (600个点):
+       FOR l = 0 TO N_phi-1:
+           phi = 2π * l / N_phi
+           T_bottom[l] = (r_t*cos(phi), 200 + r_t*sin(phi), 0)
+           T_top[l]    = (r_t*cos(phi), 200 + r_t*sin(phi), H_t)
+
+    4. 时间轴粗扫描:
+       t_min = t_b = 5.1
+       t_max = t_b + T_c = 25.1
+       dt_coarse = (t_max - t_min) / N_t  // ≈ 0.067s
+
+       occlusion_flag = []  // 长度为 N_t+1 的布尔数组
+       FOR n = 0 TO N_t:
+           t = t_min + n * dt_coarse
+           M = (M1_0.x + v_m * d1.x * t,
+                M1_0.y + v_m * d1.y * t,
+                M1_0.z + v_m * d1.z * t)
+           C = (B.x, B.y, B.z - v_sink * (t - t_b))
+           occlusion_flag[n] = CheckFullOcclusion(M, C, R_s, T_bottom, T_top)
+
+    5. 区间检测:
+       扫描 occlusion_flag 找到 0→1 和 1→0 的切换索引
+       若存在至少一段连续的 True 区间:
+           取第一个 True 区间的左右粗边界 [n_start, n_end]
+           在 [t(n_start-1), t(n_start)] 内二分查找精确的 t_start (精度 1e-3)
+           在 [t(n_end), t(n_end+1)] 内二分查找精确的 t_end (精度 1e-3)
+           T_eff = t_end - t_start
+       否则:
+           T_eff = 0, t_start = t_end = None
+
+    6. RETURN T_eff, t_start, t_end
+
+
+FUNCTION CheckFullOcclusion(M, C, R_s, T_bottom, T_top):
+    // 检查导弹M到目标所有表面点的线段是否都与球C相交
+    FOR l = 0 TO N_phi-1:
+        IF NOT SegmentIntersectsSphere(M, T_bottom[l], C, R_s):
+            RETURN False
+        IF NOT SegmentIntersectsSphere(M, T_top[l], C, R_s):
+            RETURN False
+    RETURN True
+
+
+FUNCTION SegmentIntersectsSphere(P1, P2, C, R):
+    // 见数学模型 2.1 节
+    d = P2 - P1
+    v_vec = P1 - C
+    a = dot(d, d)
+    b = 2 * dot(v_vec, d)
+    c = dot(v_vec, v_vec) - R^2
+
+    // 边界情况处理
+    IF a < 1e-12:  // d ≈ 0，P1 ≈ P2
+        RETURN (c <= 0)  // 点是否在球内
+
+    delta = b^2 - 4*a*c
+    IF delta < 0: RETURN False
+
+    sqrt_delta = sqrt(delta)
+    s1 = (-b - sqrt_delta) / (2*a)
+    s2 = (-b + sqrt_delta) / (2*a)
+
+    RETURN (s1 <= 1.0 AND s2 >= 0.0)
+```
+
+---
+
+### 算法 2：Q2 4D 多起点网格搜索 + Nelder-Mead
+
+```
+ALGORITHM Q2_Optimize:
+    INPUT: (无，使用全局常量)
+    OUTPUT:
+        best_theta, best_v, best_td, best_tb
+        best_T_eff
+
+    PARAMETERS:
+        N_theta = 36, N_v = 8, N_td = 16, N_tb_per_td = 10
+        N_top = 20  -- 局部搜索起点数
+        NM_tol = 1e-3  -- Nelder-Mead 收敛容差
+        NM_max_iter = 200
+
+    STEPS:
+    1. 粗粒度网格搜索:
+        grid_best = []  // [(T_eff, theta, v, td, tb), ...]
+
+        FOR i_theta = 0 TO N_theta-1:
+            theta = i_theta * 2π / N_theta
+            FOR i_v = 0 TO N_v-1:
+                v = 70 + i_v * 10
+                FOR i_td = 0 TO N_td-1:
+                    td = i_td * 1.0  // 0, 1, 2, ..., 15
+                    FOR i_tb = 0 TO N_tb_per_td-1:
+                        tb = td + 1.0 + i_tb * 2.0  // td+1, td+3, ..., td+19
+
+                        // 快速预筛选：若 tb > 67（导弹到达时间），跳过
+                        IF tb > 67: CONTINUE
+
+                        // 计算目标函数
+                        T_eff = EvaluateOcclusionTime(
+                            missile_idx=1,
+                            uav_params=[(theta, v, [td], [tb])]
+                        )
+
+                        grid_best.append((T_eff, theta, v, td, tb))
+
+        // 按 T_eff 降序排序
+        SORT grid_best BY T_eff DESC
+        top_starts = grid_best[0:N_top]
+
+    2. Nelder-Mead 局部爬山:
+        local_best = []
+        FOR each (_, theta0, v0, td0, tb0) IN top_starts:
+            x0 = [theta0, v0, td0, tb0]
+            x_opt = NelderMead(
+                f=(x => -EvaluateOcclusionTime_4var(x[0], x[1], x[2], x[3])),
+                x0=x0,
+                tol=NM_tol,
+                max_iter=NM_max_iter,
+                bounds=[(0, 2π), (70, 140), (0, 67), (x0[2]+0.01, 67)]
+            )
+            T_opt = -f(x_opt)
+            local_best.append((T_opt, x_opt))
+
+        SORT local_best BY T_opt DESC
+
+    3. PSO 交叉验证 (可选):
+        // 若 local_best[0].T_opt < 4.0，运行 PSO 验证
+        pso_result = PSO(
+            dim=4,
+            n_particles=40,
+            n_iter=100,
+            bounds=[(0, 2π), (70, 140), (0, 67), (td_min, 67)],
+            objective=(x => -EvaluateOcclusionTime_4var(...))
+        )
+        IF pso_result.T_eff > local_best[0].T_opt * 1.05:
+            ADOPT pso_result
+        ELSE:
+            ADOPT local_best[0]
+
+    4. RETURN best_theta, best_v, best_td, best_tb, best_T_eff
+```
+
+---
+
+### 算法 3：Q3 差分进化 (DE) 8 维优化
+
+```
+ALGORITHM Q3_DE_Optimize:
+    INPUT: (无)
+    OUTPUT:
+        best_solution = [theta, v, td1, td2, td3, tb1, tb2, tb3]
+        best_T_eff
+
+    PARAMETERS:
+        Np = 60       // 种群规模
+        F = 0.8       // 缩放因子
+        CR = 0.9      // 交叉概率
+        G_max = 150   // 最大代数
+        G_stagnant = 30  // 停滞代数阈值
+        n_restarts = 5  // 独立运行次数
+
+    STEPS:
+    1. 总体循环:
+        global_best_T = 0
+        global_best_x = None
+
+        FOR run = 1 TO n_restarts:
+            x_opt, T_opt = DE_SingleRun()
+            IF T_opt > global_best_T:
+                global_best_T = T_opt
+                global_best_x = x_opt
+
+        RETURN global_best_x, global_best_T
+
+
+FUNCTION DE_SingleRun():
+    2. 种群初始化:
+        // 决策变量排列: [theta(0), v(1), td1(2), td2(3), td3(4), tb1(5), tb2(6), tb3(7)]
+        // 索引号与后续代码对应
+
+        population = []
+        FOR p = 1 TO Np:
+            x = float[8]
+            x[0] = uniform(0, 2π)           // theta
+            x[1] = uniform(70, 140)          // v
+            x[2] = uniform(0, 30)            // td1
+            x[3] = uniform(x[2]+1, 25)       // td2 (间隔≥1)
+            x[4] = uniform(x[3]+1, 35)       // td3
+            x[5] = uniform(x[2]+0.01, 40)    // tb1
+            x[6] = uniform(max(x[3]+0.01, x[5]), 50)  // tb2 (>= tb1)
+            x[7] = uniform(max(x[4]+0.01, x[6]), 60)  // tb3 (>= tb2)
+
+            // 评估初始适应度
+            fitness = EvaluateOcclusionTime_8var(x)
+            population.append((x, fitness))
+
+        best_fitness = max_fitness(population)
+        best_x = argmax_x(population)
+        stagnant_count = 0
+
+    3. 主循环:
+        FOR g = 1 TO G_max:
+            new_population = []
+
+            FOR p = 0 TO Np-1:
+                // 3a. 变异: DE/rand/1
+                a, b, c = 从种群中随机选 3 个不同个体 (≠ p)
+                mutant = population[a].x + F * (population[b].x - population[c].x)
+
+                // 3b. 交叉: 二项式交叉
+                trial = copy(population[p].x)
+                j_rand = random_int(0, 7)
+                FOR d = 0 TO 7:
+                    IF random() < CR OR d == j_rand:
+                        trial[d] = mutant[d]
+
+                // 3c. 边界修复
+                trial = RepairSolution(trial)
+
+                // 3d. 评估
+                trial_fitness = EvaluateOcclusionTime_8var(trial)
+
+                // 3e. 选择: 贪心
+                IF trial_fitness > population[p].fitness:
+                    new_population.append((trial, trial_fitness))
+                ELSE:
+                    new_population.append(population[p])
+
+            population = new_population
+
+            // 更新全局最优
+            current_best = max_fitness(population)
+            IF current_best > best_fitness + 1e-6:
+                best_fitness = current_best
+                best_x = argmax_x(population)
+                stagnant_count = 0
+            ELSE:
+                stagnant_count += 1
+
+            // 停滞检测
+            IF stagnant_count >= G_stagnant:
+                BREAK
+
+    4. RETURN best_x, best_fitness
+
+
+FUNCTION RepairSolution(x):
+    // 边界修复 + 时序约束修复
+    x[0] = x[0] MOD (2π)  // theta 周期性
+    x[1] = CLIP(x[1], 70, 140)  // v
+
+    // td 排序并强制间隔 ≥ 1
+    td_indices = [2, 3, 4]
+    SORT td_indices BY x[td_indices] ASCENDING  // 按值排序索引
+    // 注意: 排序后 index 2,3,4 对应最小的 td、次小的 td、最大的 td
+    // 简化实现: 直接对 x[2],x[3],x[4] 排序
+    td_vals = sorted([x[2], x[3], x[4]])
+    FOR k = 1 TO 2:
+        IF td_vals[k] < td_vals[k-1] + 1:
+            td_vals[k] = td_vals[k-1] + 1
+    x[2], x[3], x[4] = td_vals[0], td_vals[1], td_vals[2]
+
+    // tb 约束：tbk > tdk
+    FOR k = 0 TO 2:
+        tb_idx = 5 + k
+        td_val = x[2 + k]
+        IF x[tb_idx] <= td_val:
+            x[tb_idx] = td_val + 0.01
+    // 确保 tb 非递减 (可选项，有助于收敛)
+    FOR k = 1 TO 2:
+        IF x[5+k] < x[5+k-1]:
+            x[5+k] = x[5+k-1]
+
+    RETURN x
+```
+
+---
+
+### 算法 4：Q4/Q5 分层优化框架
+
+```
+ALGORITHM Q5_HierarchicalOptimization:
+    INPUT: (无)
+    OUTPUT:
+        allocation: list of (uav_idx -> missile_idx)
+        solutions_per_missile: list of solutions for M1, M2, M3
+        T_eff_global: min(T_eff_M1, T_eff_M2, T_eff_M3)
+
+    STEPS:
+    1. Layer 1 — 生成候选分配方案:
+        // 基于空间邻近性 (UAV与导弹轨迹的最短距离)
+        missile_trajectories = [(20000,0,2000)->origin,
+                                (19000,600,2100)->origin,
+                                (18000,-600,1900)->origin]
+        uav_positions = [FY1,...,FY5]
+
+        // 方案 A: 自然聚类
+        alloc_A = {FY1:M1, FY2:M2, FY3:M3, FY4:M2, FY5:M3}
+
+        // 方案 B: FY2 配给 M1 (平衡各导弹UAV数)
+        alloc_B = {FY1:M1, FY2:M1, FY3:M3, FY4:M2, FY5:M3}
+
+        // 方案 C: FY2 配给 M3
+        alloc_C = {FY1:M1, FY2:M3, FY3:M3, FY4:M2, FY5:M2}
+
+        candidate_allocations = [alloc_A, alloc_B, alloc_C]
+
+    2. Layer 2 — 对每个方案求解各导弹子问题:
+        best_global = (T_eff=0, alloc=None, solutions=None)
+
+        FOR each alloc IN candidate_allocations:
+            T_eff_per_missile = {}
+            solutions_per_missile = {}
+
+            FOR missile_idx IN [1, 2, 3]:
+                assigned_uavs = {j | alloc(j) == missile_idx}
+                n_uavs = len(assigned_uavs)
+
+                // 判断子问题类型并求解
+                IF n_uavs == 1:
+                    // 单机多弹 → 调用 Q3 DE 求解器
+                    result = Q3_DE_Optimize(
+                        uav_id = assigned_uavs[0],
+                        missile_idx = missile_idx,
+                        max_bombs = 3
+                    )
+                ELIF n_uavs >= 2:
+                    // 多机各投弹 → 扩展的 Q4 DE 求解器
+                    result = MultiUAV_DE_Optimize(
+                        uav_ids = assigned_uavs,
+                        missile_idx = missile_idx,
+                        max_bombs_per_uav = 3
+                    )
+
+                T_eff_per_missile[missile_idx] = result.T_eff
+                solutions_per_missile[missile_idx] = result
+
+            // Layer 3 — 全局指标: 取三枚导弹的最短遮蔽时长
+            T_global = min(T_eff_per_missile.values())
+
+            IF T_global > best_global.T_eff:
+                best_global = (T_global, alloc, solutions_per_missile)
+
+    3. RETURN best_global
+
+
+FUNCTION MultiUAV_DE_Optimize(uav_ids, missile_idx, max_bombs_per_uav):
+    // 泛化 Q4 求解器
+    // 决策变量维度 = sum_{j in uav_ids} (2 + 2*K_j)
+    // 固定 K_j=1（优先），DE 优化（θ_j, v_j, t_d,j, t_b,j）for each j
+    //
+    // 编码: [θ_1, v_1, t_d1, t_b1, θ_2, v_2, t_d2, t_b2, ...]
+    // 维度 = 4 * len(uav_ids)
+    //
+    // DE 参数: Np = 100, F=0.8, CR=0.9, G_max=200, n_restarts=3
+    //
+    // 若结果最优遮蔽时长 < 某阈值, 尝试增加某 UAV 的 K_j 到 2
+    // (额外决策变量: 第2枚弹的 t_d, t_b)
+    ...
+```
+
+---
+
+### 算法 5：时间区间合并（所有问题公用）
+
+```
+FUNCTION MergeIntervals(intervals):
+    // intervals = [(start1, end1), (start2, end2), ...]
+    // 输入可无序，输出为合并后的不相交区间列表
+    INPUT:
+        intervals: list of (float, float)  // 可能重叠或相邻
+
+    OUTPUT:
+        merged: list of (float, float)  // 按 start 升序，不相交
+        total_length: float
+
+    STEPS:
+    1. IF intervals is empty: RETURN ([], 0.0)
+
+    2. SORT intervals BY start ASCENDING
+
+    3. merged = [intervals[0]]
+       FOR i = 1 TO len(intervals)-1:
+           curr_start, curr_end = intervals[i]
+           last_start, last_end = merged[-1]
+
+           IF curr_start <= last_end:  // 重叠或相邻
+               merged[-1] = (last_start, max(last_end, curr_end))
+           ELSE:
+               merged.append((curr_start, curr_end))
+
+    4. total_length = SUM(end - start FOR (start, end) IN merged)
+
+    5. RETURN merged, total_length
+```
+
+---
+
+### 算法 6：遮蔽区间精确定位（二分查找）
+
+```
+FUNCTION FindOcclusionBoundary(M_traj_func, C_traj_func,
+                                T_bottom, T_top, R_s,
+                                t_left, t_right, find_end):
+    // 在 [t_left, t_right] 内二分查找遮蔽状态的切换点
+    // find_end=False: 寻找遮蔽开始点 (False→True)
+    // find_end=True:  寻找遮蔽结束点 (True→False)
+    INPUT:
+        t_left, t_right: 搜索区间 (s), t_left < t_right
+        find_end: bool
+        M_traj_func(t): 返回导弹位置
+        C_traj_func(t): 返回云团中心位置
+
+    OUTPUT:
+        t_boundary: 切换时刻 (精度 ε = 1e-3)
+
+    PARAMETERS:
+        epsilon = 1e-3
+
+    STEPS:
+    1. // 确认区间端点状态不同
+       state_left  = CheckFullOcclusion(M_traj_func(t_left),  C_traj_func(t_left),  ...)
+       state_right = CheckFullOcclusion(M_traj_func(t_right), C_traj_func(t_right), ...)
+
+       IF state_left == state_right:
+           // 区间内无切换，返回中点 (退化情况)
+           RETURN (t_left + t_right) / 2
+
+    2. // 二分查找
+       WHILE (t_right - t_left) > epsilon:
+           t_mid = (t_left + t_right) / 2
+           state_mid = CheckFullOcclusion(M_traj_func(t_mid), C_traj_func(t_mid), ...)
+
+           IF find_end:
+               // 找 True→False: t_left 状态为True, t_right 状态为False
+               IF state_mid == True:
+                   t_left = t_mid
+               ELSE:
+                   t_right = t_mid
+           ELSE:
+               // 找 False→True: t_left 状态为False, t_right 状态为True
+               IF state_mid == False:
+                   t_left = t_mid
+               ELSE:
+                   t_right = t_mid
+
+    3. RETURN (t_left + t_right) / 2
+```
+
+---
+
+### 算法注意事项总结
+
+| 注意项 | 处理方式 |
+|--------|----------|
+| 导弹在球内 (c ≤ 0) | SegmentIntersectsSphere 直接返回 True |
+| 目标点在球内 (a+b+c ≤ 0) | 同上处理 |
+| 云团已消散 (t > t_b + 20) | CheckFullOcclusion 提前返回 False |
+| 时间轴采样点不足导致区间漏检 | 粗扫描步长 δt=0.05s，T_c=20s 内至少 400 个采样点 |
+| 多朵云团遮蔽区间可能完全重叠 | MergeIntervals 自动合并 |
+| DE 陷入局部最优 | 独立运行 n_restarts=5 次取最优 + 停滞检测 |
+| 数值稳定性（a ≈ 0） | SegmentIntersectsSphere 中检查 a < 1e-12 并降级为点-球判定 |
+| Nelder-Mead 越界 | 对超出边界的外推点做投影修复 |
+
+</algorithm_flow>
+
+</model_design>

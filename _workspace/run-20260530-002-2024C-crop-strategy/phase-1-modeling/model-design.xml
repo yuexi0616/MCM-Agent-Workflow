@@ -1,0 +1,744 @@
+<model_design>
+  <problem_analysis>
+    2024 MCM Problem C 是一个多地块、多作物、多年份、多约束的农业种植策略优化问题，可归类为"带约束的分阶段序贯优化问题"。核心难点在于三个层面：
+
+    【核心难点识别】
+    1. 组合爆炸：34个地块 × 20+作物类型 × 7年 ≈ 5000个原始决策变量，直接求解MILP的整数变量数量过大，需要降维策略。
+    2. 三类约束的耦合：轮作约束（时间维度耦合）、地块类型相容约束（空间维度耦合）、预期销售约束（市场维度耦合）相互交织。
+    3. 不确定性层次递进：问题1（确定）→ 问题2（独立随机）→ 问题3（相关随机），不确定性维度逐级扩大，模型需在同一个框架下扩展。
+
+    【降维思路】
+    - 分层优化：先宏观分配（确定各作物年度总种植面积），再微观调度（分配到具体地块），最后局部修复（处理轮作冲突）。
+    - 作物聚类：将作物分为豆类/粮食/蔬菜/食用菌/水稻五大类，先决定大类面积，再细化到具体作物。
+    - 地块聚合：同类型且地理相邻的地块合并为地块组，减少整数变量。
+
+    【多目标冲突分析】
+    - 利润 vs 风险：追求高利润可能选择高产但价格波动大的作物，CVaR约束对此进行平衡。
+    - 轮作 vs 专业化：轮作要求降低专业化效率（连续种高利润作物被禁止），需要牺牲短期收益满足长期可持续性。
+    - 产量 vs 市场需求：过量种植导致滞销损失，不足种植则浪费市场容量。
+
+    【问题类型判定】
+    - 问题1：确定性混合整数规划（MILP），目标函数为分段线性凹函数 → 可通过引入辅助变量线性化
+    - 问题2：带CVaR风险约束的随机规划 → 情景树 + 启发式搜索（DEGA）
+    - 问题3：带相关随机变量的随机规划 → Copula/Cholesky相关采样 + 同问题2框架
+  </problem_analysis>
+
+  <assumptions>
+    1. 【地块独立性假设】各地块之间除轮作约束外无相互影响（如灌溉用水不冲突、病虫害不跨地块传播）。
+       合理性：华北山区地块分散，地块间距离远，相互影响可忽略。
+
+    2. 【轮作约束可松弛假设】三年内至少种一次豆类的约束允许在同一地块的不同年份灵活安排，只要时间窗口内满足即可。
+       合理性：优秀论文C038和C063均采用此建模方式。
+
+    3. 【预期销售量为软上限假设】超出预期销售量的部分要么滞销（零收益），要么降价50%出售，不存在硬性生产配额。
+       合理性：题目明确给出了两种超产处理方式。
+
+    4. 【年度预算无限假设】不考虑资金的时间价值和借贷约束，年初有足够资金支付全年种植成本。
+       合理性：农业补贴和贷款通常可覆盖成本。
+
+    5. 【各作物亩产稳定假设】问题1中亩产为确定性常数；问题2中亩产在±10%范围内随机波动，均值和波动范围已知。
+       合理性：依据题目中"亩产量±10%波动"的设定。
+
+    6. 【市场独立假设】问题1和问题2中，各作物的销售量、价格、成本相互独立；问题3中通过Spearman相关系数引入依赖性。
+       合理性：题目明确将相关性作为问题3的新增要素。
+
+    7. 【大棚种植不计入轮作约束假设】大棚内的作物安排不受露天轮作约束影响，但大棚内部（特别是同类型大棚间）遵循合理轮作。
+       合理性：大棚种植环境可控，且与露天地块分离管理。
+
+    8. 【智慧大棚可全年连续生产假设】智慧大棚环境控制能力强，可在一年内多茬种植，不受"一年一季"约束。
+       合理性：智慧大棚的温室技术可实现全年生产。
+  </assumptions>
+
+  <symbol_table>
+    | 符号 | 含义 | 单位 |
+    |------|------|------|
+    | $\mathcal{I}$ | 地块集合，$|\mathcal{I}|=34$ | - |
+    | $\mathcal{G}_{ord}$ | 普通大棚集合，$|\mathcal{G}_{ord}|=16$ | - |
+    | $\mathcal{G}_{smart}$ | 智慧大棚集合，$|\mathcal{G}_{smart}|=4$ | - |
+    | $\mathcal{J}$ | 作物类型集合 | - |
+    | $\mathcal{J}_{bean}$ | 豆类作物子集 | - |
+    | $\mathcal{J}_{grain}$ | 粮食作物子集（不含豆类） | - |
+    | $\mathcal{J}_{veg}$ | 蔬菜作物子集 | - |
+    | $\mathcal{J}_{mush}$ | 食用菌作物子集 | - |
+    | $\mathcal{J}_{rice}$ | 水稻（仅限水浇地） | - |
+    | $\mathcal{K}$ | 地块类型集合 $\{k_1,k_2,k_3,k_4\}$（平旱地/梯田/山坡地/水浇地） | - |
+    | $\mathcal{T}$ | 年份集合 $\{2024,\dots,2030\}$，共7年 | - |
+    | $\mathcal{T}_{-1}$ | $\mathcal{T} \setminus \{2030\}$（用于三年豆类约束） | - |
+    | $\Omega$ | 蒙特卡洛情景集合 | - |
+    | $A_i$ | 地块$i$的面积 | 亩 |
+    | $Y_j$ | 作物$j$的亩产量 | 斤/亩 |
+    | $p_{jt}$ | 作物$j$在第$t$年的售价 | 元/斤 |
+    | $c_{jt}$ | 作物$j$在第$t$年的种植成本 | 元/亩 |
+    | $S_{jt}$ | 作物$j$在第$t$年的预期销售量 | 斤 |
+    | $T_{ik}$ | 地块$i$与类型$k$的归属关系（$T_{ik}=1$当且仅当地块$i$属于类型$k$） | - |
+    | $M_{ij}$ | 作物$j$与地块类型$k$的相容性（$M_{kj}=1$当且仅当类型$k$可种植作物$j$） | - |
+    | $x_{ijt}$ | 地块$i$上作物$j$在第$t$年的种植面积比例（连续变量，$[0,1]$） | - |
+    | $y_{ijt}$ | 地块$i$上作物$j$在第$t$年是否种植（0-1变量） | - |
+    | $Q_{jt}$ | 作物$j$在第$t$年的总产量 | 斤 |
+    | $Q_{jt}^{full}$ | 作物$j$在第$t$年以全价售出的产量 | 斤 |
+    | $Q_{jt}^{half}$ | 作物$j$在第$t$年以半价售出的产量 | 斤 |
+    | $\Pi$ | 七年总利润 | 元 |
+    | $\lambda$ | 风险厌恶系数 | - |
+    | $\alpha$ | CVaR置信水平（通常取0.95） | - |
+    | $\zeta$ | VaR阈值（CVaR的辅助变量） | 元 |
+    | $\psi_{\omega}$ | 情景$\omega$的辅助变量（$=\max(-\Pi_\omega - \zeta, 0)$） | 元 |
+    | $\rho_{j_1,j_2}$ | 作物$j_1$和$j_2$之间的Spearman秩相关系数 | - |
+  </symbol_table>
+
+  <mathematical_model>
+    ### 问题1：确定性种植策略优化
+
+    #### 1. 决策变量
+
+    主决策变量为 $x_{ijt} \in [0, 1]$，表示地块$i$上作物$j$在第$t$年的种植面积比例。
+    辅助0-1变量 $y_{ijt} \in \{0,1\}$，表示是否种植，与连续变量的关系为：
+
+    $$
+    y_{ijt} = \begin{cases}
+    0, & x_{ijt} = 0 \\
+    1, & x_{ijt} > 0
+    \end{cases}
+    $$
+
+    该关系可通过大M法线性化：
+    $$x_{ijt} \leq y_{ijt}, \quad x_{ijt} \geq \varepsilon \cdot y_{ijt}$$
+
+    其中 $\varepsilon$ 为最小种植比例阈值（如0.01），$y_{ijt} \in \{0,1\}$。
+
+    每地块每年配额约束：
+    $$\sum_{j \in \mathcal{J}} x_{ijt} \leq 1, \quad \forall i \in \mathcal{I}, \forall t \in \mathcal{T}$$
+
+    #### 2. 目标函数
+
+    作物$j$在第$t$年的总产量：
+    $$Q_{jt} = \sum_{i \in \mathcal{I}} A_i \cdot Y_j \cdot x_{ijt}, \quad \forall j \in \mathcal{J}, t \in \mathcal{T}$$
+
+    **情形A（超出部分滞销）**：
+
+    $$
+    \Pi^{\text{A}} = \max \sum_{t \in \mathcal{T}} \sum_{j \in \mathcal{J}} \left[ p_{jt} \cdot \min(Q_{jt}, S_{jt}) - \sum_{i \in \mathcal{I}} c_{jt} \cdot A_i \cdot x_{ijt} \right]
+    $$
+
+    引入辅助变量 $R_{jt}$ 表示作物$j$在第$t$年的销售收入，线性化为：
+
+    $$
+    R_{jt} \leq p_{jt} \cdot Q_{jt}, \quad \forall j,t \\
+    R_{jt} \leq p_{jt} \cdot S_{jt}, \quad \forall j,t \\
+    R_{jt} \geq 0, \quad \forall j,t
+    $$
+
+    此时目标为：
+    $$
+    \Pi^{\text{A}} = \max \sum_{t \in \mathcal{T}} \sum_{j \in \mathcal{J}} \left( R_{jt} - \sum_{i \in \mathcal{I}} c_{jt} \cdot A_i \cdot x_{ijt} \right)
+    $$
+
+    **情形B（超出部分半价出售）**：
+
+    将产量拆分为全价部分和半价部分：
+    $$Q_{jt} = Q_{jt}^{full} + Q_{jt}^{half}$$
+
+    约束：
+    $$Q_{jt}^{full} \leq S_{jt}, \quad \forall j,t$$
+    $$Q_{jt}^{full} \leq Q_{jt}, \quad \forall j,t$$
+    $$Q_{jt}^{half} = Q_{jt} - Q_{jt}^{full}, \quad \forall j,t$$
+    $$Q_{jt}^{full}, Q_{jt}^{half} \geq 0, \quad \forall j,t$$
+
+    目标：
+    $$
+    \Pi^{\text{B}} = \max \sum_{t \in \mathcal{T}} \sum_{j \in \mathcal{J}} \left( p_{jt} \cdot Q_{jt}^{full} + 0.5 \cdot p_{jt} \cdot Q_{jt}^{half} - \sum_{i \in \mathcal{I}} c_{jt} \cdot A_i \cdot x_{ijt} \right)
+    $$
+
+    #### 3. 约束条件
+
+    **a) 地块-作物相容性约束**
+
+    地块类型与作物的相容关系：
+    $$x_{ijt} = 0, \quad \forall i \in \mathcal{I}, j \in \mathcal{J}, t \in \mathcal{T} \text{ if } M_{K(i),j} = 0$$
+
+    其中 $K(i)$ 为地块$i$的类型索引，$M_{kj}$ 为预定义的相容矩阵。
+
+    **b) 非连续重茬约束（禁止连作）**
+
+    同一地块连续两年不得种植同一作物：
+    $$y_{ijt} + y_{i,j,t+1} \leq 1, \quad \forall i \in \mathcal{I}, j \in \mathcal{J}, t \in \mathcal{T}, t \neq 2030$$
+
+    **c) 三年豆类轮作约束**
+
+    每个地块在任意连续三年内至少种植一次豆类作物：
+    $$\sum_{j \in \mathcal{J}_{bean}} \sum_{\tau = t}^{t+2} y_{ij\tau} \geq 1, \quad \forall i \in \mathcal{I}, t \in \mathcal{T}_{-1}$$
+
+    其中 $\mathcal{T}_{-1} = \{2024,2025,2026,2027,2028\}$（检查2024-2026, 2025-2027, 2026-2028, 2027-2029, 2028-2030共5个三年窗口）。
+
+    **d) 水浇地季节性种植约束**
+
+    水浇地类型地块（$i \in \mathcal{I}_{irrigated}$）每年只能选择以下三种模式之一：
+
+    - 模式0：休耕（$\sum_j x_{ijt} = 0$）
+    - 模式1：种植一季水稻（$x_{i,rice,t} \in [0,1]$，其他$x_{ijt}=0$）
+    - 模式2：种植两季蔬菜（$x_{i,veg1,t} + x_{i,veg2,t} \leq 1$，其中veg1和veg2为不同季节的蔬菜品种）
+
+    **e) 非负整数约束**
+
+    $$x_{ijt} \geq 0, \quad y_{ijt} \in \{0,1\}, \quad \forall i,j,t$$
+
+    **f) 大棚种植约束（补充）**
+
+    普通大棚以单一蔬菜/食用菌品种为主，智慧大棚可种植高附加值作物（食用菌、特种蔬菜）并实现多茬轮作。大棚决策变量与露天类似，但不受地块类型限制。
+
+    ---
+
+    ### 问题2：不确定性条件下的种植策略优化
+
+    问题2在问题1的基础上引入以下随机参数：
+
+    | 参数 | 变化规律 | 分布假设 |
+    |------|---------|---------|
+    | 小麦/玉米销售量 $S_{wheat,t}, S_{corn,t}$ | 年增长$5\%\sim10\%$ | $S_{j,t} = S_{j,t-1} \cdot (1 + U[0.05, 0.10])$ |
+    | 其他作物销售量 $S_{j,t}$ | 年波动$\pm 5\%$ | $S_{j,t} = S_{j,t-1} \cdot (1 + U[-0.05, 0.05])$ |
+    | 亩产量 $Y_{j}$ | 年波动$\pm 10\%$ | $Y_{j,t} = Y_{j,base} \cdot (1 + U[-0.10, 0.10])$ |
+    | 种植成本 $c_{jt}$ | 年递增$5\%$ | $c_{j,t} = c_{j,t-1} \cdot 1.05$ |
+    | 蔬菜价格 $p_{veg,t}$ | 年递增$5\%$ | $p_{veg,t} = p_{veg,t-1} \cdot 1.05$ |
+    | 食用菌价格 $p_{mush,t}$ | 年降$1\%\sim5\%$ | $p_{mush,t} = p_{mush,t-1} \cdot (1 - U[0.01, 0.05])$ |
+
+    其中 $U[a,b]$ 表示均匀分布。
+
+    #### 1. 情景生成
+
+    采用蒙特卡洛方法生成 $N_{\Omega}$ 个随机情景（通常 $N_{\Omega} \geq 1000$）。对每个情景 $\omega \in \Omega$，独立抽取所有随机参数，计算该情景下的总利润 $\Pi_\omega$。
+
+    情景 $\omega$ 下的利润计算与问题1相同（决策变量 $x_{ijt}$ 固定，随机参数变化）：
+
+    $$
+    \Pi_\omega = \sum_{t \in \mathcal{T}} \sum_{j \in \mathcal{J}} \left( R_{jt\omega} - \sum_{i \in \mathcal{I}} c_{jt\omega} \cdot A_i \cdot x_{ijt} \right)
+    $$
+
+    #### 2. CVaR风险度量目标函数
+
+    采用条件风险价值（Conditional Value at Risk）将尾部风险纳入优化目标。定义损失 $L = -\Pi$，在置信水平 $\alpha$（通常取0.95）下：
+
+    $$\text{VaR}_\alpha = \inf\{l : P(L \leq l) \geq \alpha\}$$
+    $$\text{CVaR}_\alpha = \mathbb{E}[L \mid L \geq \text{VaR}_\alpha]$$
+
+    优化目标为期望利润与CVaR的加权组合：
+
+    $$
+    \max \; \mathbb{E}[\Pi] - \lambda \cdot \text{CVaR}_\alpha(-\Pi)
+    $$
+
+    其中 $\lambda \geq 0$ 为风险厌恶系数，$\lambda=0$ 对应风险中性。
+
+    将CVaR离散化到情景集上，使用Rockafellar-Uryasev公式：
+
+    $$
+    \max \; \frac{1}{|\Omega|} \sum_{\omega \in \Omega} \Pi_\omega - \lambda \left[ \zeta + \frac{1}{(1-\alpha)|\Omega|} \sum_{\omega \in \Omega} \psi_\omega \right]
+    $$
+
+    约束：
+    $$\psi_\omega \geq -\Pi_\omega - \zeta, \quad \forall \omega \in \Omega$$
+    $$\psi_\omega \geq 0, \quad \forall \omega \in \Omega$$
+    $$\zeta \in \mathbb{R}$$
+
+    此时决策变量不仅包括 $x_{ijt}, y_{ijt}$，还包括 $\zeta$ 和 $\psi_\omega$。
+
+    ### 问题3：考虑作物相关性的种植策略优化
+
+    问题3在问题2的基础上引入作物间销售量和价格的相关性结构。
+
+    #### 1. Spearman相关系数矩阵
+
+    定义 $\mathcal{R} \in [-1,1]^{|\mathcal{J}| \times |\mathcal{J}|}$ 为作物间的Spearman秩相关系数矩阵，其中 $\rho_{j_1,j_2}$ 描述作物 $j_1$ 和 $j_2$ 的关系：
+
+    - $\rho_{j_1,j_2} > 0$：互补关系（如小麦和面粉加工作物，西红柿和番茄酱加工作物）
+    - $\rho_{j_1,j_2} < 0$：替代关系（如小麦和玉米在粮食消费上替代，不同蔬菜品种间的替代）
+    - $\rho_{j_1,j_2} \approx 0$：独立关系（如粮食和食用菌）
+
+    同时考虑销售量-价格、销售量-成本、价格-成本之间的交叉相关系数 $\rho_{S,p}, \rho_{S,c}, \rho_{p,c}$。
+
+    #### 2. Cholesky分解生成相关随机变量
+
+    给定Spearman相关矩阵 $\mathcal{R}$，对每个情景 $\omega$ 生成相关随机样本的步骤如下：
+
+    **步骤1**：对 $\mathcal{R}$ 进行Cholesky分解：
+    $$\mathcal{R} = \mathcal{L}\mathcal{L}^\top$$
+
+    其中 $\mathcal{L}$ 为下三角矩阵。
+
+    **步骤2**：生成 $|\mathcal{J}|$ 维独立标准正态随机向量 $\mathbf{z}_\omega \sim \mathcal{N}(0, \mathbf{I})$。
+
+    **步骤3**：转换为相关正态随机向量：
+    $$\mathbf{u}_\omega = \mathcal{L} \mathbf{z}_\omega$$
+
+    **步骤4**：通过概率积分变换将边际分布转换为目标分布：
+    - 对销售量：$\tilde{S}_{jt\omega} = S_{jt} \cdot (1 + \delta_S \cdot \Phi(u_{j\omega}))$，其中 $\Phi$ 为标准正态CDF
+    - 对价格：$\tilde{p}_{jt\omega} = p_{jt} \cdot (1 + \delta_p \cdot \Phi(u_{j\omega}))$
+    - 对亩产：$\tilde{Y}_{jt\omega} = Y_j \cdot (1 + \delta_Y \cdot \Phi(u_{j\omega}))$
+
+    其中 $\delta_S, \delta_p, \delta_Y$ 为波动幅度参数。
+
+    #### 3. 优化框架
+
+    采用与问题2相同的优化框架，但情景生成方式替换为上述相关采样方法：
+
+    $$
+    \max \; \frac{1}{|\Omega|} \sum_{\omega \in \Omega} \Pi_\omega(\mathbf{\tilde{S}}_\omega, \mathbf{\tilde{p}}_\omega, \mathbf{\tilde{Y}}_\omega) - \lambda \left[ \zeta + \frac{1}{(1-\alpha)|\Omega|} \sum_{\omega \in \Omega} \psi_\omega \right]
+    $$
+
+    其中 $\Pi_\omega$ 基于相关采样得到的 $\mathbf{\tilde{S}}_\omega, \mathbf{\tilde{p}}_\omega, \mathbf{\tilde{Y}}_\omega$ 计算。
+  </mathematical_model>
+
+  <algorithm_flow>
+    【总览】三个问题共用底层算法（DEGA），区别仅在于目标函数评估方式：
+    - 问题1：确定性评估
+    - 问题2：蒙特卡洛情景平均 + CVaR
+    - 问题3：相关采样蒙特卡洛 + CVaR
+
+    ---
+    ### 算法1：分层DEGA求解主框架（三个问题通用）
+
+    ```
+    Input:
+      - 地块数据: {plot_id, area, type} for i=1..34
+      - 温室数据: {gh_id, type(ordinary/smart), area} for g=1..20
+      - 作物数据: {crop_id, category, yield, base_price, base_cost} for j=1..|J|
+      - 预期销售量: S_{j,t} for all j,t
+      - 问题参数: problem_id (1/2/3), case_type (A/B)
+      - 算法超参: pop_size=200, max_gen=500, F=0.8, CR=0.9, lambda=0.5, alpha=0.95
+
+    Output:
+      - 最优决策矩阵: x_{ijt} for all i,j,t
+      - 期望总利润: E[Pi]
+      - CVaR值（仅问题2/3）
+    ```
+
+    ```
+    PROCEDURE MainSolver(problem_id, case_type)
+      // ---- 阶段0：数据预处理 ----
+      构建地块-作物相容矩阵 M_{ij}
+      构建作物类别映射: bean_set, grain_set, veg_set, mush_set
+      构建轮作约束组: 每个地块对应一个轮作组
+
+      // ---- 阶段1：宏观分配（降维） ----
+      // 对每类作物确定年度最优总面积占比
+      // 使用简化的LP（连续松弛）得到初始猜测
+      FOR year t IN {2024..2030}:
+        FOR category c IN {bean, grain, veg, mush, rice}:
+          // LP松弛求解该类别总种植面积
+          area_frac_{c,t} = SolveRelaxedLP(c, t)
+        END FOR
+      END FOR
+
+      // ---- 阶段2：微观分配（DEGA优化） ----
+      // 初始化种群：每个个体编码为地块-作物分配矩阵的紧凑表示
+      population = InitializePopulation(pop_size)
+
+      FOR gen IN 1..max_gen:
+        fitness = Array[pop_size]
+
+        // 并行评估每个个体的适应度
+        FOR each individual p IN population:
+          // 解码：将个体编码转换为 x_{ijt} 矩阵
+          x_matrix = DecodeIndividual(p)
+
+          // 验证约束
+          violation = CheckConstraints(x_matrix)
+          IF violation > 0:
+            // 罚函数法：约束违反越严重，惩罚越大
+            fitness[p] = -penalty_coeff * violation
+            CONTINUE
+          END IF
+
+          // 目标函数评估（根据问题类型分支）
+          fitness[p] = EvaluateObjective(x_matrix, problem_id, case_type)
+        END FOR
+
+        // 记录最优个体
+        best = argmax(fitness)
+        IF gen % 10 == 0:
+          Print("Generation", gen, "Best Fitness:", fitness[best])
+        END IF
+
+        // 差分进化操作
+        new_population = []
+        FOR each individual p IN population:
+          // 变异：从种群中随机选3个不同个体
+          a, b, c = SelectThreeDistinct(population, p)
+          // DE/rand/1 变异策略
+          mutant = a + F * (b - c)
+
+          // 边界处理（修复越界值）
+          mutant = ClipToBounds(mutant, 0, 1)
+
+          // 交叉：二项式交叉
+          trial = Crossover(p, mutant, CR)
+
+          // 选择：贪心保留
+          IF fitness(trial) > fitness(p):
+            new_population.append(trial)
+          ELSE:
+            new_population.append(p)
+          END IF
+        END FOR
+
+        population = new_population
+
+        // 自适应调整F和CR（可选，增强收敛性）
+        IF gen % 50 == 0:
+          F = AdaptParameter(F, population_diversity)
+          CR = AdaptParameter(CR, convergence_rate)
+        END IF
+
+        // 早停条件
+        IF StdDev(fitness) < 1e-6 AND gen > 100:
+          BREAK
+        END IF
+      END FOR
+
+      // ---- 阶段3：局部修复 ----
+      best_x = DecodeIndividual(best)
+      best_x = LocalRepair(best_x)
+        // 处理残留的轮作冲突
+        // 对每个有冲突的地块，交换相邻年份的作物安排
+        // 采用贪婪搜索最小化利润损失
+
+      // ---- 阶段4：最终评估 ----
+      result = {
+        "solution": best_x,
+        "total_profit": EvaluatePointEstimate(best_x),
+        "annual_profit": [profit_2024, ..., profit_2030]
+      }
+
+      IF problem_id >= 2:
+        result["CVaR"] = ComputeCVaR(best_x, alpha)
+        result["scenario_profits"] = RunMonteCarlo(best_x, N=10000)
+      END IF
+
+      RETURN result
+    END PROCEDURE
+    ```
+
+    ---
+    ### 算法2：目标函数评估函数（问题派发）
+
+    ```
+    FUNCTION EvaluateObjective(x_matrix, problem_id, case_type):
+      IF problem_id == 1:
+        RETURN DeterministicEval(x_matrix, case_type)
+
+      ELSE IF problem_id == 2:
+        RETURN StochasticEvalWithCVaR(x_matrix, case_type)
+
+      ELSE IF problem_id == 3:
+        RETURN CorrelatedStochasticEvalWithCVaR(x_matrix, case_type)
+      END IF
+    END FUNCTION
+    ```
+
+    ---
+    ### 算法3：确定性评估（问题1）
+
+    ```
+    FUNCTION DeterministicEval(x_matrix, case_type):
+      total_profit = 0
+      FOR each year t:
+        FOR each crop j:
+          Q = SUM_i(area_i * yield_j * x_{ijt})  // 总产量
+          cost = SUM_i(cost_jt * area_i * x_{ijt})  // 总成本
+
+          IF case_type == 'A':  // 超出滞销
+            revenue = price_jt * MIN(Q, S_jt)
+          ELSE:  // 超出半价
+            full_sale = MIN(Q, S_jt)
+            half_sale = MAX(0, Q - S_jt)
+            revenue = price_jt * full_sale + 0.5 * price_jt * half_sale
+          END IF
+
+          total_profit += revenue - cost
+        END FOR
+      END FOR
+      RETURN total_profit
+    END FUNCTION
+    ```
+
+    ---
+    ### 算法4：带CVaR的随机评估（问题2）
+
+    ```
+    FUNCTION StochasticEvalWithCVaR(x_matrix, case_type):
+      // 配置蒙特卡洛参数
+      N_scenarios = 2000  // 情景数
+      alpha = 0.95       // CVaR置信水平
+      lambda = 0.5       // 风险厌恶系数
+
+      profits = Array[N_scenarios]
+
+      // 生成情景（向量化）
+      FOR omega IN 1..N_scenarios:
+        // 1. 抽取随机参数
+        FOR each crop j:
+          S_j_omega = S_j_base
+          IF j IN {wheat, corn}:
+            FOR t in 2024..2030:
+              growth = Uniform(0.05, 0.10)
+              S_j_omega[t] = S_j_omega[t-1] * (1 + growth)
+            END FOR
+          ELSE:
+            FOR t in 2024..2030:
+              fluctuation = Uniform(-0.05, 0.05)
+              S_j_omega[t] = S_j_omega[t-1] * (1 + fluctuation)
+            END FOR
+          END IF
+
+          // 亩产波动
+          yield_factor = 1 + Uniform(-0.10, 0.10)
+          Y_j_omega = Y_j_base * yield_factor
+
+          // 成本逐年递增5%
+          cost_j_omega[t] = cost_j_base * (1.05)^{t-2024}
+
+          // 蔬菜/食用菌价格趋势
+          IF j IN veg_set:
+            p_j_omega[t] = p_j_base * (1.05)^{t-2024}
+          ELSE IF j IN mush_set:
+            annual_decline = Uniform(0.01, 0.05)
+            p_j_omega[t] = p_j_base * (1 - annual_decline)^{t-2024}
+          END IF
+        END FOR
+
+        // 2. 用随机参数计算情景利润
+        profits[omega] = ComputeProfit(x_matrix, S_omega, Y_omega, c_omega, p_omega, case_type)
+      END FOR
+
+      // 3. 计算CVaR
+      sorted_profits = SORT(profits, ascending=False)  // 降序排列（利润从高到低）
+      // 等价于损失L = -profits按升序排列
+      losses = [-p for p in profits]
+      sorted_losses = SORT(losses, ascending=True)
+
+      // VaR_alpha = 损失的第alpha分位数
+      idx_VaR = CEILING(alpha * N_scenarios)
+      VaR = sorted_losses[idx_VaR]
+
+      // CVaR_alpha = 超过VaR的损失的均值
+      tail_losses = sorted_losses[idx_VaR..N_scenarios]
+      CVaR = MEAN(tail_losses)
+
+      // 4. 目标值 = 期望利润 - lambda * CVaR
+      expected_profit = MEAN(profits)
+      objective = expected_profit - lambda * CVaR
+
+      // 同时返回CVaR分量供记录
+      RETURN objective
+    END FUNCTION
+    ```
+
+    ---
+    ### 算法5：带相关采样的随机评估（问题3）
+
+    ```
+    FUNCTION CorrelatedStochasticEvalWithCVaR(x_matrix, case_type):
+      N_scenarios = 2000
+      alpha = 0.95
+      lambda = 0.5
+
+      // 1. Spearman相关系数矩阵定义
+      // 预定义三类相关系数:
+      //   rho_{i,j}^S: 作物i和j的销售量相关系数
+      //   rho_{i,j}^P: 作物i和j的价格相关系数
+      //   rho_{i,j}^{SP}: 作物i销售量和作物j价格的交叉相关系数
+      R = BuildCorrelationMatrix()
+
+      // 2. Cholesky分解
+      L = CHOLESKY(R)  // R = L * L^T
+
+      profits = Array[N_scenarios]
+
+      // 3. 相关情景生成
+      FOR omega IN 1..N_scenarios:
+        // 生成独立标准正态向量
+        z = Array[dim]  // dim = 总随机变量数
+        FOR d IN 1..dim:
+          z[d] = NormalRandom(0, 1)
+        END FOR
+
+        // 转换为相关
+        u = L * z  // u ~ N(0, R)
+
+        // 转换为目标边际分布
+        FOR each random variable:
+          // 使用概率积分变换: 先转Uniform再转目标分布
+          uniform_val = Phi(u[d])  // 标准正态CDF
+          // 映射到目标分布（销售量/价格/亩产的波动）
+          ApplyMarginalDistribution(uniform_val, target_params)
+        END FOR
+
+        // 计算情景利润
+        profits[omega] = ComputeProfit(x_matrix, S_omega, Y_omega, c_omega, p_omega, case_type)
+      END FOR
+
+      // 4. CVaR计算（同算法4）
+      expected_profit = MEAN(profits)
+      sorted_losses = SORT([-p for p in profits], ascending=True)
+      idx_VaR = CEILING(alpha * N_scenarios)
+      VaR = sorted_losses[idx_VaR]
+      CVaR = MEAN(sorted_losses[idx_VaR..N_scenarios])
+      objective = expected_profit - lambda * CVaR
+
+      RETURN objective
+    END FUNCTION
+    ```
+
+    ---
+    ### 算法6：约束检查与罚函数
+
+    ```
+    FUNCTION CheckConstraints(x_matrix):
+      violation = 0
+
+      // 约束1：每地块总面积不超过1（松弛≤1e-6视为满足）
+      FOR each plot i, year t:
+        IF SUM_j x_{ijt} > 1 + 1e-6:
+          violation += SUM_j x_{ijt} - 1
+        END IF
+      END FOR
+
+      // 约束2：地块-作物相容性
+      FOR each plot i, crop j, year t:
+        IF M_{K(i),j} == 0 AND x_{ijt} > 1e-6:
+          violation += x_{ijt} * 10  // 严重违规
+        END IF
+      END FOR
+
+      // 约束3：非连续重茬
+      FOR each plot i, crop j, year t < 7:
+        IF y_{ijt} == 1 AND y_{i,j,t+1} == 1:
+          violation += 5  // 重茬严重违规
+        END IF
+      END FOR
+
+      // 约束4：三年内至少一次豆类
+      FOR each plot i, start_year t IN {1..5}:
+        bean_count = SUM_{j in bean_set} SUM_{tau=t..t+2} y_{ijtau}
+        IF bean_count < 1:
+          violation += 10  // 未满足豆类轮作
+        END IF
+      END FOR
+
+      // 约束5：水浇地季节性限制
+      FOR each irrigated plot i, year t:
+        // 如果同时种水稻和蔬菜
+        IF x_{i,rice,t} > 1e-6 AND SUM_{j in veg_set} x_{ijt} > 1e-6:
+          violation += 20
+        END IF
+      END FOR
+
+      RETURN violation
+    END FUNCTION
+    ```
+
+    ---
+    ### 算法7：局部修复（轮作冲突解决）
+
+    ```
+    PROCEDURE LocalRepair(x_matrix):
+      // 对每个地块独立检查
+      FOR each plot i:
+        FOR year t IN {2024..2029}:
+          // 检查重茬
+          main_crop_t = ARGMAX_j(x_{ijt})
+          main_crop_t1 = ARGMAX_j(x_{i,j,t+1})
+
+          IF main_crop_t == main_crop_t1 AND x_{i,main_crop_t,t} > 0:
+            // 重茬冲突：尝试将t+1年的作物替换为次优选择
+            candidates = GetFeasibleCrops(i, t+1, exclude=[main_crop_t])
+            best_candidate = ARGMAX_{c in candidates}(
+              // 选择在满足约束下利润最高的替代作物
+              ExpectedProfit(i, c, t+1)
+            )
+            // 交换
+            x_{i,main_crop_t1,t+1} = 0
+            x_{i,best_candidate,t+1} = 1
+          END IF
+        END FOR
+
+        // 检查三年豆类约束
+        FOR t IN {2024..2028}:
+          bean_in_window = False
+          FOR tau IN {t..t+2}:
+            IF ANY_{j in bean_set} x_{ijtau} > 0:
+              bean_in_window = True
+              BREAK
+            END IF
+          END FOR
+
+          IF NOT bean_in_window:
+            // 在窗口内利润最低的年份插入豆类
+            replace_year = ARGMIN_{tau in {t..t+2}}(profit_of_current_crop(i, tau))
+            x_{i,*,replace_year} = 0  // 清空
+            x_{i,best_bean,replace_year} = 0.8  // 种豆类（留出边界）
+          END IF
+        END FOR
+      END FOR
+
+      RETURN x_matrix
+    END PROCEDURE
+    ```
+
+    ---
+    ### 算法8：求解后处理与结果输出
+
+    ```
+    PROCEDURE PostProcess(best_x, problem_id):
+      // 1. 生成年度种植方案表格
+      results_table = {}
+      FOR year t IN {2024..2030}:
+        FOR plot i IN {1..34}:
+          main_crop = ARGMAX_j(best_x[i][j][t])
+          area_proportion = best_x[i][main_crop][t]
+          IF area_proportion > 0.01:
+            physical_area = area_proportion * A_i
+            记录: {地块i, 年度t, 作物main_crop, 面积physical_area}
+          END IF
+        END FOR
+        // 统计该年度各作物总产量 vs 预期销售量
+        FOR crop j:
+          total_production = SUM_i(A_i * Y_j * best_x[i][j][t])
+          surplus = MAX(0, total_production - S_jt)
+          记录: {年度t, 作物j, 产量total_production, 预期S_jt, 超出surplus}
+        END FOR
+      END FOR
+
+      // 2. 多情景风险分析（仅问题2/3）
+      IF problem_id >= 2:
+        N_analysis = 10000
+        scenario_profits = RunMonteCarlo(best_x, N_analysis)
+        绘制: 利润分布直方图
+        计算: 均值, 标准差, VaR_95, CVaR_95, 最差5%情景均值
+        输出: "期望利润 = {mean} 万元, CVaR = {cvar} 万元"
+      END IF
+
+      // 3. 敏感性分析
+      // 对关键参数进行单变量敏感性测试
+      FOR param IN {价格, 亩产, 销售量, 成本}:
+        FOR delta IN {-20%, -10%, +10%, +20%}:
+          adjusted_profit = EvaluateWithPerturbation(best_x, param, delta)
+          记录: {参数param, 扰动delta, 利润变化率}
+        END FOR
+      END FOR
+
+      // 4. 轮作合规性验证报告
+      rotation_report = VerifyRotationCompliance(best_x)
+      // 输出所有地块的轮作序列，标注违规点
+
+      RETURN results_table + risk_report + sensitivity_report
+    END PROCEDURE
+    ```
+
+    ---
+    ### 边界情况处理
+
+    1. **零利润地块**：若某地块连续两年利润为负（种植成本 > 销售收入），强制休耕一年
+    2. **极小地块**：面积 < 0.5亩的地块合并到相邻同类型地块，减少决策变量
+    3. **不完整年份**：2024年种植方案需考虑上一年（2023）的作物，以正确判断重茬。若2023年数据不可得，假设所有地块2023年休耕
+    4. **温室空置**：若大棚种植利润为负，允许空置（不种植任何作物）
+  </algorithm_flow>
+</model_design>

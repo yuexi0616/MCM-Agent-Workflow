@@ -1,0 +1,44 @@
+{
+  "problem": "2025 MCM A — 烟幕干扰弹的投放策略",
+  "source": "MCMKnowledgeBase/raw/2025/A/A题.md (MinerU 转换)",
+
+  "target": {
+    "decoy_position": [0, 0, 0],
+    "real_target_bottom_center": [0, 200, 0],
+    "cylinder_radius_m": 7,
+    "cylinder_height_m": 10
+  },
+
+  "missiles": {
+    "speed_mps": 300,
+    "M1": [20000, 0, 2000],
+    "M2": [19000, 600, 2100],
+    "M3": [18000, -600, 1900]
+  },
+
+  "uavs": {
+    "speed_range_mps": [70, 140],
+    "min_bomb_interval_s": 1,
+    "max_bombs_per_uav": 3,
+    "FY1": [17800, 0, 1800],
+    "FY2": [12000, 1400, 1400],
+    "FY3": [6000, -3000, 700],
+    "FY4": [11000, 2000, 1800],
+    "FY5": [13000, -2000, 1300]
+  },
+
+  "smoke_bomb": {
+    "cloud_radius_m": 10,
+    "cloud_duration_s": 20,
+    "cloud_sink_speed_mps": 3,
+    "detonation": "瞬时形成球状云团"
+  },
+
+  "q1_params": {
+    "uav": "FY1",
+    "speed_mps": 120,
+    "direction": "朝向假目标(原点)",
+    "drop_time_s": 1.5,
+    "detonation_interval_s": 3.6
+  }
+}

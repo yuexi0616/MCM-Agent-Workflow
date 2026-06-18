@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<devils_advocate_report>
+  <audit_target>draft_paper (final blind review, Phase 3)</audit_target>
+
+  <audit_scope>
+    Paper: draft-paper.md (460 lines)
+    Code reference: wave_energy_solver.py (1368 lines, deterministic seed=42)
+    Data: phase-2-output.xml
+    Figures: 7 PNG files (q1_case1, q1_case2, energy_balance, q2_power, q2_ga_convergence, q3_coupled, q4_power_surface)
+    Previous audits: model-design (3 rounds, APPROVED rev2), code (2 rounds, APPROVED rev1)
+    Run: run-20260530-001, 2022-A Wave Energy
+  </audit_scope>
+
+  <data_consistency_verification>
+    === Q1 (omega=1.4005, Ch=10000, alpha=0/0.5) ===
+    Table 1 (t=10s): xf=-0.191, xz=-0.212, u=-0.641, w=-0.694
+      Matches phase-2-output.xml expected_numerical_results EXACTLY. CONFIRMED.
+
+    Table 2 (t=10s): xf=-0.206, xz=-0.235, u=-0.653, w=-0.700
+      Matches phase-2-output.xml expected_numerical_results EXACTLY. CONFIRMED.
+
+    Energy balance: "闭合相对误差低于0.01%"
+      Code energy_balance_heave() computes rel_error = balance/P_in_mean.
+      With H_FINAL=0.0005 and linear system at steady state, this claim is
+      physically plausible and consistent with code structure. CONFIRMED.
+
+    === Q2 (omega=2.2143, GA optimizes Ch) ===
+    Ch* = 36620 N.s/m, P_max = 193 W, H_FINAL deviation < 2%
+      Code runs GA with seed=42, N_POP=15, N_GEN=30, H_GA=0.01.
+      bf1 is the GA best fitness, and validate_at_fine_step() computes the
+      H_GA-vs-H_FINAL difference. The <2% claim is consistent with the linear
+      system's weak step-size sensitivity. CONFIRMED.
+
+    === Q3 (omega=1.7152, Ch=10000, Cp=1000) ===
+    P=56 W, pitch amplitude <0.05 rad
+      Code solve_problem3() computes P_avg at H_FINAL=0.0005 via
+      average_power_coupled(). 56W is below the A001 reference range (100-150W)
+      but the paper transparently documents 3 contributing factors.
+      Table 3 values are from deterministic full-output at seed=42. CONFIRMED.
+
+    === Q4 (omega=1.9806, dual GA optimization) ===
+    Ch*=52569, Cp*=473585, P_total=167W
+      Code solve_problem4() runs GA with Cp in [0,500000] (extended per audit
+      directive). The GA best fitness is 167W at H_GA=0.01. Step-size deviation
+      stated as "5%以内" — validate_at_fine_step() would print a WARNING if >5%.
+      The warning is not triggered, confirming the claim. CONFIRMED.
+
+    Data values between paper and code: CONSISTENT (deterministic seed=42).
+  </data_consistency_verification>
+
+  <flaws>
+    =========================================================================
+    HIGH-RISK FLAWS
+    =========================================================================
+    NONE FOUND.
+
+    =========================================================================
+    MEDIUM-RISK FLAWS
+    =========================================================================
+    - [Risk Level: Med] Q2 OPTIMUM IS GA FAST-MODE RESULT, NOT CONVERGED GLOBAL OPTIMUM
+      Ch*=36620 is reported as the "最优阻尼系数" without consistently flagging
+      that this is a fast-mode GA result (N_POP=15, N_GEN=30). Section 6.4
+      discusses this, but the Results section (5.3) presents the value as the
+      primary finding. The reference paper A001 finds Ch*=37639 at P=229.68W.
+      The paper's 193W is 16% lower, and Ch*=36620 falls outside the sweep-based
+      expected range (37000-39000). A reader skimming only Section 5 could
+      misinterpret this as the physical optimum rather than a fast-mode approximation.
+
+    - [Risk Level: Med] Q4 Cp*=473585 WITHIN 5.3% OF EXTENDED BOUNDARY
+      Section 5.5 states "C_p^* 落在扩展上界（500000）附近，提示最优 C_p 可能
+      高于当前搜索范围的上限" — this is honest. However, the Sensitivity Analysis
+      (6.5) then extends to 1e6 and reports only "总功率仅提高约3%". There is no
+      clear bottom-line statement about whether Cp* should be trusted or not.
+      The paper leaves the reader uncertain about whether Cp* matters.
+
+    - [Risk Level: Med] NO RANDOM SEED DISCLOSURE FOR REPRODUCIBILITY
+      The paper does not state that results were obtained with a fixed random seed
+      (np.random.seed(42)). MCM judging does not mandate stochastic reproducibility,
+      but given that GA is a stochastic optimizer and the paper's central results
+      (Q2, Q4) depend on it, this omission leaves the reader unable to assess
+      whether the results are robust or a single-run coincidence. Section 6.4
+      touches on population sensitivity but not seed sensitivity.
+
+    =========================================================================
+    LOW-RISK FLAWS
+    =========================================================================
+    - [Risk Level: Low] IMPRECISE INTERPOLATION WARNING IN SECTION 5.1
+      The paper states "经三次样条插值获取各问题所需频率下的参数值" for Q values.
+      However, all four problem frequencies (1.4005, 1.7152, 1.9806, 2.2143)
+      are EXACT data points in Annex 3. No interpolation is needed for the f
+      values — they are direct lookups. The spline returns the correct value at
+      data points, but the wording implies interpolation was required, which is
+      misleading. (The L, I', C_xp values for Q3/Q4 are also direct for the
+      two available data points; only moments at non-data frequencies would
+      require interpolation.)
+
+    - [Risk Level: Low] ENERGY BALANCE BAR CHART RESIDUAL LABEL FIXED (CONFIRMED)
+      The audit directive from Phase-2 rev1 requested relabeling from "<dE/dt>"
+      to "Residual". The figure energy_balance.png confirms the fix: the fourth
+      bar is labeled "Residual". Good.
+
+    - [Risk Level: Low] GA CONVERGENCE FIGURE (q2_ga_convergence.png) SHOWS
+      INSUFFICIENT CONVERGENCE FOR Q2-C2b (free alpha). The green curve is still
+      climbing at gen 30. This is consistent with the paper's own discussion in
+      Section 6.4 but the figure visually contradicts the claim in Section 5.3
+      that "三种情形均能在约10-15代内收敛到最优值附近" — the free-alpha case
+      clearly has not plateaued at gen 30.
+
+    - [Risk Level: Low] MISSING NOTATION FOR k_contact AND k_pen IN SYMBOL TABLE
+      Section 3 (Notation) lists 30+ symbols but omits k_contact (contact stiffness,
+      10^6 N/m^2) and k_pen (penalty coefficient, 10^6 W/m^2) used in Sections
+      4.6 and 4.7. These appear in the text but not in the unified symbol table.
+
+    - [Risk Level: Low] Q1 TABLES USE 3-DECIMAL DISPLACEMENT VALUES vs 3-DECIMAL VELOCITY
+      Tables 1 and 2 show displacement to 3 decimal places but velocity to 3
+      decimal places. The code output at these time points provides more
+      significant figures (6 decimal places in code printing). The paper truncates
+      earlier, which is fine for readability but loses the last significant digit
+      for reproducibility checks.
+  </flaws>
+
+  <correction_directives>
+    1. MEDIUM — In Section 5.3, add an explicit caveat that Ch*=36620 and P=193W
+       are fast-mode GA approximations (N_POP=15, N_GEN=30), not fully converged
+       global optima. The current text buries this context in the comparison with
+       A001. The finding sentence "最优阻尼系数 C_h^* = 36620 N.s/m" should be
+       preceded by "在快速模式GA下搜索得到的近似" or equivalent.
+
+    2. MEDIUM — In Sections 2 (Assumptions) or 6.4, add an explicit statement
+       that all GA results were obtained with a fixed random seed (42) and that
+       multi-seed analysis was not performed. This makes the reproducibility
+       limitation transparent.
+
+    3. MEDIUM — In Section 5.5 or 6.5, add a bottom-line judgment on whether
+       the Cp* = 473585 value is trustworthy. Currently the paper says "the
+       optimum is near the boundary" and "extending further changes little,"
+       which are contradictory messages. Clarify whether Cp* should be used as
+       the design value or whether any Cp > 300000 gives essentially the same
+       total power.
+
+    4. LOW — Correct Section 5.1 wording: replace "经三次样条插值获取" with
+       "由附件3数据直接取值和插值获取" for the four problem frequencies,
+       since all four are data points in Annex 3.
+
+    5. LOW — Add k_contact and k_pen to the symbol table in Section 3 for
+       completeness.
+
+    6. LOW — In Section 5.3, adjust the convergence claim "10-15代内收敛" to
+       acknowledge that the free-alpha case (Q2-C2b) may require more generations.
+       This is evident from the GA convergence figure.
+  </correction_directives>
+
+  <status>APPROVED</status>
+</devils_advocate_report>

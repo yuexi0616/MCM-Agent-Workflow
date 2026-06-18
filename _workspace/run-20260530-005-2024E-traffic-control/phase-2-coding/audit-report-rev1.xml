@@ -1,0 +1,120 @@
+<devils_advocate_report>
+  <audit_target>Phase 2 code implementation — 2024 MCM Problem E traffic control — Round 2 audit of revised code</audit_target>
+
+  <flaws>
+
+    <!-- ===================================================================== -->
+    <!-- HIGH-RISK VERIFICATION: 4/4 FIXED                                      -->
+    <!-- ===================================================================== -->
+
+    [Risk Level: High] [ID: C-20260530-001] PELT shared covariance — VERIFIED FIXED
+    Verification: Line 677-678 now calls `_estimate_shared_covariance(X, initial_bp)` which computes pooled within-segment covariance by centering each segment around its own mean (lines 638-641). The `_segment_neg_log_likelihood` function at line 591 uses `segment - mu_seg` (segment-specific mean centering), confirming the log-likelihood is computed with the corrected covariance. The fallback at line 680-683 uses global-centering only when no initial breakpoints are available.
+    Status: APPROVED — structural bug resolved.
+
+    [Risk Level: High] [ID: C-20260530-002] GA allocate_green overflow crash — VERIFIED FIXED
+    Verification: Lines 1071-1079 now handle the "all phases at g_max" case by computing `scale_factor = G_avail / total_at_max` and proportionally scaling all phases down. The `break` statement at line 1079 exits after feasibility is restored. Precondition: `total_g_min > G_avail` is checked at line 1037, so `G_avail / 4 >= g_min` holds, ensuring no secondary g_min violation.
+    Status: APPROVED — crash path eliminated.
+
+    [Risk Level: High] [ID: C-20260530-003] Event study parallel trend test — VERIFIED FIXED
+    Verification: Lines 1937-1963 replace the invalid averaged-t-statistic with a Wald chi-squared test: `wald_stat = beta_pre @ V_pre_inv @ beta_pre` evaluated against `chi2(df=q)`. The covariance submatrix `V_pre` is extracted from the cluster-robust vcov (line 1951), accounting for cross-coefficient correlation. Regularization (`np.eye * 1e-10`, line 1954) and pseudo-inverse fallback (line 1958) handle near-singular cases.
+    Status: APPROVED — statistical procedure is correct.
+
+    [Risk Level: High] [ID: C-20260530-004] Cruising detection validation — VERIFIED FIXED
+    Verification: Lines 2770-2797 compute precision, recall, and F1-score by intersecting `detected_plates` (from detector output) with `generator.all_cruising_plates` (the known ground truth set, populated at lines 122 and 212). All three metrics are stored in `cruising_result['validation']` (lines 2790-2797) with print output at lines 2782-2785.
+    Status: APPROVED — synthetic ground truth is now used for validation.
+
+    <!-- ===================================================================== -->
+    <!-- MEDIUM-RISK: PREVIOUSLY FLAGGED BUT NON-BLOCKING                       -->
+    <!-- ===================================================================== -->
+
+    [Risk Level: Med] [ID: C-20260530-005] PELT pruning is functionally a no-op — O(n^2) complexity without pruning benefit
+    Location: Section 2, TimePeriodPartitioner.pelt_changepoint_detection(), lines 714-722
+    Description: Previously flagged in Round 1. The PELT pruning step retains candidate index 0 and all candidates whose `F[s] + cost(x_{s+1:t}) < F[t]`. In practice, the pruning condition is rarely triggered for this dataset, preserving O(n^2) behavior. For n=96 this is not a performance problem, but the paper should not claim O(n) PELT efficiency.
+    Status: CARRIED FORWARD — not addressed in this revision. Paper writer should avoid claiming O(n) complexity for PELT.
+
+    [Risk Level: Med] [ID: C-20260530-006] Speed proxy assumes 530m between all consecutive records
+    Location: Section 6, ControlEffectEvaluator.compute_daily_metrics(), line 1719
+    Description: Previously flagged in Round 1. The 530m assumption is the weighted average of 700m and 360m segment lengths, but systematic bias remains for intersections 9-12 (360m spacing, speed overestimated by ~39%). Not addressed in this revision.
+    Status: CARRIED FORWARD — sensitivity analysis in the paper should flag this.
+
+    [Risk Level: Med] [ID: C-20260530-007] Tau sensitivity CV remains high with no interpretive output
+    Location: Section 5, CruisingVehicleDetector.sensitivity_analysis(), lines 1625-1630
+    Description: The code now computes and stores `tau_cv` (line 1653), quantifying the instability. However, no interpretive message is printed about the 7x demand range (15 to 102 spaces) or the 56.2% CV. The paper writer now has the data but must provide the interpretation.
+    Status: PARTIALLY FIXED — CV is computed but not interpreted. Paper writer must address: (a) justify tau=30, or (b) present range as result.
+
+    [Risk Level: Med] [ID: C-20260530-008] Cruise counts from separate estimate_parking_demand call
+    Location: Section 8, main pipeline lines 2798-2808
+    Description: Previously flagged in Round 1. The code still calls `estimate_parking_demand()` again after `sensitivity_analysis()` to populate plot data. The tau=30 results are generated twice. Not addressed in this revision.
+    Status: CARRIED FORWARD — redundant computation persists but results are consistent.
+
+    [Risk Level: Med] [ID: C-20260530-009] GA offset encoding mutation uses child[0] as ub, creating inconsistent bounds
+    Location: Section 4, SignalTimingOptimizer.polynomial_mutation(), line 1274
+    Description: Previously flagged in Round 1. Offsets are bounded by child[0] (C_0), which may change during mutation. Repair at line 1327 (`c1[j] = np.abs(c1[j]) % c1[0]`) corrects this. Not addressed in this revision.
+    Status: CARRIED FORWARD — repair-based approach is functional but suboptimal.
+
+    [Risk Level: Med] [ID: C-20260530-010] GA offset values converge exactly to heuristic initialization
+    Location: Section 4, SignalTimingOptimizer.ga_optimize(), lines 1174-1196
+    Description: Previously flagged in Round 1. Offsets converge to 63.0063s and 32.4032s (identical to 700/11.11 and 360/11.11). No alternative initialization is tested. Not addressed in this revision.
+    Status: CARRIED FORWARD — paper writer should note this warrants corroboration.
+
+    [Risk Level: Med] [ID: V-20260530-001] GA convergence plot shows single run, not multiple seeds
+    Location: Section 7, Visualizer.plot_ga_convergence(), lines 2180-2194; main pipeline lines 2856-2861
+    Description: In Round 1, flagged because a single GA run provides no variability information. The plot function supports multiple traces via `history_dict`, and `ga_histories` contains two entries (`weekday_peak` and `weekday_mean`) — but these are from the SAME run. The GA is never re-run with different seeds. The median-run visualization improvement was NOT implemented.
+    Status: NOT FIXED — single-run trace remains. Paper should acknowledge this limitation.
+
+    [Risk Level: Med] [ID: V-20260530-002] Green wave diagram shows only Phase 1 (N-S straight)
+    Location: Section 7, Visualizer.plot_green_wave_diagram(), lines 2212-2227
+    Description: The code now includes an internal comment "Phase 1 (N-S straight) as the main green band" (line 2213). However, the plot title (line 2256) and legend (line 2262) do not inform the viewer that only Phase 1 is rendered. The viewer sees a green band with no qualification.
+    Status: PARTIALLY FIXED — code comment added but plot annotation missing. The paper writer should add an explanatory caption.
+
+    [Risk Level: Med] [ID: V-20260530-003] Fig6 feature space overplotting at low v_avg
+    Location: Section 7, Visualizer.plot_cruising_stats(), lines 2295-2309
+    Description: Previously flagged in Round 1. Dense clusters near v_avg &lt; 10 km/h with 8000+ vehicles and s=20 markers with alpha=0.6. Not addressed in this revision.
+    Status: CARRIED FORWARD.
+
+    <!-- ===================================================================== -->
+    <!-- LOW-RISK: PREVIOUSLY FLAGGED BUT NON-BLOCKING                          -->
+    <!-- ===================================================================== -->
+
+    [Risk Level: Low] [ID: C-20260530-011] Dead code: holidays variable in DataPreprocessor.label_date_types()
+    Location: Section 1, DataPreprocessor.label_date_types(), line 303
+    Description: `holidays = {5, 6, 7, 8, 9, 10}` is assigned but never used. Line 309 uses the literal `{1, 2, 3, 4, 5}` directly. Additionally, if the variable were used by mistake, it would label May 5-10 as holidays (off-by-one error from day_offset). The dead code was flagged in Round 1 but NOT removed.
+    Status: NOT FIXED — cosmetic but should be removed to avoid confusion.
+
+    [Risk Level: Low] [ID: C-20260530-012 through C-20260530-016] Various minor issues
+    Description: All 5 Low-risk issues from Round 1 (Cohen's d sign flip, low R-squared, identical breakpoints, no GA convergence stopping, Fig6 empty subplot) remain in the code. None were addressed in this revision.
+    Status: CARRIED FORWARD — none block Phase 3.
+
+  </flaws>
+
+  <correction_directives>
+    All 4 High-risk vulnerabilities are verified as fixed. The pipeline may proceed to Phase 3 (paper writing) with the following guidance for the paper writer:
+
+    1. The tau sensitivity analysis produces a CV of 56.2% across tau=[15,60]. The paper must either (a) justify why tau=30 is the correct choice based on average segment traversal time, or (b) present the parking demand as a range (15-102 spaces) rather than a point estimate.
+
+    2. The GA convergence should not be presented as definitive global optimum. The offsets converge exactly to the heuristic initialization (63.0s and 32.4s), and only one GA run was performed. Consider noting that the optimized offsets match the heuristic expectation, and that multiple runs with different seeds would strengthen the result.
+
+    3. The green wave diagram (Fig 5) shows only Phase 1 (N-S straight) green bands. The figure caption must explicitly state that only the coordinated phase is rendered.
+
+    4. The regression models have R-squared below 0.2 and insignificant treatment effects (all p > 0.05). This must be reported with appropriate caution — the paper should not claim a statistically significant control effect.
+
+    5. The PELT implementation does not achieve O(n) pruning (candidate set is never meaningfully pruned). Do not claim O(n) complexity for PELT in the paper.
+
+    6. The speed proxy (530m average segment length) overestimates speeds on Jingzhong Road by ~39%. Include this as a limitation.
+
+    7. (Dead code) The `holidays` variable on line 303 of `label_date_types()` is unused and contains incorrect values. Remove it for clarity.
+  </correction_directives>
+
+  <status>APPROVED</status>
+
+  <approval_basis>
+    Status is APPROVED because all 4 High-risk issues from Round 1 are verified as fixed:
+    1. PELT covariance: now uses within-segment pooled covariance (not global mean centering)
+    2. GA overflow: proportional scaling fallback prevents assertion crash
+    3. Parallel trend: Wald chi-squared test replaces invalid averaged t-statistic
+    4. Cruising validation: precision, recall, and F1 computed against synthetic ground truth
+
+    Remaining Medium/Low issues (single GA run, tau sensitivity interpretation, dead code, etc.) are non-blocking for Phase 3. The paper writer has sufficient data to address them at the narrative level.
+  </approval_basis>
+
+</devils_advocate_report>

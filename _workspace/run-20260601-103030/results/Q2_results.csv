@@ -1,0 +1,6 @@
+problem_id,metric_name,value,unit,method,figure_ref,formula_ref
+Q2,最大有效遮蔽时长,4.587500000000001,s,GridSearch + Nelder-Mead,fig02_q2_optimization.png,Eq.(1)-(7) + NM优化
+Q2,最优航向角,6.992255158284822,°,GridSearch + Nelder-Mead,fig02_q2_optimization.png,Eq.(8)
+Q2,最优速度,133.02424785154102,m/s,GridSearch + Nelder-Mead,fig02_q2_optimization.png,Eq.(8)
+Q2,最优投放时刻,0.001672779102507616,s,GridSearch + Nelder-Mead,fig02_q2_optimization.png,Eq.(8)
+Q2,最优起爆时刻,0.7625338769254248,s,GridSearch + Nelder-Mead,fig02_q2_optimization.png,Eq.(8)

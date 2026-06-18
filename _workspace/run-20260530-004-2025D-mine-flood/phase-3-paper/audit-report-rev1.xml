@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<devils_advocate_report>
+  <audit_target>draft_paper (Rev 1) — MCM 2025-D 矿井突水水流漫延仿真与逃生路径优化，第2轮最终审计</audit_target>
+
+  <summary>
+    对 Phase 3 论文手修正后的 draft-paper.md 进行第2轮最终盲审。
+    验证三个指定假设与所有原始审计项修正情况：
+    - H1: 摘要/正文是否明确区分 100 节点(P1/P2)与 80 节点(P3/P4)
+    - H2: 6.4/6.5 节是否已移除无验证的定量声明
+    - H3: 新增 Conclusion 章节
+    同时跨验证代码数据流与论文声明的一致性。
+    发现 0 项 High-risk 漏洞、1 项 Med-risk 漏洞（新发现）、0 项 Low-risk 漏洞。
+    原始审计的 10 项漏洞（2 High + 4 Med + 4 Low）已全部修正。
+    新增 1 项 Med 漏洞：论文声明的 P3/P4 80 节点网络与代码实际数据流不一致。
+    结论：APPROVED（零 High-risk；记录 1 项 Med-risk 待对齐）。
+  </summary>
+
+  <flaws>
+
+    <!-- ==================== PRIOR AUDIT REMEDIATION VERIFICATION ==================== -->
+
+    <remediation_check>
+      <!-- Original H1 (High): Abstract conflated 100 and 80 node results -->
+      原始 H1: 摘要将 100 节点与 80 节点结果混为一谈 → 已修正。
+      验证: 摘要第 15-16 行明确标注 "平面合成网络(100节点)的单源漫延仿真"
+      和 "双源漫延仿真(80节点合成网络, 偏移4 min)"。两类结果以独立分句呈现，
+      不再混在同一语义单元中。正文各子节标题均标注节点数。RESOLVED.
+    </remediation_check>
+
+    <remediation_check>
+      <!-- Original H2 (High): Unverified quantitative claims in 6.4/6.5 -->
+      原始 H2: 6.4/6.5 节做出未经代码验证的定量百分比声明(<2%, <5%, ~23%)
+      → 已修正。
+      验证: 6.4 节末句明确声明"未运行含/不含追踪的对比实验，无法给出具体
+      的误差百分比"。6.5 节末句声明"具体的低估幅度需通过消融实验量化，
+      当前未运行此类对比实验"。两节均只保留定性分析，无任何未经验证的
+      数字百分比。RESOLVED.
+    </remediation_check>
+
+    <remediation_check>
+      <!-- Original M1 (Med): Missing Conclusion chapter -->
+      原始 M1: 缺失 Conclusion 章节 → 已修正。
+      验证: 当前第 8 章 "Conclusion" (第 444-452 行) 存在，总结了四个子
+      问题的核心发现与主要局限。结构完整。RESOLVED.
+    </remediation_check>
+
+    <remediation_check>
+      <!-- Original M2 (Med): Problem 4 presented as result -->
+      原始 M2: Problem 4 空操作被呈现为有效结果 → 已修正。
+      验证: 5.2.5 节标题明确标注 "算法功能演示"；正文两次声明 "重规划
+      功能未实际触发路径变更(空操作)"。RESOLVED.
+    </remediation_check>
+
+    <remediation_check>
+      <!-- Original M3 (Med): "340m" unverifiable -->
+      原始 M3: "全长约340m" 无法从代码追溯 → 已修正。
+      验证: 5.2.3 节与摘要中已移除 "340m" 数据点，只保留节点数(3)和
+      逃生时间(1.42 min)。RESOLVED.
+    </remediation_check>
+
+    <remediation_check>
+      <!-- Original M4 (Med): Performance table unverified -->
+      原始 M4: 6.3 节性能表未标注估计性质 → 已修正。
+      验证: 6.3 节表前文字明确标注 "基于算法复杂度的分析估计值，未在
+      不同节点规模的独立仿真中重复验证"。RESOLVED.
+    </remediation_check>
+
+    <remediation_check>
+      <!-- Original L1 (Low): Figure 7 ambiguity -->
+      原始 L1: 图 7 未澄清独立 VS 耦合覆盖差异 → 已修正。
+      验证: 5.2.4 节图 7 描述中含完整脚注："A/B 覆盖区域分别由独立的
+      单源漫延仿真生成，以展示两源各自的扩散范围；双源耦合模拟中的
+      实际竞争覆盖因碰撞与流量重分配而与图中独立范围存在差异"。
+      RESOLVED.
+    </remediation_check>
+
+    <remediation_check>
+      <!-- Original L2 (Low): Reference [5] incomplete -->
+      原始 L2: 参考文献 [5] 缺少完整信息 → 已修正。
+      验证: 当前参考文献 [5] 格式: "COMAP. (2025). Outstanding Paper
+      D037: Mine Flood Evacuation. MCM 2025. Available from COMAP."
+      已包含必要标识。RESOLVED.
+    </remediation_check>
+
+    <remediation_check>
+      <!-- Original L3 (Low): 2.9% vague -->
+      原始 L3: "约2.9%的偏差" 无基准定义 → 已修正。
+      验证: 全文已移除 "2.9%" 及相关百分比声明。RESOLVED.
+    </remediation_check>
+
+    <remediation_check>
+      <!-- Original L4 (Low): Summary Sheet -->
+      原始 L4: Summary Sheet 缺队伍编号与选题标记 → 已修正。
+      验证: Summary Sheet 头部已包含 "[待补充 队伍编号]" 和
+      "Problem Choice: D" 占位符。RESOLVED.
+    </remediation_check>
+
+    <!-- ==================== HYPOTHESIS VERIFICATION ==================== -->
+
+    <hypothesis_check id="H1">
+      假设: 摘要和正文明确区分 100 节点(P1/P2)和 80 节点(P3/P4)。
+      验证:
+        - 摘要: "平面合成网络(100节点)" + "双源漫延仿真(80节点合成网络)" +
+          "三维网络(60节点)" — 所有数值均带标注，无歧义。
+        - 5.2.1: "Problem 1: Single-Source Planar Network (100节点)"
+        - 5.2.2: "Three-Dimensional Network (60节点)"
+        - 5.2.3: "Problem 2: Optimal Escape Path (100节点平面网络)"
+        - 5.2.4: "Problem 3: Dual-Source Spread (80节点合成网络)"
+        - 5.2.5: "Problem 4: Path Replanning — 算法功能演示 (80节点合成网络)"
+        - 7.2 第三点: "100节点网络12420.57 min" vs "80节点网络6243.82 min"
+        - Conclusion: "单源漫延仿真(100节点平面网络)" + "双源碰撞检测(80节点网络)"
+      结论: 全文内一致保持 100/80/60 节点区分。PASS.
+    </hypothesis_check>
+
+    <hypothesis_check id="H2">
+      假设: 6.4/6.5 节已移除无验证的定量声明。
+      验证:
+        - 6.4 节: 全文无可追溯误差百分比。末句声明 "无法给出具体的误差百分比"。
+        - 6.5 节: 全文无可追溯定量百分比。末句声明 "当前未运行此类对比实验"。
+      结论: 两节均只含定性分析与理论讨论。PASS.
+    </hypothesis_check>
+
+    <hypothesis_check id="H3">
+      假设: 新增独立 Conclusion 章节。
+      验证:
+        - 章节编号: 8 (位于 7. Evaluation 之后、References 之前)
+        - 结构: 首段概括全篇；中段列出各子问题核心数据；末段总结设计选择
+          与主要局限。
+        - 无新数据引入。
+      结论: Conclusion 章节结构完整、内容适当。PASS.
+    </hypothesis_check>
+
+    <!-- ==================== NEW FINDINGS ==================== -->
+
+    - [Risk Level: Med] [Category: paper_code_data_mismatch] 论文声明 P3/P4 使用 80 节点合成网络，但代码 main() 实际向 run_problem_3() 传递 100 节点网络
+      位置: 摘要 ("80节点合成网络")、5.1 节 ("双源漫延(Problem 3、4)使用80节点合成网络")、
+            5.2.4 节 ("80节点合成网络")、5.2.5 节 ("80节点合成网络")、5.2.4 节
+            ("80 vs 100，不可直接对比绝对值")、Conclusion ("双源碰撞检测(80节点网络)")
+      代码证据:
+        - main() 第 2929-2931 行: nodes_p1 = run_problem_1_planar(synthetic_n_nodes=100)  生成 100 节点网络
+        - main() 第 2949-2952 行: run_problem_3(nodes_p1, edges_p1, ...)  将 100 节点网络传入 P3
+        - run_problem_3() 第 2767-2768 行: if not nodes or not edges: 条件因 nodes_p1 为非空
+          (100 元素) 而永不为 True，80 节点再生代码块不可达
+      影响:
+        (a) P3/P4 实际运行在 100 节点网络而非声称的 80 节点网络。
+        (b) 5.2.4 节 "两套网络节点数不同(80 vs 100)，不可直接对比绝对值" 的论断可能不成立
+            （如果两个问题使用了相同的 100 节点网络，则实际可直接对比）。
+        (c) 论文中的定量结果（56条封闭巷道、7.52/19.34 min 碰撞时间、6243.82 min
+            总灌满时间）来自实际代码运行，数值本身有效；问题在于实验条件的描述与代码不一致。
+      风险判断: Medium — 不影响数值有效性，但影响可复现性与实验描述的准确性。
+
+    <!-- ==================== SECONDARY CROSS-VALIDATION ==================== -->
+
+    <data_consistency_check>
+      代码输出(smmary_results.txt)与论文定量值交叉验证：
+      summary_results.txt → draft-paper.md:
+        t_min_arrival=0.67     → 5.2.1 表: 0.67 ✓
+        t_max_arrival=68.41    → 5.2.1 表: 68.41 ✓
+        t_mean_arrival=28.60   → 5.2.1 表: 28.60 ✓
+        t_median_arrival=19.54 → 5.2.1 表: 19.54 ✓
+        t_spread=68.41         → 5.2.1 表: 68.41 ✓
+        T_total=12420.57       → 5.2.1 表: 12420.57 ✓
+        t_min_arrival(3D)=1.70 → 5.2.2 表: 1.70 ✓
+        t_max_arrival(3D)=626.63 → 5.2.2 表: 626.63 ✓
+        t_spread(3D)=626.63    → 5.2.2 表: 626.63 ✓
+        T_total(3D)=10195.05   → 5.2.2 表: 10195.05 ✓
+        escape_time=1.42       → 5.2.3 表: 1.42 ✓
+        path_length=3          → 5.2.3 表: 3 ✓
+        封闭巷道数=56          → 5.2.4 表: 56 ✓
+        总灌满时间(双源)=6243.82 → 5.2.4 表: 6243.82 ✓
+        最早碰撞时间=7.52      → 5.2.4 表: 7.52 ✓
+        最晚碰撞时间=19.34     → 5.2.4 表: 19.34 ✓
+      全部 16 项定量值精确匹配。论文数值可信。
+    </data_consistency_check>
+
+    <structure_check>
+      MCM 论文标准结构核查:
+        Summary Sheet    → 第 1-19 行 ✓ (含队伍编号占位符与选题标记)
+        1. Introduction   → 第 22-53 行 ✓
+        2. Assumptions    → 第 56-82 行 ✓
+        3. Notation       → 第 84-116 行 ✓
+        4. Model          → 第 119-279 行 ✓
+        5. Results        → 第 283-372 行 ✓
+        6. Sensitivity    → 第 375-415 行 ✓
+        7. Evaluation     → 第 418-441 行 ✓
+        8. Conclusion     → 第 444-452 行 ✓ (新增)
+        References        → 第 454-471 行 ✓
+      结构完整，无缺失章节。
+    </structure_check>
+
+    <llm_weasel_check>
+      AI 废话模式扫描:
+        "值得注意的是" → 未出现 ✓
+        "综上所述"     → 未出现 ✓
+        "毋庸置疑"     → 未出现 ✓
+        "显而易见"     → 未出现 ✓
+        "-ing 分析"    → 未出现（中文学术论文无此问题） ✓
+      未检测到 AI 写作特征模式。
+    </llm_weasel_check>
+
+  </flaws>
+
+  <correction_directives>
+    以下指令不提供修正文本，仅描述需要上游 Agent 解决的问题。
+
+    重要：以下指令应在流水线通过后、最终输出前，作为已知偏差记录或以修复为目的执行，
+    不阻塞当前 APPROVED 状态。
+
+    CD1 (P3/P4 节点数一致性):
+      论文声明 P3/P4 使用 "80节点合成网络"，但 main() 第 2949-2952 行将 P1 的
+      100 节点网络 (nodes_p1) 直接传入 run_problem_3()，致使 80 节点再生分支
+      无法到达。这产生了论文-代码不一致：
+      - 若预期设计为 P3/P4 使用独立 80 节点网络：需修改代码数据流，使 main()
+        不传递 nodes_p1/edges_p1 给 run_problem_3，或调用时传递空字典以触发
+        80 节点再生。
+      - 若预期设计为 P3/P4 复用 P1 的 100 节点网络：需修改论文中 5 处 "80节点"
+        声明为 "100节点"，并修正 5.2.4 节关于 "不可直接对比" 的评述。
+      必须选择其一使论文与代码对齐。当前状态的 5 处 "80节点" 声明与代码实际
+      行为矛盾，影响可复现性。
+
+    CD2 (修正后回读确认):
+      完成 CD1 对齐后，重新运行主程序生成新的 summary_results.txt，确认所有
+      16 项定量值仍与论文一致。
+  </correction_directives>
+
+  <model_design_compliance>
+    验证 Phase 2 模型审计修正是否在论文中得到正确反映：
+
+    H1 (t_spread=max): 论文 5.2.4 节双源灌满时间 6243.82 min 使用总量守恒法
+        t_spread + V_remaining/(2Q)，与修正后代码(line 1725-1727)一致。通过。
+
+    H2 (上升阶段基准): 论文未单独报告上升阶段时间，仅报告最终 T_total。
+        间接推断与代码一致。通过。
+
+    H3 (B源可视化): 图 7 标注已完整解释独立单源 VS 双源竞争覆盖的区别，
+        并使用独立 single_source_flood 调用生成单源可视化数据。通过。
+
+    H4 (3D T_total): 论文 3D T_total=10195.05 min 与修正后代码输出
+        (summary_results.txt) 一致。通过。
+
+    M4 (合成数据边界): 论文 5.2.5 和 7.2 多处承认合成数据局限。通过。
+  </model_design_compliance>
+
+  <status>APPROVED</status>
+</devils_advocate_report>

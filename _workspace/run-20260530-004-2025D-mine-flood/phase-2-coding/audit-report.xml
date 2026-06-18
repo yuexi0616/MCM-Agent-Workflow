@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<devils_advocate_report>
+  <audit_target>code_repo + data_vis — MCM 2025-D 矿井突水漫延仿真与逃生路径规划，Phase 2 代码审计</audit_target>
+
+  <summary>
+    对 Phase 2 代码手输出的完整 Python 代码(2943行)、8张可视化图表、结果汇总表执行独立审计。
+    逐条验证建模阶段 16 项审计意见(M-2025D-001~016)的代码实现正确性。
+    发现 4 项 High-risk 漏洞、4 项 Med-risk 漏洞、4 项 Low-risk 漏洞。
+    结论：REJECTED — 必须修正 H1~H4 后方可进入 Phase 3。
+  </summary>
+
+  <flaws>
+
+    <!-- ============ HIGH-RISK ============ -->
+
+    - [Risk Level: High] [Category: physics_violation] 双源漫延的 t_spread 取 min(t_A, t_B) 而非 max(t_A, t_B)，物理意义错误
+      位置: dual_source_flood(), 行 1724
+      描述: `t_spread = min(t_A, t_B)` 取两个突水点各自铺满时间的较小值。若 A 源在 t=50 完成铺满、B 源在 t=70 完成，代码报告的 t_spread=50，但此时 B 源仍在扩散。应为 max(t_A, t_B)。这直接影响 downstream 任何基于 t_spread 的物理量计算，以及在 summary 中报告的铺满时刻值。
+
+    - [Risk Level: High] [Category: physics_violation] 双源上升阶段使用 (t_A + t_B)/2 作为基础时间，无任何物理对应量
+      位置: dual_source_flood(), 行 1691-1693
+      描述: `edge_0_3m_time[e.id] = (t_A + t_B) / 2 + V_to_0_3 / (2 * Q_rise)` 中 (t_A+t_B)/2 是两个独立漫延过程铺满完成时间的算术平均，不代表双源联合铺满完成时刻。实际联合体积演进为 Q*t + Q*max(0, t-t_offset_B)，需通过求解 Q*t + Q*max(0, t-t_offset) = V_threshold 获得每个边到达 0.3m/3.0m 的真实时刻。当前公式引入系统性偏差，且该偏差方向不确定（可能提前或推迟）。此问题导致 Problem 3 和 Problem 4 中所有基于水位时间的路径可行性判断均基于不可靠的水位时间数据。
+
+    - [Risk Level: High] [Category: data_vis_misleading] 双源碰撞可视化(fig7)传入空 WaterState 作为 B 源覆盖数据，图表严重误导
+      位置: run_problem_3(), 行 2773
+      描述: `plot_dual_source_collision(nodes, edges, ws_A, WaterState({}, {}, {}, {}, 0.0, 0.0), ...)` 中 B 源漫延状态被传入空字典。图7的绘制函数在行 2300-2309 使用 `water_state_A.node_arrival` 和 `water_state_B.node_arrival` 分别绘制 A 和 B 的覆盖区域。由于 B 的状态为空，fig7 仅显示单源 A 的覆盖范围(来自 Problem 1 的独立单源运算，非双源联合结果)和封闭巷道位置，完全不显示 B 源实际覆盖范围。此图若用于论文将产生严重误导——读者将无法理解 B 源的扩散范围与碰撞关系。必须从双源结果中提取 A 与 B 各自的覆盖范围。
+
+    - [Risk Level: High] [Category: missing_physics] 3D 模型 T_total=626.63min 仅计算灌满至 0.1m (H0)，而非 3m (H_MAX)
+      位置: single_source_flood_3d(), Step 5, 行 1134; summary_results.txt 行 25
+      描述: 3D 平行上升阶段使用 `V_layer = sum(TUNNEL_WIDTH * e.length * H0 for e in unique_edges_at_z)` 逐层灌满至 H0=0.1m。返回的 T_total 仅表示将所有层次灌满至 0.1m 的总时间。灌满至 3m 的完整时间约为 30 倍(~18,800 min)。但 summary_results.txt 将 T_total=626.63 标注为总灌满时间，而未注明仅对应 0.1m 水位。同时，Problem 2 和 Problem 4 中用于判定巷道安全通行的 edge_0_3m_time 和 edge_full_time 来自底层 result_low（仅含 V_low 内边），上层边的水位时间完全未填充。这导致使用 3D 漫延结果的路径规划(若有)不可靠。
+
+    <!-- ============ MEDIUM-RISK ============ -->
+
+    - [Risk Level: Med] [Category: physics_violation] 边级碰撞 t_meet 公式物理基础薄弱
+      位置: dual_source_flood(), 行 1572-1583
+      描述: `t_meet = (V_total + Q_A * 0.0 + Q_B * t_offset_B) / Q_total` 化简为 (V_total + Q_B*t_offset_B)/(Q_A+Q_B)。其中 Q_B*t_offset_B 将 B 源偏移时间内的流量当作已注入该特定巷道的体积，但实际 B 源水在偏移期内通过自己的网络扩散，并非全部涌入该巷道。同时 Q_A 和 Q_B 是瞬时边级流量(随时间动态变化)，用瞬时值估算累计填充时间引入系统性误差。虽然 dimension 检查通过(均为分钟)，但物理模型不成立。
+
+    - [Risk Level: Med] [Category: algorithmic_consistency] 单源与双源上升阶段总灌满时间算法不一致
+      位置: single_source_flood() 行 968 vs dual_source_flood() 行 1700
+      描述: 单源 T_total = max(edge_full_time.values()) 基于每条边按长度比例分配流量，总时间由最长边决定。双源 T_total_dual = total_volume/(2*Q) 基于纯水量守恒，与边分布无关。两种算法产生不一致结果：单源 12420.57min (不可直接加倍得 6210.29min)，双源 6389.05min，偏差约 2.9%。在论文中若并列报告两个 T_total，读者将质疑测量标准不统一。应统一计算方法或在论文中明确说明差异原因。
+
+    - [Risk Level: Med] [Category: missing_physics] 3D 平行上升未处理低层持续灌满至 3m 所需水量
+      位置: single_source_flood_3d(), Step 5, 行 1107-1147
+      描述: 3D 模型逐层仅灌满至 H0=0.1m 后立即处理下一层，未扣除低层从 0.1m 上升至 3m 所需的水量/时间。真实物理过程为：水同时填充下层至 3m 并向高层上升，下层填充与上层充水并行。当前模型将各层视为顺序独立(sequential, independent)，实际应并行(parallel, dependent)。这不仅低估总时间，也错误估计了各层到达时间的大小关系。
+
+    - [Risk Level: Med] [Category: boundary_condition] Problem 2 逃生时间(1.42min)远小于重规划切换时间(5.0min)，Problem 4 对合成数据无实际意义
+      位置: summary_results.txt 行 28; replan_path() 行 1896-1900
+      描述: 矿工在 t=1.42min 已到达出口(路径仅 2 段边)，而 Problem 4 的 T_SWITCH=5.0min 在逃生完成后。replan_path 对剩余段为空的处理是回退到起始节点重新运行 Dijkstra，产生一条"新路径"，但矿工实际已不在井下。必须在论文中明确说明该边界条件及其对结果解读的影响。用真实数据(665节点)可能自然避免此问题，但在当前合成数据演示中评估重规划功能时须标注此局限。
+
+    <!-- ============ LOW-RISK ============ -->
+
+    - [Risk Level: Low] [Category: documentation_inconsistency] 代码注释声称 PathResult 已移除 .total_time 属性但实际仍保留
+      位置: 行 22 vs 行 150-151
+      描述: 模块文档字符串(行 22)声明"路径对象不再附着 .total_time 属性(改为使用字典或元组返回)"，但行 150 `self.total_time = total_time` 仍存储该属性。虽然这不导致运行时错误(下游仅通过 .path 传递路径列表，PathResult 仅在 Problem 2 返回处被创建且其 .total_time 在行 2910 被访问)，但注释与实际代码不一致，可能误导未来维护者。
+
+    - [Risk Level: Low] [Category: missing_validation] 合成数据 56 条封闭巷道未提供物理合理性参考
+      位置: summary_results.txt 行 33
+      描述: 在约 80 节点、~150 边的合成网络中报告 56 条边因双源碰撞而封闭(~37%)。缺乏与真实数据的对比基准，无法判断此数量级是否合理。建模阶段曾承诺"验证参考值待代码手核实原始数据"，但代码完全使用合成数据运行，未见与真实 Excel 附件数据的对比。
+
+    - [Risk Level: Low] [Category: incomplete_data] 双源返回的 WaterState 中 edge_spread_time 为空字典
+      位置: dual_source_flood(), 行 1717-1718
+      描述: `edge_spread_time = {}` 被直接赋值为空。双源 WaterState 中 edge_spread_time 字段不包含任何数据。虽然该字段未被后续代码访问(Problem 3/4 使用 edge_0_3m_time 作判定)，但作为 WaterState 的完整数据结构，返回不完整的对象是有风险的。
+
+    - [Risk Level: Low] [Category: visualization] 汇总表逃生时间缺少单位标注
+      位置: summary_results.txt 行 28
+      描述: `escape_time: 1.42` 的单位列显示 "-" 而非 "min"。与其他行(如"总灌满时间(双源)"单位正确标注为"min")不一致。
+
+  </flaws>
+
+  <correction_directives>
+    以下指令不提供修正文本，仅描述需要上游 Agent 解决的问题。
+
+    H1 (t_spread = min -> max):
+      dual_source_flood 返回值中 t_spread 的计算方式必须修正。将行 1724 的 min(t_A, t_B) 改为 max(t_A, t_B)。注意这一更改会连带影响 edge_0_3m_time 和 edge_full_time 的计算，因为当前它们使用 (t_A+t_B)/2 作为基础。在修正 H1 后，H2 的修正应同步完成。
+
+    H2 (上升阶段基础时间无物理意义):
+      edge_0_3m_time 和 edge_full_time 在双源模型中的计算必须重新设计。不应使用 (t_A+t_B)/2 作为铺满完成时间。替代方案：在双源主循环结束后，t_global (全局时间)已持续推进到两源中较晚者完成铺满。应使用该全局时间作为铺满完成时刻的基准，再叠加上升阶段时间。或者，为双源漫延设计一个联合体积-时间函数 V_combined(t) = Q*t + Q*max(0, t-t_offset_B)，反推每个边达到 0.3m/3.0m 的时刻。
+
+    H3 (双源可视化 B 源为空):
+      fig7 的生成必须传入真实的 B 源覆盖数据，而非空 WaterState。方案：在 dual_source_flood 中，除了返回合并的 WaterState，还应分别返回 A 和 B 的独立 node_arrival（或允许从 blocked + flow_A/flow_B 中重建 B 的覆盖集合）。plot_dual_source_collision 函数应使用双源联合结果中真实的两源覆盖数据绘图。
+
+    H4 (3D T_total 仅对应 0.1m):
+      若 3D 模型仅计算 H0 灌满时间，T_total 的标注必须改为 "T_total_H0" 或 "t_to_0.1m" 以消除歧义。同时 edge_0_3m_time 和 edge_full_time 需补充对所有边(包括上层边)的计算，或至少补充上层边到达 H0 的时间。理想方案：在 Step 5 之后增加从 H0 到 3m 的同步上升阶段(仿照单源模型的 Phase 3)，使用总水量守恒计算每个 z-level 的 0.3m/3.0m 到达时间。
+
+    M1 (t_meet 公式):
+      边级碰撞的相遇时间计算应解释为何 Q_B*t_offset_B 是合理的近似，或替换为动态时间步进求解方案：从当前时间 t_global 开始，用 Q_A+Q_B 的联合流量填充剩余体积 V_total - partial_fill_A - partial_fill_B。
+
+    M2 (单源/双源 T_total 算法不一致):
+      统一两种算法的上升阶段计算方法。建议：双源也使用基于各边长度的比例分配法，而非简单总量守恒。或至少在代码注释和汇总表中注明差异原因。
+
+    M3 (3D 并行上升时序):
+      重新设计 3D 上升阶段的物理模型。填充上层所需体积应扣除下层已填充体积与总容积的差值，而非各层独立计算 H0 体积。
+
+    M4 (Problem 4 合成数据无意义):
+      在代码注释和汇总表中明确标注：当前合成数据下 Problem 2 逃生时间(1.42min)小于 T_SWITCH(5.0min)，重规划场景未实际触发。如果需要演示重规划功能，应使用人造场景(如将起点选在更远位置或增加 T_SWITCH 阈值使切换发生在逃生过程中)。
+
+  </correction_directives>
+
+  <model_design_compliance>
+    验证建模阶段 16 项审计(M-2025D-001~016)的代码实现合规性：
+
+    M-2025D-001 (OR->AND): 已修正。行 1193 使用 `t_enter < t_arr_u and t_enter < t_arr_v`。通过。
+    M-2025D-002 (双源边级碰撞): 已修正。行 1552-1598 实现了边级碰撞检测和 rollback。通过。
+    M-2025D-003 (贪心BFS删除): 已修正。代码中无贪心 BFS 函数。通过。
+    M-2025D-004 (3D BFS限于E_low): 已修正。行 1063-1076 BFS严格使用 adj_low(E_low内边)。通过。
+    M-2025D-005 (点-线段距离): 已修正。行 562-569 为分段点-线段距离。通过。
+    M-2025D-006 (流量排除上升): 已修正。行 656-657 get_candidates 跳过 flag_up=1。通过。
+    M-2025D-007 (部分填充追踪): 已修正。行 846 partial_fill 字典已实现。通过。
+    M-2025D-008 (死循环保护): 已修正。行 893-896 candidates 为空时 break。通过。
+    M-2025D-009 (断流重分配): 已修正。行 775-779 使用 partial_fill 重新计算。通过。
+    M-2025D-010 (中途淹没): 已修正。行 1227-1232 mid-flood 检测已实现。通过。
+    M-2025D-011 (重规划比较基准): 已修正。行 1909-1912 evaluate_path_under_dual 已实现。通过。
+    M-2025D-012 (单位统一): 已修正。行 64-67 全部 m/min。通过。
+    M-2025D-013 (验证参考值): 代码未读取真实附件 Excel，全部为合成数据。此项状态为"部分通过"。
+    M-2025D-014 (起点淹没): 已修正。行 1276-1279 检查起点是否淹没。通过。
+    M-2025D-015 (flow_dir_flag 初始化): 已修正。行 1202 flow_dir_flag=None。通过。
+    M-2025D-016 (get_remaining_segment 未定义): 已修正。行 1736-1799 已实现。通过。
+  </model_design_compliance>
+
+  <status>REJECTED</status>
+</devils_advocate_report>

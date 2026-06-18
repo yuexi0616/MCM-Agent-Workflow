@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(MCMKnowledgeBase/**/*)",
+      "Bash(/d/Environment/anaconda3/envs/math_modeling/python.exe *)",
+      "Write(_workspace/**/*)",
+      "Read(_workspace/**/*)",
+      "Bash(cat *)",
+      "Bash(grep *)",
+      "Bash(mkdir *)",
+      "Bash(dir *)",
+      "Bash(ls *)",
+      "Bash(tasklist)"
+    ]
+  }
+}

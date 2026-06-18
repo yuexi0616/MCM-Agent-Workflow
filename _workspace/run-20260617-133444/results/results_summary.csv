@@ -1,0 +1,6 @@
+﻿problem_id,metric_name,value,unit,method,figure_ref,formula_ref
+Q1,occlusion_duration,1.39,s,given-params line-sphere-intersection,fig01-Q1-occlusion-timeline.png,mathematical_model.item_6
+Q2,occlusion_duration,4.6,s,grid-search + differential-evolution,fig02-Q2-convergence.png,mathematical_model.item_6 + algorithm_flow.Step_6
+Q3,occlusion_duration,6.45,s,"differential-evolution (12-D, 3 bombs)",fig04-Q1-Q5-duration-comparison.png,mathematical_model.item_6 + algorithm_flow.Step_7
+Q4,union_duration,4.58,s,interval-union + grid-search + differential-evolution,fig04-Q1-Q5-duration-comparison.png,interval_union() + union_duration()
+Q5,intersection_duration,0.0,s,full-assignment-enumeration + interval-intersection + DE,fig04-Q1-Q5-duration-comparison.png,intersection_duration() + assignment enumeration (243 combos)

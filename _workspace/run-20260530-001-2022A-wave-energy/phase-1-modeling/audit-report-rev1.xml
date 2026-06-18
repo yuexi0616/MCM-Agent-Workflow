@@ -1,0 +1,137 @@
+<devils_advocate_report>
+  <audit_target>model_design rev1 — 2022 CUMCM Problem A: 波浪能最大输出功率设计</audit_target>
+
+  <flaws>
+
+    -- 前次审计13条意见的逐一验证 --
+
+
+    [Risk Level: CLOSED] Issue 1 (High) PTO力符号反转
+    验证结果：已修正。所有运动方程中浮子方程 PTO 项已改为 +Kh*xr + Ch*v_rel，振子方程改为 -Kh*xr - Ch*v_rel。新增能量平衡验证 dE/dt = u·fe - Cxh·u^2 - Ch·v_rel^2，其中 -Ch·v_rel^2 < 0 证明 PTO 阻尼器从系统提取而非注入能量。经手算复验确认该能量平衡推导正确（见下文交叉验证）。状态：CLOSED. PASS.
+
+    [Risk Level: CLOSED] Issue 2 (High) T_total 不足
+    验证结果：已修正。符号表新增 T_total 行（Q1=40T, Q2-4=200s）。算法1/2的调用参数中 Q2-4 使用 T_total=200s。参数对照表（第811-817行）列出各题具体数值。状态：CLOSED. PASS.
+
+    [Risk Level: CLOSED] Issue 3 的表面修复 — 见下文 NEW [Risk Level: Med] 条目
+    说明：人口替换语句从 `population[0] = best` 改为 `worst_idx = argmin(fitness); population[worst_idx] = best`，解决了原"替换索引0而非最差个体"的问题。但引入了一个新的逻辑缺陷（详见下文）。
+
+    [Risk Level: CLOSED] Issue 4 (Med) 频率相关参数
+    验证结果：已修正。新增假设4（频率无关近似），符号表标注 m' 和 Cxh 为近似值，并附合理性论证（窄频范围1.40-2.21 rad/s）。状态：CLOSED. PASS.
+
+    [Risk Level: CLOSED] Issue 5 (Med) 问题2情形2拆分
+    验证结果：已修正。拆分为子问题2a (alpha=0.5固定, 优化Ch) 和子问题2b (alpha自由, 联合优化)。GA算法表中两个子问题分别列出。状态：CLOSED. PASS.
+
+    [Risk Level: CLOSED] Issue 6 (Med) SBX/变异参数
+    验证结果：已修正。符号表新增 eta_c=15, eta_m=20。算法4输入参数中列出这两个数值。SBX 和多项式变异伪代码中标注了所使用的分布指数。状态：CLOSED. PASS.
+
+    [Risk Level: CLOSED] Issue 7 (Med) 早停检查
+    验证结果：已修正。算法4第740-746行加入了完整的早停检查（连续30代最优适应度变化 < 1e-6 时 break）。状态：CLOSED. PASS.
+
+    [Risk Level: CLOSED] Issue 8 (Med) d_0 定义
+    验证结果：已修正。符号表新增 d_0 条，问题3中给出估算方法（振子参考质心在浮子质心下方约 (h2+h3)/3 处, d_0=~0.6m）。状态：CLOSED. PASS.
+
+    [Risk Level: CLOSED] Issue 9 (Low) alpha=0 公式混淆
+    验证结果：已修正。问题1降阶形式明确分支处理 alpha=0 使用线性形式 Ch*v_rel（而非幂公式退化）。算法1第462-465行实现该分支。状态：CLOSED. PASS.
+
+    [Risk Level: CLOSED] Issue 10 (Low) 功率积分方法
+    验证结果：已修正。明确指定梯形法则，去除矩形法选项。算法3第619-626行实现梯形积分公式。状态：CLOSED. PASS.
+
+    [Risk Level: CLOSED] Issue 11 (Low) 纵摇-垂荡解耦量化
+    验证结果：已修正。假设6（原假设5）增加量化论证：5度纵摇下 1-cos(5deg)=0.38%，B的时变偏差 < 0.4%；质心垂向位移变化约 0.19mm，相对于 O(0.1m) 的垂荡振幅可忽略。状态：CLOSED. PASS.
+
+    [Risk Level: CLOSED] Issue 12 (Low) 振子行程约束
+    验证结果：已修正。新增假设10、行程范围定义 x_r_min=-0.8m, x_r_max=0.8m、接触刚度罚函数、GA进度罚函数。算法1-4中均实现约束检测。但接触力符号存在新问题（见下文 NEW High-risk 条目）。状态：CLOSED in principle, but sign error detected.
+
+    [Risk Level: CLOSED] Issue 13 (Low) 附件3插值方法
+    验证结果：已修正。指定三次样条插值，数据点不足4个时降级为线性插值。新增预处理步骤。符号表标注 f 和 L 经三次样条插值得到。状态：CLOSED. PASS.
+
+
+    -- 新增漏洞 --
+
+
+    [Risk Level: High] [Category: physics_violation]
+    接触力（contact force）中 x_r > x_r_max 情形的符号方向错误，导致接触力将浮子和振子彼此拉近而非推离，违反基本的牛顿第三定律和物理直觉。
+
+    证据：接触力公式（第396-400行）为：
+    F_contact = -k_contact * (x_r - x_r_max)^2,  x_r > x_r_max
+    F_contact = -k_contact * (x_r - x_r_min)^2,  x_r < x_r_min
+
+    应用方式（算法1第468-469行）：浮子受 +F_contact，振子受 -F_contact。
+
+    坐标约定：向上为正，x_r = x_z - x_f > 0 表示振子在浮子上方。
+
+    当 x_r > x_r_max（振子过高，触碰上极限）：
+    物理要求：浮子应受向上推力（+），振子应受向下推力（-）
+    此时 F_contact = -k_contact * (正数)^2 < 0（负值）
+    浮子：+F_contact = 负值 → 向下（反直觉，系统将把浮子向下拉）
+    振子：-F_contact = 正值 → 向上（反直觉，系统将把振子向上推）
+    结果：浮子向下、振子向上 → 分离加剧，而非受到约束复位。
+
+    当 x_r < x_r_min（振子过低，触碰下极限）：
+    物理要求：浮子应受向下推力（-），振子应受向上推力（+）
+    此时 x_r - x_r_min < 0，(负值)^2 > 0，F_contact = -k_contact * (正数) < 0（负值）
+    浮子：+F_contact = 负值 → 向下（正确）
+    振子：-F_contact = 正值 → 向上（正确）
+    结果：下极限接触力方向正确（但属偶然，因 x_r - x_r_min 为负导致平方后取负）。
+
+    建议修正：x_r > x_r_max 分支中第二项符号应为正：
+    F_contact = +k_contact * (x_r - x_r_max)^2,  x_r > x_r_max
+
+    或统一形式：
+    F_contact = k_contact * sign(x_r) * (|x_r| - x_r_max)^2,  |x_r| > x_r_max
+
+
+    [Risk Level: Med] [Category: ambiguous_algorithm]
+    GA 精英保留策略中 fitness 数组在 population 重赋值后失效。
+
+    证据（算法4第735-738行）：
+    1. 第735行: population = offspring  — population 现在引用子代群体
+    2. 第737行: worst_idx = argmin(fitness)  — fitness 仍保存上一代（父代）的适应度值
+    3. 第738行: population[worst_idx] = best_individual — 用父代最差索引替换子代个体
+
+    问题：fitness 数组在第666-687行（本代开始时）针对旧群体计算。经过选择、交叉、变异后生成 offspring，此时 population 被重赋值为 offspring。但 fitness 数组未更新，仍引用旧群体的适应度。argmin(fitness) 找到的是旧群体中最差个体的索引，该索引在子代群体中对应的个体可能是高质量解，不保证是子代最差。
+
+    后果：精英保留的有效性无法保证。在最坏情况下，精英个体可能被插入到子代中一个本来很好的解的位置，同时真正的最差子代个体未被替换。
+
+
+    [Risk Level: Low] [Category: missing_symbol]
+    符号表中未定义 k_contact（接触力刚度），且 k_pen 的单位标注错误。
+
+    证据：
+    - 第396-400行使用 k_contact 作为接触力刚度系数（量纲 N/m²），但符号表（第99-101行）中只有 k_pen。
+    - 第101行标注 k_pen 为"无量纲"，但第408行公式 tilde{P} = P - k_pen * (length)^2 中的量纲要求 k_pen 单位为 W/m²（功率密度），而非无量纲。
+    - k_contact 和 k_pen 在第101行和第403行的数值均为 10^6，但单位不同（N/m² vs W/m²），符号表未区分。若无 k_contact 条目，代码手将无法无歧义实现接触力。
+
+
+    [Risk Level: Low] [Category: incomplete_verification]
+    能量平衡验证仅覆盖垂荡情形，未扩展到垂荡+纵摇耦合情形。
+
+    证据：第132-135行仅推导了垂荡自由度的机械能变化率：dE/dt = u·fe - Cxh·u^2 - Ch·v_rel^2。对于问题3-4的耦合情形（八元一阶方程组），完整的能量平衡应包括纵摇自由度贡献：
+    dE/dt_full = u·fe + j·Me - Cxh·u^2 - Cxp·j^2 - Ch·v_rel^2 - Cp·omega_rel^2
+
+    虽然纵摇情形的 PTO 符号约定与垂荡相同（已修正为正确的恢复性方向），且数学上可以类比推断，但论文中未提供显式推导，构成验证缺口。
+
+
+    [Risk Level: Low] [Category: ambiguous_algorithm]
+    问题2(2a)情形下 alpha 参数传递未在算法调用中显式标注。
+
+    证据：算法4第668-669行在 Q2(2a) 情形下调用算法1（RK4垂荡）时未传递 alpha=0.5 参数。而 Q2(2b) 第671-672行显式传递了 alpha。虽可推断 Q2(2a) 隐含使用 alpha=0.5（已在符号表和优化模型中定义），但算法伪代码层面存在歧义。
+
+  </flaws>
+
+  <correction_directives>
+    1. [CRITICAL] 修正接触力公式中 x_r > x_r_max 分文的符号错误。将第397行的负号改为正号：F_contact = +k_contact * (x_r - x_r_max)^2, x_r > x_r_max。下极限分支的负号保持不变。验证方法：对 x_r > x_r_max 情形手算一维运动（浮子和振子视为质点受接触力作用），确认浮子向上加速、振子向下加速（两者相互远离）。
+
+    2. [Med] 重构 GA 精英保留策略，使 fitness 数组始终与 population 同步。两种可行方案（任选其一）：
+       (a) 在 population = offspring 之后立即重新评估子代适应度（调用算法3），然后用 argmin(fitness_offspring) 找到子代最差个体，替换为精英；
+       (b) 不重赋 population，改用原地修改策略：将精英个体写入 offspring[worst_idx_in_offspring]，所有操作完成后统一执行 population = offspring。
+
+    3. [Low] 在符号表中新增 k_contact 条目（单位 N/m²，取值 10^6），并修正 k_pen 的单位标注从"无量纲"改为"W/m²"（或"kg/s³"）。
+
+    4. [Low] 扩展能量平衡验证到纵摇+垂荡耦合情形，给出完整的八维机械能变化率表达式。
+
+    5. [Low] 在算法4第668-669行的伪代码注释中显式标注 alpha=0.5 被传递给算法1，或修改为"调用算法1(RK4垂荡, T_total=200s, alpha=0.5)"。
+  </correction_directives>
+
+  <status>REJECTED</status>
+</devils_advocate_report>

@@ -1,0 +1,256 @@
+{
+  "main": {
+    "id": "f39cdf5924152846",
+    "type": "split",
+    "children": [
+      {
+        "id": "bc31f1a75827c826",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "f928301a4c786b39",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "wiki/concepts/collision-detection-model.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "collision-detection-model"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "bc6000d09a9ca94d",
+    "type": "split",
+    "children": [
+      {
+        "id": "87fc8c1ddabd24a8",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "0d0e8649b5a5ab94",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
+          },
+          {
+            "id": "d34848fa3636dc0f",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "搜索"
+            }
+          },
+          {
+            "id": "594ffe96c095424d",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "书签"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 275.5
+  },
+  "right": {
+    "id": "c122df660c6ffa81",
+    "type": "split",
+    "children": [
+      {
+        "id": "e0741469e8d2d19e",
+        "type": "tabs",
+        "dimension": 26.595744680851062,
+        "children": [
+          {
+            "id": "194fc7bd54a34250",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "LanQiaoXunLian/第十七届蓝桥杯真题/E.LQ聚合.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "E.LQ聚合 的反向链接列表"
+            }
+          },
+          {
+            "id": "fce0b943d43a75c9",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "LanQiaoXunLian/第十七届蓝桥杯真题/E.LQ聚合.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "E.LQ聚合 的出链列表"
+            }
+          },
+          {
+            "id": "1a7d22f2b19073cb",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "标签"
+            }
+          },
+          {
+            "id": "837b9b4887537b27",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "添加笔记属性"
+            }
+          },
+          {
+            "id": "4f6bd43725cce0d4",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "wiki/concepts/collision-detection-model.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "collision-detection-model 的大纲"
+            }
+          }
+        ],
+        "currentTab": 4
+      },
+      {
+        "id": "869c72a8e8b7658b",
+        "type": "tabs",
+        "dimension": 73.40425531914893,
+        "children": [
+          {
+            "id": "59d53c1570da4c3f",
+            "type": "leaf",
+            "state": {
+              "type": "terminal-view",
+              "state": {},
+              "icon": "terminal",
+              "title": "Terminal"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 445.5
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "daily-notes:打开/创建今天的日记": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false,
+      "bases:新建数据库": false,
+      "realclaudian:Open Claudian": false,
+      "termy:打开Termy终端": false
+    }
+  },
+  "active": "59d53c1570da4c3f",
+  "lastOpenFiles": [
+    "raw/MCM-Agent-Workflow-Master.md",
+    "wiki/concepts/continuous-improvement-loop.md",
+    "wiki/concepts/error-taxonomy.md",
+    "wiki/entities/andrej-karpathy.md",
+    "wiki/concepts/agent-role-specialization.md",
+    "wiki/concepts/chain-intercept-workflow.md",
+    "wiki/concepts/multi-agent-collaboration.md",
+    "raw/多Agent协作.md",
+    "raw/新建 Markdown 文档.md",
+    "wiki/concepts/algorithm-codebase.md",
+    "raw/30个常用模型对应的Python代码/数学建模30个常用算法(Python代码)/0-1背包问题动态规划模型Python代码/基础0-1背包问题（动态规划）/input_assgin02_05.dat",
+    "raw/30个常用模型对应的Python代码/数学建模30个常用算法(Python代码)/0-1背包问题动态规划模型Python代码/基础0-1背包问题（动态规划）/input_assgin02_04.dat",
+    "raw/30个常用模型对应的Python代码/数学建模30个常用算法(Python代码)/0-1背包问题动态规划模型Python代码/基础0-1背包问题（动态规划）/input_assgin02_03.dat",
+    "raw/30个常用模型对应的Python代码/数学建模30个常用算法(Python代码)/0-1背包问题动态规划模型Python代码/基础0-1背包问题（动态规划）/input_assgin02_02.dat",
+    "raw/30个常用模型对应的Python代码/数学建模30个常用算法(Python代码)/0-1背包问题动态规划模型Python代码/基础0-1背包问题（动态规划）/input_assgin02_01.dat",
+    "raw/30个常用模型对应的Python代码/数学建模30个常用算法(Python代码)/0-1背包问题动态规划模型Python代码/基础0-1背包问题（动态规划）/2.spec",
+    "raw/30个常用模型对应的Python代码/数学建模30个常用算法(Python代码)/0-1背包问题动态规划模型Python代码/基础0-1背包问题（动态规划）/2.py",
+    "raw/30个常用模型对应的Python代码/数学建模30个常用算法(Python代码)/0-1背包问题动态规划模型Python代码/基础0-1背包问题（动态规划）/2.exe",
+    "raw/30个常用模型对应的Python代码/数学建模30个常用算法(Python代码)/马尔科夫预测模型Python代码/HMM_2.py",
+    "raw/30个常用模型对应的Python代码/数学建模30个常用算法(Python代码)/神经网络分类模型Python代码/神经网络分类.py",
+    "raw/30个常用模型对应的Python代码/README.md",
+    "raw/30个常用模型对应的Python代码/6b458-main/README.md",
+    "wiki/concepts/latex-reference.md",
+    "raw/LaTeX语法大全.md",
+    "wiki/concepts/hypothesis-testing-sampling.md",
+    "wiki/concepts/reinforcement-learning-model.md",
+    "wiki/concepts/webster-signal-timing.md",
+    "wiki/concepts/sat-collision-detection.md",
+    "wiki/concepts/dynamic-programming.md",
+    "wiki/concepts/bayesian-estimation.md",
+    "wiki/concepts/cvar-optimization.md",
+    "wiki/overviews/2022-mcm-competition.md",
+    "wiki/overviews/use-cases.md",
+    "raw/2024/E/images/ff73992b3231ace68d0f62c9d463af2917b20dd54e7dee397e5298b0f5bb2c7c.jpg",
+    "raw/2024/E/images/fea12154dffb89ba3655239be5df03a87798fcb2687e353bcf1f985d831ee054.jpg",
+    "raw/2024/E/images/fe215926f8aacceef16bd8b10d516bc4e60753932ab155ea9162c8c2bab65f6b.jpg",
+    "raw/2024/E/images/fb4e9e5c0a8bdcdc85a1d672a93dc5f565c38268ef13278ba0090bde1a9e7149.jpg",
+    "raw/2024/E/images/f95ccc4864c848ca30f7612063d655958817425da61157d5f81a8fc2f3b25832.jpg",
+    "raw/2024/E/images/f7a3bfdfeba322d3663b2599f6f7f7d631363bd7391dfc0e0bca2a8c2ad7bd94.jpg",
+    "raw/2024/E/images/f758cd19272892ce0b32e98b48f0055f91d220658253b49fe75c244b01717ac0.jpg",
+    "raw/2024/E/images/f6fafed927d95488e97c8ebe06c2f06e3ceb93c0b4ad2a0c487e088a74f470ec.jpg",
+    "raw/2024/E/images/f5df76593c72be8855a0dbad6670b272accfb8f5f38aa17b3b57986e14e47dc1.jpg",
+    "raw/2024/E/images/f2aea2f9fa0c64c02b249b9b1e320bb46dba53b8b2b64fe19b21d4d670e7b2b7.jpg",
+    "raw/2024/E/E218_2024.md",
+    "raw/2024/E/E061_2024.md",
+    "raw/2024/E/E010_2024.md",
+    "未命名.canvas"
+  ]
+}

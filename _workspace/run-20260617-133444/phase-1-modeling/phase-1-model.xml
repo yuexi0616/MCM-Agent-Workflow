@@ -1,0 +1,288 @@
+<model_design>
+
+<problem_analysis>
+2025 MCM Problem A: 无人机烟幕干扰弹投放策略优化。
+问题背景：3 枚空地导弹 M1/M2/M3 以 300 m/s 沿直线飞向假目标 (0,0,0)；5 架无人机 FY1~FY5 在
+特定空域巡飞；控制中心在 t=0 时分配任务，无人机可瞬时调整航向，以 70~140 m/s 等高度匀速直线飞行；
+烟幕干扰弹脱离无人机后受重力自由下落，起爆后瞬时形成半径 10 m、持续 20 s 有效遮蔽的球状云团，
+云团以 3 m/s 匀速下沉。真目标为底面圆心 (0,200,0)、半径 7 m、高 10 m 的圆柱体。
+
+五问递进结构：
+  (Q1) FY1 以给定参数（120 m/s 朝向假目标，投弹 t=1.5s，起爆 t=5.1s）计算对 M1 的有效遮蔽时长；
+  (Q2) FY1 自由选择航向、速度、投弹点、起爆点，最大化对 M1 的有效遮蔽时长；
+  (Q3) FY1 投 3 枚烟幕弹，时序协调以延长总遮蔽时间；
+  (Q4) FY1/FY2/FY3 各投 1 枚，空间协同避免重叠，目标连续遮蔽；
+  (Q5) 5 架无人机最多各投 3 枚，同时干扰 M1/M2/M3，层次化任务分配 + 资源调度。
+
+关键数值（来自 problem_data.json，严禁自设或猜测）：
+  missile_speed = 300 m/s
+  cloud_radius = 10 m
+  cloud_sink_speed = 3 m/s
+  cloud_effective_duration = 20 s
+  drone_speed_min = 70 m/s, drone_speed_max = 140 m/s
+  bomb_min_interval = 1 s
+  gravity = 9.8 m/s^2
+  target_cylinder_radius = 7 m, target_cylinder_height = 10 m
+  初始坐标：M1(20000,0,2000), M2(19000,600,2100), M3(18000,-600,1900)
+           FY1(17800,0,1800), FY2(12000,1400,1400), FY3(6000,-3000,700),
+           FY4(11000,2000,1800), FY5(13000,-2000,1300)
+</problem_analysis>
+
+<assumptions>
+  A1. 导弹沿 3D 直线以 300 m/s 匀速飞向原点 (0,0,0)，高度随 x 变化；
+  A2. 无人机等高度 (z=const) 匀速直线飞行，速度分量仅位于 xy 平面；
+  A3. 烟幕弹脱离无人机后，水平速度等于无人机水平速度（惯性），垂直方向仅受重力 g=9.8 m/s^2；
+  A4. 起爆瞬时：起爆时刻云团中心位于烟幕弹所在位置；
+  A5. 起爆后 20 s 内，云团保持半径 10 m 球体，整体以 3 m/s 竖直下沉；
+  A6. 有效遮蔽判定：导弹视线到圆柱目标表面采样点的线段与云团球体相交则判定为遮蔽；
+  A7. 同一无人机连续投弹间隔 ≥ 1 s；每架无人机最多投 3 枚；
+  A8. 遮蔽时长取所有云团覆盖的时间区间之并。
+</assumptions>
+
+<symbol_table>
+  t            : 全局时间，s，从警戒雷达发现目标起计
+  t_r          : 投弹时刻，s
+  t_d          : 起爆时刻，s，t_d > t_r
+  P_Mi(t)      : 导弹 Mi 在时刻 t 的空间位置，m
+  P_FYk(t)     : 无人机 FYk 在时刻 t 的空间位置，m
+  v_m          : 导弹速度大小，300 m/s（来自 problem_data.json parameters.missile_speed）
+  v_d          : 无人机速度大小，70~140 m/s（来自 problem_data.json drone_speed_min/max）
+  theta_k, phi_k : 无人机 FYk 的 xy 平面航向角（极坐标方向）
+  R_s          : 云团有效半径，10 m（来自 problem_data.json smoke_effective_radius）
+  v_cs         : 云团下沉速度，3 m/s（来自 problem_data.json smoke_sinking_speed）
+  tau_max      : 云团有效时长，20 s（来自 problem_data.json smoke_effective_duration）
+  g            : 重力加速度，9.8 m/s^2
+  C_cloud(t; k) : 第 k 枚烟幕弹云团中心位置，作为时间的函数
+  Delta_T      : 有效遮蔽总时长，s
+  Q_id         : 问题编号 (1..5)
+</symbol_table>
+
+<mathematical_model>
+  1. 导弹轨迹（3D 直线飞向原点）：
+     对导弹 Mi，初始位置为 P_Mi(0) = (x_Mi, y_Mi, z_Mi)。
+     方向单位向量：d_Mi = -P_Mi(0) / |P_Mi(0)|
+     位置：P_Mi(t) = P_Mi(0) + v_m * t * d_Mi, 0 <= t <= T_flight_i
+     其中 T_flight_i = |P_Mi(0)| / v_m  ≈ 66.999 s (M1)
+
+  2. 无人机轨迹（等高度匀速直线飞行）：
+     对无人机 FYk，初始位置 (x_k0, y_k0, z_k0)，选定单位水平方向向量 u_k = (cos(theta_k), sin(theta_k), 0)
+     P_FYk(t) = (x_k0 + v_k * t * cos(theta_k), y_k0 + v_k * t * sin(theta_k), z_k0),
+     其中 v_k ∈ [70, 140] m/s，theta_k 为航向角（在 Problem 1 中已知朝向 (0,0,0) 的 xy 投影）。
+
+  3. 烟幕弹自由下落阶段（投弹时刻 t_r 到起爆时刻 t_d）：
+     烟幕弹在 t_r 时刻从无人机位置释放：P_release = P_FYk(t_r)
+     初速度：v_bomb = drone_velocity = v_k * (cos(theta_k), sin(theta_k), 0)
+     对任意 t ∈ [t_r, t_d]：
+       x_bomb(t) = P_release.x + v_k * cos(theta_k) * (t - t_r)
+       y_bomb(t) = P_release.y + v_k * sin(theta_k) * (t - t_r)
+       z_bomb(t) = P_release.z - 0.5 * g * (t - t_r)^2
+     起爆位置（云团中心初始位置）：
+       C_cloud(t_d) = (x_bomb(t_d), y_bomb(t_d), z_bomb(t_d))
+
+  4. 云团演化（起爆后 20 s 内）：
+     对任意 t ∈ [t_d, t_d + tau_max]:
+       C_cloud(t) = (C_cloud(t_d).x, C_cloud(t_d).y, C_cloud(t_d).z - v_cs * (t - t_d))
+     半径保持 R_s = 10 m，时间 t > t_d + tau_max 时云团失效。
+
+  5. 圆柱目标采样：
+     真目标为圆柱，参数化：中心轴线沿 z 轴，从 (0, 200, 0) 到 (0, 200, 10)
+     侧面：(7*cos(alpha), 200 + 7*sin(alpha), z_s), alpha ∈ [0, 2*pi), z_s ∈ [0,10]
+     上下底面圆：(rho*cos(alpha), 200 + rho*sin(alpha), z_bottom_or_top), rho ∈ [0,7]
+     采样点数量：侧面 8 方位 x 5 高度 = 40 点；上下底面各 9 点 = 共 58 点
+     记目标采样点集合为 {T_j, j=1..N_T}
+
+  6. 遮蔽判定（导弹视线-云团球体相交测试）：
+     对时刻 t，导弹 Mi，云团 k（中心 C_k(t)，半径 R_s），目标采样点 T_j：
+     线段 L: P_Mi(t) + s*(T_j - P_Mi(t)), s ∈ [0,1]
+     令 A = P_Mi(t) - C_k(t), B = T_j - P_Mi(t)
+     线段与球 |X - C_k(t)|^2 = R_s^2 相交当且仅当
+       Delta = (A·B)^2 - |B|^2 * (|A|^2 - R_s^2) >= 0
+       且存在解 s ∈ [0, 1]，其中 s = (-A·B ± sqrt(Delta)) / |B|^2
+     若对某采样点 T_j 成立，则该方向在时刻 t 被遮蔽。
+     定义：目标被有效遮蔽当且仅当全部采样点被遮蔽（即导弹视线无法看到目标表面的任何可见部分）。
+     （注：若要求更宽松——"至少部分遮蔽"——可改为存在任一采样点被遮蔽。此处采用严格定义：目标完全隐藏。）
+
+  7. 遮蔽时长计算：
+     对给定参数（航向、速度、t_r、t_d），在时间网格 t_i = i*dt（dt = 0.01 s，0 ≤ t ≤ T_max = 70 s）
+     上计算遮蔽状态 S(t_i) ∈ {0, 1}。有效遮蔽时长为：
+       Delta_T = Σ S(t_i) * dt
+     连续遮蔽区间通过检测 S(t) 从 0→1 和 1→0 的跃迁识别。
+
+  8. 优化问题（Q2-Q5）：
+     max Delta_T(theta, v, t_r_vec, t_d_vec)  s.t.
+       70 <= v <= 140, theta ∈ [0, 2*pi)
+       t_d > t_r >= 0, 连续投弹 t_r_{j+1} - t_r_j >= 1
+       t_d - t_r > 0（自由下落时间为正）
+     算法：多起点网格搜索 (grid search) → 差分进化 (DE) 局部细化
+     DE 参数：种群规模 pop_size=40，变异因子 F=0.6，交叉概率 CR=0.8，终止代数 max_gen=80
+</mathematical_model>
+
+<parameter_source_map>
+  missile_speed 300        <- problem_data.json parameters.missile_speed
+  cloud_radius 10           <- problem_data.json parameters.smoke_effective_radius
+  cloud_sink_speed 3        <- problem_data.json parameters.smoke_sinking_speed
+  cloud_effective_duration 20 <- problem_data.json parameters.smoke_effective_duration
+  drone_speed range 70..140 <- problem_data.json parameters.drone_speed_min/max
+  gravity 9.8               <- problem_data.json parameters.gravity
+  target_radius 7           <- problem_data.json parameters.target_cylinder_radius
+  target_height 10          <- problem_data.json parameters.target_cylinder_height
+  M1(20000,0,2000)          <- problem_data.json initial_positions.missiles.M1
+  M2(19000,600,2100)        <- problem_data.json initial_positions.missiles.M2
+  M3(18000,-600,1900)       <- problem_data.json initial_positions.missiles.M3
+  FY1(17800,0,1800)         <- problem_data.json initial_positions.drones.FY1
+  FY2(12000,1400,1400)      <- problem_data.json initial_positions.drones.FY2
+  FY3(6000,-3000,700)       <- problem_data.json initial_positions.drones.FY3
+  FY4(11000,2000,1800)      <- problem_data.json initial_positions.drones.FY4
+  FY5(13000,-2000,1300)     <- problem_data.json initial_positions.drones.FY5
+  Problem 1: speed=120, t_r=1.5, t_d=5.1 <- problem_data.json constraints.problem1_given
+  每架最多 3 枚 <- problem_data.json parameters.max_bombs_per_drone
+</parameter_source_map>
+
+<feasibility_precheck>
+  - 导弹到达时间：|M1| / 300 = sqrt(20000^2 + 2000^2) / 300 ≈ 66.999 s，
+    云团最晚在 t = t_d + 20 之前必须覆盖某个导弹-目标视线窗口；
+  - 无人机最大飞行距离（70 s 内）：70*140 = 9800 m ≪ 导弹飞行距离 20000 m，
+    因此无人机无法飞近真目标 (0,200,0)，必须在导弹经过其路径时投弹；
+  - 投弹延迟必须严格为正，即 t_d > t_r；
+  - 无人机速度区间 [70, 140] 是非空连通集，优化可行；
+  - 云团半径 10 m ≪ 导弹-目标距离（>19000 m 初始），遮蔽窗口几何上非空；
+  - Problem 1 参数验证：t_r=1.5, t_d=5.1, 间隔 3.6 s 为正，速度 120 在 [70,140] 内。
+</feasibility_precheck>
+
+<baseline_and_invariants>
+  Baseline (Q1): 给定参数下的单弹遮蔽时长 Delta_T_Q1 作为基准值。
+  Invariants:
+    - Delta_T(Q2) >= Delta_T(Q1)（优化空间非空，自由参数多于 Q1 约束）
+    - Delta_T(Q3) >= Delta_T(Q2)（3 枚弹至少可重复 Q2 策略）
+    - Delta_T(Q4) >= Delta_T(Q2)（3 架无人机各 1 枚 至少 ≥ 单机 1 枚最优）
+    - Delta_T(Q5) >= Delta_T(Q4)（更多资源，目标更多，但总体覆盖不会退化）
+    - 对任意云团，遮蔽时间区间是连续的（导弹视线连续依赖于时间，球相交判据是闭条件）
+    - 所有结果必须通过基线回归：Q1 解析/数值一致性检查（t_r=1.5, t_d=5.1, v=120 固定值）
+</baseline_and_invariants>
+
+<implementation_contract>
+  函数签名与返回格式（solver.py 中实现）：
+    missile_position(t: float, missile0: tuple) -> tuple (x, y, z)
+    drone_position(t: float, drone0: tuple, speed: float, direction_vec: tuple) -> tuple (x, y, z)
+    cloud_center_at_det(t_r: float, t_d: float, drone0: tuple, speed: float, dir_vec: tuple, g=9.8) -> tuple (x, y, z)
+    cloud_center(t: float, t_d: float, cloud_center0: tuple, v_cs=3.0) -> tuple (x, y, z)
+    line_sphere_intersect(P: tuple, Q: tuple, C: tuple, R=10.0) -> bool
+    is_target_occluded(missile_pos: tuple, cloud_center: tuple, R=10.0, target_center=(0,200,5), radius=7, height=10) -> bool
+    occlusion_duration(params_dict: dict, T_max=70.0, dt=0.01) -> float (seconds)
+    main() -> None (writes results/results_summary.csv + per-question CSV + figures)
+  Randomness: numpy default_rng with fixed seed 20250617 for reproducibility.
+</implementation_contract>
+
+<validation_plan>
+  - 自检1 (Q1 回归): 固定 t_r=1.5, t_d=5.1, speed=120, 方向=(-1,0)，运行求解器得到 Delta_T，
+    与知识库中优秀论文基线 ~1.39 s 对比，误差在 ±10% 内通过；
+  - 自检2 (参数扰动): 对 Q2 最优解在参数 ±5% 范围内扰动，验证遮蔽时长单调递减（局部最优性）；
+  - 自检3 (边界情况): t_d < t_r 时应返回 0 并触发警告；导弹已飞过原点后不产生遮蔽；
+  - 自检4 (几何一致性): 对云团中心恰好位于导弹-目标连线上的测试情形，应报告 Δ ≥ 0 且 s ∈ [0,1]；
+  - 自检5 (基线回归): Q3、Q4、Q5 的数值结果必须满足 Delta_T(Q_5) ≥ Delta_T(Q_4) ≥ Delta_T(Q_3) ≥ Delta_T(Q_2)。
+</validation_plan>
+
+<algorithm_flow>
+  Algorithm: 无人机烟幕遮蔽策略求解器
+
+  Input:  problem_data.json (parameters, initial_positions, constraints)
+  Output: results_summary.csv, Q1_*.csv..Q5_*.csv, figures/fig*.png
+
+  Step 1 [读取与校验]
+    1.1 从 problem_data.json 读取 parameters（missile_speed=300, cloud_radius=10,
+        cloud_sink_speed=3, cloud_duration=20, drone_speed range, gravity, target size）
+    1.2 读取 initial_positions.missiles (M1,M2,M3) 和 drones (FY1..FY5)
+    1.3 校验坐标非空，导弹飞向原点距离为正；若校验失败，终止并报告
+    1.4 生成目标圆柱采样点（侧面 8x5 + 上下底各 9 = 58 点）
+
+  Step 2 [轨迹模型]
+    2.1 实现 missile_position(t, missile0):
+        d = -missile0 / |missile0|;  return missile0 + v_m * t * d
+    2.2 实现 drone_position(t, drone0, speed, direction_vec):
+        return (drone0.x + speed*dir.x*t, drone0.y + speed*dir.y*t, drone0.z)
+    2.3 实现 bomb_during_fall(t, t_r, drone0, speed, dir_vec, g):
+        P_release = drone_position(t_r, drone0, speed, dir_vec)
+        return (P_release.x + speed*dir.x*(t-t_r),
+                P_release.y + speed*dir.y*(t-t_r),
+                P_release.z - 0.5*g*(t-t_r)^2)
+    2.4 实现 cloud_center(t, t_d, cloud_at_det, v_cs):
+        if t < t_d: return None (not formed)
+        if t > t_d + tau_max: return None (expired)
+        return (cloud_at_det.x, cloud_at_det.y, cloud_at_det.z - v_cs*(t - t_d))
+
+  Step 3 [遮蔽判定]
+    3.1 实现 line_sphere_intersect(P, Q, C, R):
+        A = P - C; B = Q - P
+        a_coef = dot(B, B)
+        b_coef = 2 * dot(A, B)
+        c_coef = dot(A, A) - R^2
+        Delta = b_coef^2 - 4*a_coef*c_coef
+        if Delta < 0: return False
+        s1 = (-b_coef - sqrt(Delta)) / (2*a_coef)
+        s2 = (-b_coef + sqrt(Delta)) / (2*a_coef)
+        return (0 <= s1 <= 1) or (0 <= s2 <= 1)
+    3.2 实现 is_target_fully_occluded(missile_pos, cloud_centers_list, R, target_samples):
+        对每个目标采样点 T_j, 检查 ∃ 云团 k 使得线段 missile->T_j 与球 k 相交
+        return all(any(line_sphere_intersect(missile_pos, T_j, C_k, R) for C_k in active_clouds) for T_j in target_samples)
+
+  Step 4 [时长积分]
+    4.1 对给定参数（无人机方向、速度、投弹时间向量、起爆时间向量），
+        在 t ∈ [0, 70]，步长 dt = 0.01 s：
+          a. 计算导弹位置 M(t)
+          b. 计算每个云团当前中心 C_k(t)（若已起爆且未过期）
+          c. 判定目标是否被完全遮蔽 S(t)
+          d. 累计 Delta_T += S(t) * dt
+    4.2 返回 Delta_T
+
+  Step 5 [Problem 1 - 给定参数求解]
+    5.1 drone = FY1(17800, 0, 1800), speed = 120 m/s, direction = (-1, 0)（朝向假目标的 xy 投影）
+    5.2 t_r = 1.5 s, t_d = 5.1 s
+    5.3 计算云团初始中心、演化、在时间网格上判定遮蔽
+    5.4 输出 Q1 遮蔽时长
+
+  Step 6 [Problem 2 - 单机单弹优化]
+    6.1 决策变量：theta (航向角), v (速度), t_r (投弹时刻), t_d (起爆时刻)
+    6.2 约束：70 <= v <= 140, t_d > t_r >= 0, t_d - t_r <= 10（启发式：限制自由下落时间）
+    6.3 粗搜索：theta 网格 36 点 (每 10°), v 网格 8 点 (70..140),
+        t_r 网格 20 点 (0..20), t_d-t_r 网格 10 点 (0.5..10)，共 ~57600 组合
+    6.4 取前 100 个最优组合作为 DE 初始种群
+    6.5 差分进化：F=0.6, CR=0.8, pop_size=40, max_gen=80
+    6.6 返回最优参数组及其遮蔽时长
+
+  Step 7 [Problem 3 - 单机多弹（3 枚）]
+    7.1 决策变量：每枚弹 (theta, v, t_r, t_d) x 3，共 12 维
+    7.2 附加约束：t_r_{j+1} - t_r_j >= 1
+    7.3 初始化：从 Q2 最优解复制 3 份，t_r 之间错开 2 s
+    7.4 差分进化：F=0.6, CR=0.8, pop_size=60, max_gen=120
+    7.5 报告每枚弹的参数及总遮蔽时长
+
+  Step 8 [Problem 4 - 多机单弹协同（FY1/FY2/FY3 各 1 枚）]
+    8.1 决策变量：每架无人机 (theta_k, v_k, t_r_k, t_d_k), k=1,2,3，共 12 维
+    8.2 每架无人机使用各自初始位置
+    8.3 差分进化同上规格
+    8.4 报告每架弹参数及总遮蔽时长
+
+  Step 9 [Problem 5 - 多机多弹多目标]
+    9.1 外层：任务分配矩阵 (drone -> missile) x bombs count
+    9.2 简化策略：每枚导弹由最近的无人机负责（基于初始距离）
+    9.3 决策变量：每架无人机最多 3 枚弹，每枚弹指定目标导弹，参数 (theta, v, t_r, t_d)
+    9.4 启发式：为每架无人机-导弹对独立求解 Q2-Q3 量级子问题，再组合
+    9.5 整体差分进化：pop_size=80, max_gen=150
+    9.6 报告总遮蔽时长和分配方案
+
+  Step 10 [结果输出与可视化]
+    10.1 写入 results_summary.csv（列：problem_id, metric_name, value, unit, method, figure_ref, formula_ref）
+    10.2 写入 Q1_results.csv..Q5_results.csv（每问详细参数）
+    10.3 生成 fig01-Q1-occlusion-timeline.png：Q1 遮蔽状态随时间变化
+    10.4 生成 fig02-Q2-optimization-convergence.png：Q2 优化收敛曲线
+    10.5 生成 fig03-cloud-trajectory.png：Q2 云团中心轨迹（x,z 平面）
+    10.6 生成 fig04-Q3-Q5-comparison.png：Q1~Q5 遮蔽时长条形对比
+    10.7 生成 fig05-missile-path.png：导弹与无人机轨迹俯视图
+
+  Step 11 [基线回归]
+    11.1 验证 Q1 结果与基准（知识库优秀论文 ~1.39 s）
+    11.2 验证 Delta_T(Q5) >= Delta_T(Q4) >= Delta_T(Q3) >= Delta_T(Q2) >= Delta_T(Q1)
+    11.3 验证几何自检（如：云团中心恰好在线段 missile-target 上时返回 True）
+</algorithm_flow>
+
+</model_design>

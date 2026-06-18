@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<devils_advocate_report>
+  <audit_target>code + data_vis</audit_target>
+  <audit_scope>
+    Code: wave_energy_solver.py (1175 lines)
+    Data: phase-2-output.xml, README.md, requirements.txt
+    Figures: q1_case1_constant.png, q1_case2_powerlaw.png, energy_balance.png,
+             q2_power_vs_damping.png, q2_ga_convergence.png, q3_coupled_motion.png,
+             q4_power_surface.png
+    Run: run-20260530-001, 2022-A Wave Energy, Phase 2
+  </audit_scope>
+
+  <flaws>
+    <!-- ================================================================ -->
+    <!-- HIGH-RISK FLAWS                                                   -->
+    <!-- ================================================================ -->
+
+    - [Risk Level: High] DOCUMENTATION-CODE PARAMETER MISMATCH (3 fields)
+      README.md line 44-45 and phase-2-output.xml lines 42-44 document:
+        h_ga = 0.005, pop = 50, gen = 100
+      Actual code (wave_energy_solver.py lines 58-59, 71-72) uses:
+        H_GA = 0.01, N_POP = 15, N_GEN = 30
+      Every single parameter differs from documentation. The code uses "fast mode"
+      parameters (1/3 the population, 1/3 the generations, 2x the step size) but
+      the output XML and README describe the full "production" parameters. An
+      external reviewer or downstream Agent reading the XML will be deceived about
+      what was actually computed. Also, phase-2-output.xml line 11 claims "~600 lines"
+      when the script is 1175 lines.
+
+    - [Risk Level: High] Q4 OPTIMAL Cp HITS UPPER SEARCH BOUNDARY
+      User reports Cp* = 100000, which is exactly the upper bound of [0, 100000].
+      This is a boundary-saturating solution: the true optimal Cp is at or above
+      100000 N.m.s. The optimizer was artificially constrained. The reference paper
+      (A001_2022) found Cp* = 98227, which is near but inside the boundary, suggesting
+      the code's optimal may be different due to other modeling differences.
+
+    - [Risk Level: High] Q4 POWER (167W) IS 47% BELOW REFERENCE PAPER VALUE (316W)
+      The actual computed P_max = 167W versus the phase-2-output.xml expected range
+      of 300-320W and the reference paper's 316.58W. This is not a minor discrepancy;
+      it indicates either: (a) the GA at N_POP=15, N_GEN=30 failed to converge,
+      (b) the step size H_GA=0.01 introduces significant numerical error in the
+      coupled model, (c) the frequency-independent approximation of I_prime and C_xp
+      has a larger effect than assumed, or (d) a bug in the coupled RHS.
+
+    - [Risk Level: High] Q3 POWER (56W) IS 37-56% OF EXPECTED RANGE (100-150W)
+      The coupled heave+pitch simulation at fixed Ch=10000, Cp=1000 produces 56W
+      versus the documented expected range 100-150W. This is a factor-of-2 discrepancy
+      that cannot be explained by numerical tolerance alone. The coupled model (Q3 and
+      Q4) appears to systematically under-predict power compared to heave-only (Q2),
+      raising the question of whether the pitch coupling terms are correctly signed
+      or whether the Iz parallel-axis formula is correct.
+
+    <!-- ================================================================ -->
+    <!-- MEDIUM-RISK FLAWS                                                 -->
+    <!-- ================================================================ -->
+
+    - [Risk Level: Med] GA OPTIMIZES AT H_GA=0.01, FINAL RESULTS ALSO AT H_GA=0.01
+      The GA objective function (make_obj_heave, make_obj_heave_free_alpha,
+      make_obj_coupled) uses H_GA=0.01 for all fitness evaluations. The "final"
+      reported optimal power (printed in solve_problem2 / solve_problem4) is also
+      the GA fitness value computed at H_GA=0.01. There is no independent validation
+      at the finer step H_FINAL=0.0005. The optimal damping coefficients found at
+      20x coarser resolution may be suboptimal when evaluated at the design resolution.
+      The commutativity of (step size) and (optimal damping) is not verified.
+
+    - [Risk Level: Med] I_z PARALLEL AXIS THEOREM FORMULA AMBIGUITY
+      Line 212: Iz = I_z0 + m_z * (d_0 + xr)^2
+      The documentation for I_z0 (line 49) says "Oscillator ref. moment of inertia
+      at x_r=0 (kg.m^2)" but does not specify whether this is about the oscillator's
+      own CG or about the pitch axis. If I_z0 is already about the pitch axis at x_r=0,
+      then the parallel-axis correction should be m_z * ((d_0 + xr)^2 - d_0^2), not
+      m_z * (d_0 + xr)^2 (which would double-count the baseline offset). This
+      directly affects the oscillator pitch dynamics and could partially explain the
+      Q3/Q4 under-prediction.
+
+    - [Risk Level: Med] NO STEADY-STATE CONVERGENCE VERIFICATION
+      The code assumes steady state is reached by T0 = 100s without checking.
+      For Q3, T_total = max(200, 40*T_period) = 200s, and the steady-state window
+      is [100, 180]s. If the transient has not fully decayed by 100s, the power
+      calculation is contaminated. The phase-2-output.xml itself notes "Transient
+      response dies out after ~50s" (line 76), but this is an empirical observation
+      not a verified threshold. No period-difference convergence metric is computed.
+
+    - [Risk Level: Med] ENERGY BALANCE MISSES CONTACT FORCE WORK TERM
+      energy_balance_heave() (lines 382-415) computes the balance as:
+        balance = P_in - P_rad - P_abs
+      It omits the work done by contact forces (Fc * v_rel). While contact forces
+      are unlikely to activate for Q1 test cases (where xr ~ 0.02m, well within
+      +/-0.8m), the formal incompleteness means the balance will NOT close if a
+      contact event occurs. The function is named "energy_balance_heave" implying
+      completeness but the contact term is missing.
+
+    - [Risk Level: Med] GA CONVERGENCE NOT VERIFIED ACROSS MULTIPLE SEEDS
+      The random seed is fixed at 42 (line 34), making the results deterministic
+      but not robust. A single GA run with N_POP=15, N_GEN=30 can converge to a
+      local optimum by chance. Without multiple seeds or restart analysis, there is
+      no evidence that the reported Ch* values are globally optimal. This is
+      especially concerning for Q4 where the power (167W) is far below the reference.
+
+    - [Risk Level: Med] Q4 POWER SURFACE USES COARSE 15x15 GRID AT H_GA=0.01
+      The contour plot visualization (sweep_coupled_surface, line 840) evaluates
+      only 225 points on a 15x15 grid, at the coarse step H_GA=0.01. The power
+      surface may miss fine structure (ridges, valleys, multiple optima). The
+      contourf plot with only 225 points and 20 levels is visually plausible but
+      numerically under-resolved by approximately 4x in each dimension compared
+      to a 50x50 grid (which would be 2500 evaluations).
+
+    <!-- ================================================================ -->
+    <!-- LOW-RISK FLAWS                                                    -->
+    <!-- ================================================================ -->
+
+    - [Risk Level: Low] ENERGY BALANCE BAR CHART LABELS RESIDUAL AS "&lt;dE/dt&gt;"
+      The bar in plot_energy_balance() (line 958) labels the residual as
+      "$\langle dE/dt \rangle$". While technically correct (any power imbalance
+      must go into stored energy), the label could mislead a reader into thinking
+      this value was computed independently from energy time-derivatives. It is
+      actually just (P_in - P_rad - P_abs). A label like "Residual / Closure"
+      would be more transparent.
+
+    - [Risk Level: Low] ANNEX 3 PITCH PARAMETERS USE ONLY 2 DATA POINTS
+      For L, I_prime, and C_xp, only 2 of 4 frequency points are valid (NaN at
+      omega=1.4005 and 2.2143). The code correctly falls back to linear
+      interpolation (line 115-117), but linear interpolation across only 2 points
+      spanning omega ~ 1.7-2.0 is inherently imprecise. The coupled model accuracy
+      (Q3, Q4) is fundamentally limited by this data sparsity.
+
+    - [Risk Level: Low] HARDCODED TEXT OFFSETS IN ENERGY BALANCE PLOT
+      Line 966: `bar.get_height() + 0.5` and `bar.get_height() - 2` are hardcoded
+      pixel offsets. If P_in is ~200W and the balance residual is ~0.001W, the
+      residual text at y=0.501 may overlap with the short bar. This does not affect
+      numerical correctness but degrades visual quality.
+
+    - [Risk Level: Low] Q4 CONTOUR PLOT X/Y LABELS MAY BE REVERSED
+      Line 1068: np.meshgrid(Ch_sweep, Cp_sweep) creates arrays with shape
+      (len(Cp_sweep), len(Ch_sweep)). The contourf call uses P_surf.T (line 1069),
+      where P_surf was stored as (nCh, nCp) from the sweep loop (line 844:
+      P_surf[i, j] where i=Ch, j=Cp). The .T transposition combined with
+      meshgrid(Ch, Cp) is correct but fragile — a maintenance programmer could
+      easily break this by removing the .T. A direct reshape would be more robust.
+
+    - [Risk Level: Low] f(omega) DATA SHOWS NON-MONOTONIC PATTERN
+      The Annex 3 excitation force f = [6250, 3640, 1760, 4890] at
+      omega = [1.4005, 1.7152, 1.9806, 2.2143] jumps from 1760 to 4890 at the
+      highest frequency. This non-physical-looking increase (2.8x over a 12%
+      frequency increase) combined with only 4 data points can cause cubic spline
+      overshoot between omega=1.9806 and 2.2143. The code handles this via natural
+      BCs but the underlying data quality is suspect.
+  </flaws>
+
+  <correction_directives>
+    1. CRITICAL — Update phase-2-output.xml and README.md to reflect the actual
+       code parameters: H_GA=0.01, N_POP=15, N_GEN=30. OR change the code to
+       match the documented production parameters. Whichever path is chosen,
+       documentation and code must agree.
+
+    2. CRITICAL — Diagnose why Q3 power (56W) is 37-56% of expected range and
+       Q4 power (167W) is 47% below the reference paper (316W). Candidates to
+       investigate: (a) Iz parallel-axis formula correctness, (b) pitch damping
+       sign convention in rh_s_coupled, (c) coupled energy balance to check if
+       closure holds, (d) re-run Q4 with at least 3 random seeds to test GA
+       convergence.
+
+    3. CRITICAL — Extend Q4 search range for Cp to at least [0, 200000] and
+       re-run. If Cp* is still at the boundary, extend further until an interior
+       optimum is found. Report the unbounded optimum.
+
+    4. HIGH — Add a cross-validation step: after GA converges at H_GA=0.01,
+       re-evaluate the optimal (Ch*, Cp*) at H_FINAL=0.0005 and report both
+       power values. If they differ by more than 5%, the step-size sensitivity
+       must be discussed.
+
+    5. HIGH — Document whether I_z0 is moment of inertia about the oscillator CG
+       or about the pitch axis. If it is about the CG, the parallel-axis formula
+       is correct. If about the pitch axis, correct the formula to:
+       Iz = I_z0 + m_z * ((d_0 + xr)^2 - d_0^2).
+
+    6. MED — Add a steady-state convergence check: compute the average power over
+       sequential wave periods in [T0, T0+T_WIN]; if the coefficient of variation
+       between periods exceeds a threshold (e.g., 5%), extend T0 or flag the result.
+
+    7. MED — Add contact force work to energy_balance_heave(). Even if not activated
+       in the current test cases, the function should be formally complete.
+
+    8. MED — Add multiple-seed GA analysis. Run the GA 5 times with seeds
+       {42, 123, 456, 789, 1024} and report the mean and std of optimal Ch*
+       and P_max.
+
+    9. MED — Increase the Q4 power surface grid resolution to at least 30x30
+       for the contour visualization, and compute it at H_FINAL for a spot-check
+       of step-size sensitivity.
+
+    10. LOW — Relabel the energy balance bar from "dE/dt" to "Residual / Closure"
+        for clarity.
+  </correction_directives>
+
+  <open_items_from_phase1>
+    The Phase 1 model design audit (M-2022A-014 through M-2022A-018) has 5 open
+    items flagged as "open" in error-registry.json. These have NOT been verified
+    as resolved in the current code:
+
+    - M-2022A-014: GA elitism fitness/index mismatch (Med) — The code (line 561-563)
+      computes `worst_idx = np.argmin(off_fit)` and replaces in `offspring`, which
+      appears correct. However, the history recording (line 531) records best_f from
+      the PREVIOUS generation's fitness array, which is correct. This item appears
+      resolved in code.
+
+    - M-2022A-015: Contact force sign error (High) — The code (lines 140-153)
+      implements the rev2 correction. This item appears resolved.
+
+    - M-2022A-016: Missing k_contact and k_pen in symbol table (Low) — Not
+      verifiable from code alone; depends on the model design document.
+
+    - M-2022A-017: Energy balance not extended to coupled case (Low) — Code
+      has `energy_balance_heave()` but no `energy_balance_coupled()`. Still open.
+
+    - M-2022A-018: Q2(2a) alpha parameter not explicitly passed (Low) — Code
+      line 751 calls `make_obj_heave(omega, f_amp, 0.5)`, which explicitly passes
+      alpha=0.5. This item appears resolved.
+  </open_items_from_phase1>
+
+  <status>REJECTED</status>
+</devils_advocate_report>

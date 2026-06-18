@@ -1,0 +1,912 @@
+<model_design>
+  <problem_analysis>
+    赛题类型判定：数据分析 + 优化 + 因果推断混合问题（2024 MCM E题）。
+
+    【核心难点】
+    (1) 车流量时段划分（问题1）—— 多变量时间序列结构性断点检测。12维流量分量（4方向x3相位）存在强时序自相关，简单的独立同分布聚类会丢失时间连续性。
+
+    (2) 信号灯配时优化（问题2）—— 带约束的多目标组合优化。12个交叉口联动，干线协调（绿波）要求所有交叉口共用周期、设置相位差，与单点最优配时存在冲突。绿灯时间分配在低流量相位可能触及最小绿灯约束，导致调度不可行。
+
+    (3) 巡游车辆识别（问题3）—— 基于轨迹模式的异常检测。车辆可通过非监控出入口（住宅/酒店/写字楼侧方）进出路网，造成轨迹链断裂，需要处理"出现-消失-再出现"的模式。
+
+    (4) 管控措施评价（问题4）—— 因果推断/反事实估计。五一黄金周既是"管控措施实施期"又是"结构性节假日"，DID模型中的Post_t效应同时混杂两个因素，需解耦。
+
+    【降维思路】
+    - 问题1：时序约束聚类替代独立聚类，保持时间连续性
+    - 问题2：先单点Webster再干线协调（GA）分层降维，增加可行性校验
+    - 问题3：轨迹重建加入侧方进出检测机制，保守/乐观双方案
+    - 问题4：DID + 节假日虚拟变量 + 平行趋势预检验
+
+    【多目标冲突】
+    - 平均速度 vs. 行人过街安全（绿灯时间有下界）
+    - 纬中路优先 vs. 经中路优先（两条主干道争夺绿灯资源）
+    - 巡游检测灵敏度 vs. 误报率（阈值选择的固有权衡）
+    - 管控效果 vs. 局部交通扰动（某些路口受益、某些受损）
+
+    【本次修正处理的审计意见】
+    本修订版针对破坏者审计报告的9条修正指令全部处理：
+    - High-1: Webster延误公式量纲修正 —— λ/C 改为 g/C 绿信比
+    - High-2: DID混杂效应 —— 引入节假日虚拟变量和动态DID事件研究法
+    - High-3: K-Means时序依赖性 —— 替换为时序约束层次聚类 + 贝叶斯断点检测
+    - High-4: 轨迹重建不完整 —— 侧方进出量化 + 保守/乐观方案 + 窗口敏感性分析
+    - High-5: GA配时不可行 —— 可行性预检查 + 硬惩罚机制，删除等比缩放
+    - Med-6: 转向概率贝叶斯平滑 —— Dirichlet-Multinomial模型处理小样本
+    - Med-7: DQN重写 —— 明确状态估计方法、降级为备选、简化伪代码
+    - Med-8: 评分归一化修正 —— min-max替换为零基变换
+    - Med-9: 多天数据分层 —— 按工作日/周末/节假日分别平均
+  </problem_analysis>
+
+  <assumptions>
+    1. 车辆轨迹可关联假设：同一车牌号在相邻交叉口的出现时间差在合理范围内（τ_max），可视为同一车辆的连续轨迹。合理性说明：景区小镇范围有限（纬中路3.5 km + 经中路1.8 km），车辆通过全程通常不超过15分钟。τ_max=30分钟为基准值，灵敏度分析中考察τ=15,30,45,60分钟对结果的影响（对应审计High-4要求）。
+
+    2. 侧方进出可检测假设：车辆在非监控点（住宅/酒店/写字楼出入口）驶离或进入路网时，其轨迹表现为"在某交叉口消失后，经过Δt后在非相邻交叉口重新出现"。合理性说明：通过检测"出现-消失-再出现"模式可量化侧方进出，区分真正的轨迹断裂与自然穿行。该假设是轨迹偏差量化分析的基础（对应审计High-4要求）。
+
+    3. 车流量分段平稳性假设：在同一时段内（如早高峰8:00-9:00），车流量服从平稳泊松过程，到达率恒定。合理性说明：交通工程经典假设（Webster配时理论基础），在小时级别上交通流具有统计平稳性。时段划分的边界也是到达率的结构性断点。
+
+    4. 转向概率的贝叶斯先验假设：各交叉口的转向概率服从Dirichlet先验分布，其超参数由全天平均转向比例确定。合理性说明：转向行为由道路功能和土地利用决定，在一天内保持相对稳定，只是在不同时段有适度偏移。贝叶斯框架在小样本时段（如凌晨）提供平滑收缩（对应审计Med-6要求）。
+
+    5. 绿波协调可行性假设：纬中路和经中路的12个交叉口可以使用统一的信号周期。合理性说明：两条路构成网格状路网，总长5.3 km，可找到公共周期满足多数交叉口需求。若某交叉口的最小绿灯之和超过公共周期减去损失时间，则标记为不可行（对应审计High-5要求）。
+
+    6. 五一效应可分解假设：五一期间的交通模式变化可分解为"节假日效应"和"管控措施效应"两个可加分量，且可以通过同期未管控的类似景区数据或节假日虚拟变量来识别。合理性说明：五一黄金周作为中国最大的结构化节假日之一，其交通模式变化具有可预测的模式（游客流量激增、出行时间集中），这些模式可以通过统计方法从管控效果中分离（对应审计High-2要求）。
+
+    7. 监控数据完整性假设：监控设备记录的车牌号识别准确率≥95%，时间戳精度为秒级。合理性说明：现代ANPR（自动车牌识别）系统在良好光照条件下识别率可达95%以上。若识别率低于90%，轨迹重建和转向概率估计的偏误将显著增大。
+
+    8. 信号灯相位方案假设：每个交叉口采用四相位方案（南北直行、南北左转、东西直行、东西左转），右转车辆不受信号灯控制（允许红灯右转）。合理性说明：景区小镇交叉口虽不复杂，但四相位方案能为左转车辆提供独立通行权，避免左转与对向直行的冲突。该假设明确了direction_to_phase_idx的映射关系（对应审计Low-1要求）。
+  </assumptions>
+
+  <symbol_table>
+    | 符号 | 含义 | 单位 |
+    |------|------|------|
+    | $I$ | 交叉口集合，$I=\{1,2,\dots,12\}$ | — |
+    | $D$ | 进口方向集合，$D=\{\text{N},\text{S},\text{E},\text{W}\}$ | — |
+    | $\mathcal{T}$ | 一天的时间采样点集合，粒度15 min，$|\mathcal{T}|=96$ | — |
+    | $\mathcal{D}$ | 日期索引集合，含36天数据 | day |
+    | $q_{i,d}(t)$ | 交叉口$i$在时刻$t$的$d$方向总进口流量 | veh/15min |
+    | $\mathbf{x}(t)$ | 12维车流量特征向量：$[q_{i^*,d}(t)\cdot\theta_{i^*,d,\text{直行}}, q_{i^*,d}(t)\cdot\theta_{i^*,d,\text{左转}}]_{d\in D}$ | veh/15min |
+    | $C_0$ | 干线协调公共周期 | s |
+    | $L_i$ | 交叉口$i$的总损失时间（黄灯+全红+启动损失） | s |
+    | $y_{i,j}$ | 交叉口$i$相位$j$的流量比 $=q_{i,j}/S_{\text{sat}}$ | — |
+    | $Y_i$ | 交叉口$i$各相位流量比之和 | — |
+    | $g_{i,j}$ | 交叉口$i$相位$j$的绿灯时间 | s |
+    | $g_{i,j}^{\min}$ | 最小绿灯时间（行人过街安全要求，默认15 s） | s |
+    | $g_{i,j}^{\max}$ | 最大绿灯时间（防止某一相位饿死其他相位，默认$C_0 - L_i - \sum_{k\neq j} g_{i,k}^{\min}$） | s |
+    | $\lambda_{i,j}$ | 交叉口$i$相位$j$的车辆到达率 | veh/s |
+    | $S_{\text{sat}}$ | 饱和流率（单车道理想通行能力，标准值0.5 veh/s = 1800 veh/h） | veh/s |
+    | $\Delta_{i,i+1}$ | 相邻交叉口$i$与$i+1$之间的相位差 | s |
+    | $L_{i,i+1}$ | 相邻交叉口$i$与$i+1$之间的距离 | m |
+    | $v_{\text{des}}$ | 绿波设计车速 | km/h |
+    | $\bar{v}$ | 两条主干道的平均车速 | km/h |
+    | $\mathbb{E}[W_i]$ | 交叉口$i$的车辆平均延误（Webster公式） | s/veh |
+    | $\hat{\theta}_{i,d,d'}$ | 交叉口$i$从$d$方向进入后从$d'$方向离开的转向概率 | — |
+    | $\boldsymbol{\alpha}_i$ | Dirichlet先验超参数向量（对交叉口$i$的转向概率） | — |
+    | $\boldsymbol{\phi}_k$ | 时段$k$的聚类中心（12维车流量向量） | veh/15min |
+    | $\tau_{\text{match}}$ | 车牌匹配时间窗口阈值（基准30 min） | min |
+    | $N_{\text{repeat}}(m)$ | 车辆$m$在时间窗口内重复出现在区域内的次数 | 次 |
+    | $\bar{v}_m$ | 车辆$m$的平均行程速度 | km/h |
+    | $H_m$ | 车辆$m$的行程方向熵（Shannon熵） | nat |
+    | $H_{\text{threshold}}$ | 方向熵判定阈值（非五一期间$H$分布的90%分位数） | nat |
+    | $N_{\text{cruise}}(t)$ | 时刻$t$处于巡游状态的车辆数 | veh |
+    | $P_{\text{demand}}$ | 需要临时征用的停车位数 | spaces |
+    | $\mu_{\text{occ}}$ | 平均每辆巡游车寻泊时间 | h |
+    | $\rho$ | 停车位高峰周转率（次/日） | — |
+    | $\beta_3$ | DID估计量：管控措施的净效应 | 因变量单位 |
+    | $\gamma_{\text{holiday}}$ | 节假日虚拟变量系数（五一特有效应） | 因变量单位 |
+    | $S_i$ | 交叉口$i$管控效果综合评分（正=改善，负=恶化） | — |
+    | $\Delta \bar{v}_i$ | 交叉口$i$管控前后平均车速变化量 | km/h |
+    | $\Delta Q_i$ | 交叉口$i$管控前后车流量变化量（负=减少） | veh/h |
+    | $K$ | 时段划分总数（经贝叶斯信息准则确定） | — |
+    | $\text{CP}_k$ | 第$k$个断点位置（时间索引） | — |
+  </symbol_table>
+
+  <mathematical_model>
+
+    ### 问题1：车流量时段划分与相位流量估计
+
+    #### 1.1 数据预处理与分层聚合
+
+    原始数据为每个交叉口的车牌识别记录，格式为（车牌号，时间戳，进口方向，出口方向）。由于不同日期类型（工作日、周末、节假日）的交通模式存在本质差异，对多天数据采取分层处理而非简单平均：
+
+    将36天数据按日期类型划分为三组：
+    - $\mathcal{D}_{\text{weekday}}$：周一至周五（不含五一假期）
+    - $\mathcal{D}_{\text{weekend}}$：周六、周日（不含五一假期）
+    - $\mathcal{D}_{\text{holiday}}$：五一假期（5月1日-5月5日）
+
+    对每组分别计算平均流量，以工作日为例：
+
+    $$\mathbf{x}_{\text{wd}}(t) = \frac{1}{|\mathcal{D}_{\text{weekday}}|} \sum_{d\in\mathcal{D}_{\text{weekday}}} \mathbf{x}_d(t), \quad \forall t\in\mathcal{T}$$
+
+    连续时间离散化为15分钟时间窗口：
+
+    $$t \in \mathcal{T} = \{t_0, t_0+\Delta t, \dots, t_0+(N-1)\Delta t\}, \quad \Delta t = 15\,\text{min}, \; N=96$$
+
+    定义12维特征向量（以经中路-纬中路交叉口$i^*$为例），每个维度对应一个（进口方向，转向类型）组合：
+
+    $$\mathbf{x}(t) = [q_{i^*,d,\text{直行}}(t),\; q_{i^*,d,\text{左转}}(t),\; q_{i^*,d,\text{右转}}(t)]_{d\in D} \in \mathbb{R}^{12}$$
+
+    #### 1.2 时序约束的时段划分（替代原K-Means独立聚类）
+
+    原模型使用K-Means将每个15分钟窗口作为独立样本聚类，忽略时间自相关，可能导致物理上不可解释的碎片化时段。本修订版采用两种对时序敏感的算法，并对比结果一致性。
+
+    **方案A：时序约束层次聚类（Contiguity-Constrained Hierarchical Clustering）**
+
+    经典层次聚类不允许重新排列样本顺序，而是强制要求聚类结果中的每个簇由连续的时间窗口组成。这通过修改凝聚阶段的合并规则实现：仅允许合并时间上相邻的簇。
+
+    定义特征矩阵 $\mathbf{X} = [\mathbf{x}(t_1), \mathbf{x}(t_2), \dots, \mathbf{x}(t_{96})]^\top \in \mathbb{R}^{96\times 12}$。
+
+    使用Ward方差最小化准则，在每一步合并时间上相邻且使簇内离差平方和增量最小的两个簇：
+
+    $$\Delta\text{SSE}(C_a, C_b) = \frac{|C_a|\cdot|C_b|}{|C_a|+|C_b|} \|\boldsymbol{\phi}_a - \boldsymbol{\phi}_b\|^2$$
+
+    其中$C_a, C_b$为两个时间相邻的簇，$\boldsymbol{\phi}_a, \boldsymbol{\phi}_b$为各自的聚类中心。最优聚类数$K$通过Dunn指数或轮廓系数确定：
+
+    $$K_{\text{opt}} = \arg\max_{K\in[2,8]} \text{Dunn}(K)$$
+
+    $$\text{Dunn}(K) = \frac{\min_{1\leq i&lt;j\leq K} \delta(C_i, C_j)}{\max_{1\leq k\leq K} \Delta(C_k)}$$
+
+    其中$\delta(C_i, C_j)$为簇间最小距离，$\Delta(C_k)$为簇$C_k$的直径。
+
+    输出结果为$K$个连续时间区间：
+    $$\mathcal{T} = \bigcup_{k=1}^{K} \mathcal{T}_k, \quad \mathcal{T}_k = [t_{a_k}, t_{b_k}], \; a_k \leq b_k &lt; a_{k+1}$$
+
+    **方案B：贝叶斯断点检测（Bayesian Change Point Detection）**
+
+    将时段划分视为多元时间序列的结构性断点检测问题。假设在每个时段内，12维车流量向量服从多元正态分布，且不同时段的均值不同：
+
+    $$\mathbf{x}(t) \sim \mathcal{N}(\boldsymbol{\mu}_k, \boldsymbol{\Sigma}), \quad t \in \mathcal{T}_k$$
+
+    其中$\boldsymbol{\mu}_k$是时段$k$的均值向量，$\boldsymbol{\Sigma}$是协方差矩阵（假设跨时段恒定以降低参数数量）。
+
+    断点位置$\{\text{CP}_1, \text{CP}_2, \dots, \text{CP}_{K-1}\}$通过最大化惩罚对数似然确定：
+
+    $$\hat{\boldsymbol{\mu}}_{1:K}, \hat{\text{CP}}_{1:K-1} = \arg\max \left\{ \sum_{k=1}^{K} \sum_{t\in\mathcal{T}_k} \ln\mathcal{N}(\mathbf{x}(t); \boldsymbol{\mu}_k, \boldsymbol{\Sigma}) - \lambda \cdot K \cdot (12 + 12\times 12) \right\}$$
+
+    其中$\lambda$是惩罚系数（通过BIC准则取$\lambda = \frac{1}{2}\ln N$），$12 + 12\times 12$是每个时段的参数数量（均值向量+协方差矩阵）。
+
+    断点搜索通过动态规划（PELT算法）高效实现，时间复杂度$O(N)$。
+
+    **一致性验证**：当方案A和方案B的时段划分边界偏差不超过2个时间窗口（30分钟）时，认为时段划分结果可靠。若差异超过2个窗口，取两者的平均断点位置作为最终划分，并在报告中注明不确定性。
+
+    #### 1.3 转向概率的贝叶斯估计（小样本平滑）
+
+    原模型使用MLE估计转向概率$\hat{\theta}_{i,d,d'} = n_{i,d,d'} / \sum_{d''} n_{i,d,d''}$，在低流量时段（如0:00-6:00）样本量不足时方差极大。本修订版采用Dirichlet-Multinomial共轭贝叶斯模型。
+
+    **先验设定**：将全天数据作为先验信息，对每个进口方向$d$设定先验分布：
+
+    $$(\theta_{i,d,\text{N}}, \theta_{i,d,\text{S}}, \theta_{i,d,\text{E}}, \theta_{i,d,\text{W}}) \sim \text{Dirichlet}(\alpha_{i,d,\text{N}}, \alpha_{i,d,\text{S}}, \alpha_{i,d,\text{E}}, \alpha_{i,d,\text{W}})$$
+
+    先验超参数$\alpha_{i,d,d'}$通过对全天数据的MLE估计乘以先验强度系数$\kappa$得到：
+
+    $$\alpha_{i,d,d'} = \kappa \cdot \hat{\theta}_{i,d,d'}^{\text{(全天)}}, \quad \kappa = 30$$
+
+    $\kappa=30$的直观含义：先验信息相当于30个虚拟观测，在凌晨小样本时段（如实际观测数仅5-10辆）先验占据主导，提供平滑收缩；在高峰时段（观测数>300）先验影响甚微。
+
+    **后验更新**：对时段$k$和进口方向$d$，观测到计数向量$\mathbf{n}_{i,d}^{(k)} = [n_{i,d,d'}^{(k)}]_{d'\in D}$后，后验分布为：
+
+    $$(\theta_{i,d,d'}^{(k)})_{d'\in D} \mid \mathbf{n}_{i,d}^{(k)} \sim \text{Dirichlet}\left(\alpha_{i,d,d'} + n_{i,d,d'}^{(k)}\right)$$
+
+    后验期望作为转向概率的点估计：
+
+    $$\hat{\theta}_{i,d,d'}^{(k)} = \frac{\alpha_{i,d,d'} + n_{i,d,d'}^{(k)}}{\sum_{d''\in D}(\alpha_{i,d,d''} + n_{i,d,d''}^{(k)})}$$
+
+    **最小样本量门控**：若某个进口方向在时段$k$的总观测数$n_{i,d}^{(k)} = \sum_{d'} n_{i,d,d'}^{(k)} &lt; 5$，则将该时段与相邻时段合并后重新估计，以确保后验不为先验完全主导。
+
+    #### 1.4 相位流量计算
+
+    各相位车流量由进口流量和转向概率相乘得到：
+
+    $$q_{i,d,\text{直行}}(t) = q_{i,d}(t) \times \hat{\theta}_{i,d,\text{对向}}^{(k)}$$
+    $$q_{i,d,\text{左转}}(t) = q_{i,d}(t) \times \hat{\theta}_{i,d,\text{左侧}}^{(k)}$$
+    $$q_{i,d,\text{右转}}(t) = q_{i,d}(t) \times \hat{\theta}_{i,d,\text{右侧}}^{(k)}$$
+
+    其中$k$是时刻$t$所属的时段标签。
+
+
+    ### 问题2：信号灯配时优化
+
+    #### 2.1 双目标分层优化框架
+
+    **上层（干线协调）**：优化公共周期$C_0$和各交叉口相位差$\Delta_{i,i+1}$，最大化全路网平均车速。
+
+    **下层（单点配时）**：给定$C_0$，按Webster方法（修正后）分配各相位绿灯时间，满足$g_{i,j}^{\min}$和$g_{i,j}^{\max}$上下界约束。
+
+    #### 2.2 修正后的Webster单点配时公式（重写）
+
+    原模型的Webster延误公式存在量纲错误：将$\lambda_i/C_0$（流量/周期，分子veh/h分母s，量纲混乱）误用于绿信比的位置。标准Webster延误公式为：
+
+    $$\mathbb{E}[W_i] = \frac{C_0\left(1 - \frac{g_i}{C_0}\right)^2}{2\left(1 - \frac{\lambda_i}{S_{\text{sat}}}\right)}$$
+
+    其中：
+    - $C_0$：周期时长（s）
+    - $g_i/C_0$：绿信比（无量纲），$g_i$为有效绿灯时间（s）
+    - $\lambda_i$：车辆到达率（veh/s）
+    - $S_{\text{sat}}$：饱和流率（veh/s），与$\lambda_i$量纲一致
+
+    **量纲验证**：
+    - 分子：$C_0 \times (\text{无量纲})^2 \rightarrow [\text{s}]$
+    - 分母：$2 \times (\text{无量纲}) \rightarrow [\text{—}]$
+    - 结果$\mathbb{E}[W_i]$：$[\text{s}]$，与延误的时间量纲一致。
+
+    **最佳周期**（Webster公式，保持正确形式）：
+
+    $$C_0^{(i)} = \frac{1.5L_i + 5}{1 - Y_i}, \quad Y_i = \sum_{j\in\text{相位}} y_{i,j}, \quad y_{i,j} = \frac{\lambda_{i,j}}{S_{\text{sat}}}$$
+
+    其中$L_i$为总损失时间，$Y_i$为各相位流量比之和。当$Y_i \geq 0.9$时，Webster公式分母趋近于零，此时固定$C_0^{(i)} = C_{\max} = 180$s。
+
+    **绿灯时间分配**：
+
+    $$g_{i,j} = \frac{y_{i,j}}{Y_i} \cdot (C_0 - L_i)$$
+
+    受约束：
+    $$g_{i,j}^{\min} \leq g_{i,j} \leq g_{i,j}^{\max}$$
+
+    其中$g_{i,j}^{\min}=15$s（行人过街安全），$g_{i,j}^{\max}=C_0 - L_i - \sum_{k\neq j} g_{i,k}^{\min}$（防止某一相位占用过多绿灯时间）。
+
+    #### 2.3 平均车速最大化目标
+
+    整体优化目标：
+
+    $$\max_{C_0, \{g_{i,j}\}, \{\Delta_{i,i+1}\}} \bar{v} = \frac{L_{\text{total}}}{\mathbb{E}[t_{\text{travel}}]}$$
+
+    其中$L_{\text{total}} = 3.5 + 1.8 = 5.3\,\text{km}$。
+
+    期望行程时间：
+
+    $$\mathbb{E}[t_{\text{travel}}] = \sum_{(i,i+1)} \frac{L_{i,i+1}}{v_{\text{free}}} + \sum_{i} \mathbb{E}[W_i]$$
+
+    完整的优化问题表述：
+
+    $$
+    \begin{aligned}
+    \max_{C_0, \{\Delta_{i,i+1}\}} \quad & \bar{v} = \frac{L_{\text{total}}}{\mathbb{E}[t_{\text{travel}}]} \\
+    \text{s.t.} \quad & C_{\min} \leq C_0 \leq C_{\max}, \quad C_{\min}=60,\; C_{\max}=180 \\
+    & \sum_{j} g_{i,j} = C_0 - L_i, \quad \forall i \\
+    & g_{i,j}^{\min} \leq g_{i,j} \leq g_{i,j}^{\max}, \quad \forall i,j \\
+    & 0 \leq \Delta_{i,i+1} &lt; C_0, \quad \forall i \\
+    & \text{Feasibility}(C_0, i): \sum_{j} g_{i,j}^{\min} \leq C_0 - L_i, \quad \forall i
+    \end{aligned}
+    $$
+
+    其中$\text{Feasibility}(C_0, i)$是新增的可行性检查条件：公共周期必须足够大，使得各相位最小绿灯之和不超过可用绿灯总时间。
+
+    #### 2.4 遗传算法求解上层优化（含可行性检查）
+
+    GA的适应度函数：
+
+    $$f(\text{chrom}) = \begin{cases}
+    \bar{v}(\text{chrom}), & \text{若所有交叉口的} \sum_j g_{i,j}^{\min} \leq C_0 - L_i \text{ 成立} \\
+    -M, & \text{否则（硬惩罚，}M\text{为极大正数）}
+    \end{cases}$$
+
+    **染色体编码**：13维实数向量 $[C_0, \Delta_{1,2}, \Delta_{2,3}, \dots, \Delta_{11,12}]$。
+
+    **处理流程**（关键区别：先检查可行性，再分配绿灯，禁止等比缩放）：
+    - 给定$C_0$，对交叉口$i$，首先检查$\sum_j g_{i,j}^{\min} \leq C_0 - L_i$。若不成立，该染色体不可行，直接赋予适应度$-M$。
+    - 若所有交叉口均通过可行性检查，按Webster比例分配绿灯时间：
+      $$g_{i,j}^{\text{raw}} = \frac{y_{i,j}}{Y_i}(C_0 - L_i)$$
+    - 将$g_{i,j}^{\text{raw}}$截断到$[g_{i,j}^{\min}, g_{i,j}^{\max}]$区间。截断后，多余的或不足的时间通过二次分配（按剩余可调容量比例）调整，确保$\sum_j g_{i,j} = C_0 - L_i$。此方法在理论上保证在$\sum_j g_{i,j}^{\min} \leq C_0 - L_i$的条件下有解。
+
+    #### 2.5 DQN强化学习（备选方法——重写与简化）
+
+    原模型的DQN部分存在以下问题：(a) 排队长度48维无法从ANPR数据直接观测；(b) 微观交通仿真器是独立工程，无法在MCM时间限内实现；(c) 动作空间"2个动作"对四相位交叉口欠定义。因此将DQN降级为"方法比较"说明，从核心算法流中移除详细伪代码。
+
+    **状态估计**：排队长度通过累积到达-离去模型推断。设在相位$j$的绿灯时间内，车辆以饱和流率$S_{\text{sat}}$驶离；在红灯时间内，车辆以到达率$\lambda_{i,j}$到达。则时刻$t$的排队长度为：
+
+    $$l_{i,j}(t) = \int_{t_{\text{red\_start}}}^{t} \lambda_{i,j}(\tau) d\tau - \int_{t_{\text{green\_start}}}^{\min(t, t_{\text{green\_end}})} S_{\text{sat}} \cdot \mathbb{I}(\text{queue} > 0) d\tau$$
+
+    其中第一项为红灯期间累积到达，第二项为绿灯期间驶离。由于ANPR无法直接观测排队长度，累积到达-离去模型是一种可行的推断方法（在交通工程中称为"输入-输出法"）。
+
+    **作为备选方法的定位**：DQN在本模型中的角色为"与GA结果的交叉验证"，而非主要求解器。在实际MCM论文中，若无法构建完整的交通仿真环境，则以GA结果作为最终配时方案，DQN仅作方法学讨论。
+
+    **弃用条件**：当以下任一条件满足时，DQN不予运行，以GA结果为准：
+    - 无法获取各交叉口的实时排队长度估计（数据不足以支撑输入-输出法）
+    - 无法在合理时间内完成500 episode x 3600 step的训练（MCM竞赛时间限制）
+    - GA解的平均车速已超过45 km/h（GA已给出满意解，无需RL进一步优化）
+
+
+    ### 问题3：巡游车辆识别与停车位需求估算
+
+    #### 3.1 车辆轨迹重建与侧方进出偏差量化（新增内容）
+
+    基于车牌号对五一期间所有记录进行跨交叉口关联。对每辆车$m$，构建时间排序的交叉口到访序列：
+    $$\text{Traj}_m = \{(i_1, t_1, d_1^{\text{in}}, d_1^{\text{out}}), (i_2, t_2, d_2^{\text{in}}, d_2^{\text{out}}), \dots\}, \quad t_1 &lt; t_2 &lt; \dots$$
+
+    **侧方进出检测**：当车辆$m$在交叉口$i_k$出现后，下一次出现在非相邻交叉口$i_{k+1}$（即$|i_{k+1} - i_k| > 1$），且时间差$\Delta t = t_{k+1} - t_k$大于正常行驶时间但小于30分钟时，判定为一次"侧方进出事件"。
+    $$ \text{SideEntryExit}(m) = \#\{(k, k+1) \mid |i_{k+1} - i_k| > 1, \; \Delta t_{\text{drive}} &lt; t_{k+1}-t_k &lt; \tau_{\text{match}} \}$$
+
+    其中$\Delta t_{\text{drive}} = \frac{\text{dist}(i_k, i_{k+1})}{v_{\text{free}} \cdot 1.5}$为正常行驶时间上限（自由流速度的1.5倍容忍度）。
+
+    **轨迹链断裂比例**：
+    $$r_{\text{break}} = \frac{\sum_{m} \text{SideEntryExit}(m)}{\sum_{m} (|\text{Traj}_m| - 1)}$$
+
+    该比例量化了侧方进出导致的轨迹不完整程度。若$r_{\text{break}} > 15\%$，说明数据中大量轨迹存在断裂，巡游车检测结果的可靠性需要降低置信度。
+
+    #### 3.2 巡游特征提取与判定
+
+    判别规则保持不变，但参数$H_{\text{threshold}}$需考虑管控措施对转向分布的影响（见审计Med-9）：
+
+    $$ \text{Cruise}(m) = \mathbb{I}\left\{ N_{\text{repeat}}(m) \geq 3 \;\wedge\; \bar{v}_m \leq 5\,\text{km/h} \;\wedge\; H_m \geq H_{\text{threshold}} \right\} $$
+
+    **$H_{\text{threshold}}$的双基准确定**：
+    - 基准A：基于非五一期间（4月正常日）的$H$分布取90%分位数
+    - 基准B：基于五一期间中未被判定为巡游车的车辆$H$分布取90%分位数
+    - 最终阈值取两者的加权平均：$H_{\text{threshold}} = w\cdot H_{\text{A}} + (1-w)\cdot H_{\text{B}}$，权重$w$根据管控强度确定
+
+    #### 3.3 停车位需求估算的保守/乐观双方案
+
+    **方案I（保守方案）**：使用95%分位数法，但考虑侧方进出导致的低估偏差：
+    $$P_{\text{demand}}^{\text{conservative}} = \left\lceil Q_{0.95}(\{N_{\text{cruise}}(t)\}) \cdot \frac{\mu_{\text{occ}}}{\rho} \cdot (1 + r_{\text{break}}) \right\rceil$$
+
+    其中乘数$(1 + r_{\text{break}})$对因轨迹断裂未计入的巡游车进行向上修正。
+
+    **方案II（乐观方案）**：仅计算轨迹完整且确定性高的巡游车辆，不进行修正：
+    $$P_{\text{demand}}^{\text{optimistic}} = \left\lceil Q_{0.95}(\{N_{\text{cruise}}(t)\}) \cdot \frac{\mu_{\text{occ}}}{\rho} \right\rceil$$
+
+    **窗口敏感性分析**：对$\tau_{\text{match}} = 15, 30, 45, 60$分钟分别运行上述两种方案，报告$P_{\text{demand}}$随$\tau_{\text{match}}$的变化曲线。若$P_{\text{demand}}$对$\tau_{\text{match}}$敏感（变异系数CV > 20%），说明轨迹匹配窗口的选择对结果影响显著，需在报告中注明。
+
+    #### 3.4 参数敏感性说明
+
+    参数$\mu_{\text{occ}}$（平均寻泊时间）和$\rho$（周转率）对$P_{\text{demand}}$高度敏感。进行单参数敏感性分析：
+
+    $$P_{\text{demand}}(\mu_{\text{occ}}, \rho) = \left\lceil Q_{0.95}(\{N_{\text{cruise}}(t)\}) \cdot \frac{\mu_{\text{occ}}}{\rho} \right\rceil$$
+
+    设定$\mu_{\text{occ}} \in [0.25, 0.5, 0.75, 1.0, 1.5]$小时（对应15分钟到1.5小时），$\rho \in [2, 4, 6, 8]$次/日，生成$5 \times 4 = 20$组估计值，以中位数作为推荐值，以四分位距表示不确定性范围。
+
+
+    ### 问题4：管控措施效果评价
+
+    #### 4.1 DID模型修正：处理节假日混杂效应（重写）
+
+    原模型使用经典DID：$Y_{it} = \beta_0 + \beta_1\text{Treat}_i + \beta_2\text{Post}_t + \beta_3(\text{Treat}_i \times \text{Post}_t) + \varepsilon_{it}$，其中$\text{Post}_t=1$同时编码了"管控措施"和"五一节假日"两个效应，$\beta_3$无法识别纯净的管控效果。
+
+    **修正方案：引入节假日虚拟变量**
+
+    $$Y_{it} = \beta_0 + \beta_1\text{Treat}_i + \beta_2\text{Post}_t + \beta_3(\text{Treat}_i \times \text{Post}_t) + \gamma_{\text{holiday}}\text{Holiday}_t + \sum_{d\in\text{weekdays}} \delta_d \text{Weekday}_d + \varepsilon_{it}$$
+
+    其中：
+    - $\text{Holiday}_t=1$表示五一假期期间（5月1日-5日）——无论管控与否的节假日效应
+    - $\text{Weekday}_d$为星期虚拟变量（控制一周内不同日的固定效应）
+    - $\beta_3$为管控措施的净效应（在控制了节假日效应和星期效应之后）
+
+    **处理组/对照组划分**：
+    - 首先需要确定12个交叉口中哪些实际实施了管控。若管控覆盖全部12个交叉口，则$\text{Treat}_i$对全部$i$取1，DID退化为"前后对比"，此时$\beta_1$无意义，模型简化为：
+      $$Y_{it} = \beta_0 + \beta_2\text{Post}_t + \beta_3\text{Treat}_i \times \text{Post}_t + \gamma_{\text{holiday}}\text{Holiday}_t + \sum_{d} \delta_d \text{Weekday}_d + \varepsilon_{it}$$
+      此时$\beta_3$的识别依赖于管控效应与节假日效应的可加性假设。
+    - 若只有部分交叉口实施了管控，则使用未管控交叉口作为对照组，DID成立。
+
+    **动态DID（事件研究法）作为稳健性检验**：
+
+    $$Y_{it} = \beta_0 + \sum_{\tau = -T}^{-1} \alpha_\tau \text{Treat}_i \times \mathbb{I}(t = \tau) + \sum_{\tau = 1}^{T} \beta_\tau \text{Treat}_i \times \mathbb{I}(t = \tau) + \gamma_{\text{holiday}}\text{Holiday}_t + \sum_{d} \delta_d \text{Weekday}_d + \varepsilon_{it}$$
+
+    其中$\tau=0$为管控开始日（5月1日），$\tau&lt;0$为管控前各期，$\tau>0$为管控后各期。通过检验$\alpha_\tau$是否显著异于零来评估平行趋势假设——若管控前各期的$\text{Treat}_i \times \mathbb{I}(t=\tau)$系数均不显著，则平行趋势假设成立。
+
+    **平行趋势假设的前测问题处理**：
+    - 统计检验力不足：即使平行趋势假设未被拒绝，也不能证明其成立。因此附加"经济显著性"判断——绘制处理组和对照组在管控前的时间序列图，视觉确认趋势平行性。
+    - 前测不通过的替代方案：若平行趋势检验失败（$\alpha_\tau$显著），则放弃DID，改用合成控制法（Synthetic Control Method）或加时间趋势项：
+      $$Y_{it} = \beta_0 + \beta_1\text{Treat}_i + \beta_2\text{Post}_t + \beta_3(\text{Treat}_i \times \text{Post}_t) + \gamma_{\text{holiday}}\text{Holiday}_t + \eta_i \cdot t + \varepsilon_{it}$$
+      其中$\eta_i$为交叉口$i$特有的线性时间趋势，允许处理组和对照组在管控前有不同的增长路径。
+
+    #### 4.2 综合评分归一化修正（替换min-max）
+
+    原模型的min-max归一化在所有$\Delta v_i$为负值时会将"损失最小"映射为1，导致评分语义反转。修正为以零为基准的变换：
+
+    $$S_i = w_1 \cdot \Delta \bar{v}_i^+ + w_2 \cdot (-\Delta Q_i)^+ + w_3 \cdot (-\Delta w_i)^+$$
+
+    其中$(x)^+ = \max(x, 0)$，$\Delta \bar{v}_i$为速度变化量（正=改善），$\Delta Q_i$为流量变化量（负=拥堵减少，为正），$\Delta w_i$为等待时间变化量（负=改善，为正）。每一项只有改善方向时才贡献正分，恶化时不贡献（得分为零），且不进行跨路口归一化。
+
+    **改进的归一化方式**：使用基于效应量（Cohen's d）的评分，避免归一化反转：
+
+    $$d_{\bar{v}, i} = \frac{\Delta \bar{v}_i}{s_{\bar{v}, \text{pooled}}}, \quad d_{Q, i} = \frac{-\Delta Q_i}{s_{Q, \text{pooled}}}, \quad d_{w, i} = \frac{-\Delta w_i}{s_{w, \text{pooled}}}$$
+
+    $$S_i^{\text{Cohen}} = w_1 \cdot d_{\bar{v}, i} + w_2 \cdot d_{Q, i} + w_3 \cdot d_{w, i}$$
+
+    使用Cohen's $d$的优势：(a) 正分表示改善、负分表示恶化，语义清晰；(b) 不同指标的量纲自然统一到"标准差"单位；(c) 不依赖全体交叉口的极值，避免单个极端值支配评分。
+
+    权重$w_1, w_2, w_3$通过层次分析法（AHP）确定，一致性比率CR < 0.1。
+
+    #### 4.3 假设检验
+
+    对每个评价指标，进行配对假设检验：
+
+    $$H_0: \beta_3 = 0 \quad \text{vs.} \quad H_1: \beta_3 \neq 0$$
+
+    使用聚类稳健标准误（Cluster-Robust Standard Errors），按交叉口聚类，以处理DID回归中的组内相关性：
+
+    $$\text{Var}(\hat{\beta}_3) = \frac{\sum_{i=1}^{12} (\mathbf{X}_i^\top \hat{\mathbf{u}}_i \hat{\mathbf{u}}_i^\top \mathbf{X}_i)}{(\mathbf{X}^\top \mathbf{X})^{-1}}$$
+
+    其中$\hat{\mathbf{u}}_i$为交叉口$i$的OLS残差向量。
+
+  </mathematical_model>
+
+  <algorithm_flow>
+    ### 整体框架
+
+    输入：12个交叉口36天（2024-04-01至2024-05-06）的车牌识别数据，
+          每条记录 = (plate, timestamp, intersection_id, dir_in, dir_out)
+    输出：时段划分结果、最优信号配时方案、巡游车辆清单（含轨迹断裂比例）、管控措施评价报告
+
+    ---
+    ### 算法1：时段划分与相位流量估计（问题1）【修订版】
+
+    ```
+    输入：交叉口 i* 的监控记录集 R = {(plate, ts, i, dir_in, dir_out)}
+    参数：Δt = 15 min, 日期类型标签 date_type ∈ {weekday, weekend, holiday}
+    输出：K个连续时段 {T_k}，各时段转向概率 {Θ_i^{(k)}}，各相位流量 {q_{i,j}^{(k)}}
+
+    /* ————— Step 1: 数据分层聚合 ————— */
+    // 不再对36天简单平均，而是按日期类型分层
+    for each date_type in {weekday, weekend, holiday}:
+        D_type = {d in D | type(d) == date_type}
+        for each 15-min window t in [00:00, 24:00):
+            x_type[t] = [0]*12  // [N直, N左, N右, S直, S左, S右, E直, E左, E右, W直, W左, W右]
+            count_type[t] = 0   // 该类型下有效天数计数
+            for each day d in D_type:
+                records_t = filter(R, date==d, ts in [t, t+Δt))
+                if len(records_t) < threshold_min: skip // 数据不足时跳过当天
+                for each record r in records_t:
+                    phase_idx = direction_to_phase_idx(r.dir_in, r.dir_out)
+                    // direction_to_phase_idx 映射规则（依据Assumption 8四相位方案）:
+                    //   相位0: N直行 (in=N, out=S)
+                    //   相位1: N左转 (in=N, out=E 或 W)
+                    //   相位2: S直行 (in=S, out=N)
+                    //   相位3: S左转 (in=S, out=E 或 W)
+                    //   相位4: E直行 (in=E, out=W)
+                    //   相位5: E左转 (in=E, out=N 或 S)
+                    //   相位6: W直行 (in=W, out=E)
+                    //   相位7: W左转 (in=W, out=N 或 S)
+                    //   相位8-11: 右转 (in=任一, out=任一, 不受信号控制)
+                    x_type[t][phase_idx] += 1
+                end for
+                count_type[t] += 1
+            end for
+            x_avg_type[t] = x_type[t] / count_type[t]  // 分层平均值
+        end for
+        X_type = [x_avg_type[1], ..., x_avg_type[96]]^T
+        对 X_type 独立执行后续 Step 2-3
+    end for
+
+    /* ————— Step 2: 时序约束的时段划分 ————— */
+    // 替代原K-Means，使用两种时序敏感方法
+
+    // 方案A: Contiguity-Constrained Hierarchical Clustering
+    初始化: 每个时间窗口 t ∈ [1, 96] 作为单独簇
+    距离度量: Ward's method (方差最小化)
+    合并约束: 仅允许合并时间相邻的簇
+    Step 2A.1:
+        for num_clusters from 96 down to 2:
+            find pair of adjacent clusters (Ca, Cb) minimizing ΔSSE
+            merge Ca, Cb → new cluster
+            record merge_cost[num_clusters] = ΔSSE
+        end for
+    Step 2A.2:
+        K_opt_A = argmax_{K∈[2,8]} Dunn(K)
+        // 若merge_cost在K处出现肘部，与Dunn指数交叉验证
+
+    // 方案B: Bayesian Change Point Detection (PELT算法)
+    Step 2B.1:
+        定义代价函数: cost(T_k) = -sum_{t∈T_k} ln N(x(t); μ_k, Σ)
+        其中 μ_k = mean(x(t) for t∈T_k), Σ 跨时段共享
+        惩罚项: β_penalty = 0.5 * ln(N) * (12 + 12*12)  // BIC
+    Step 2B.2:
+        动态规划求解最优断点集:
+        F(0) = 0
+        for t* in [1, 96]:
+            F(t*) = min_{s < t*} {F(s) + cost(x(s+1:t*)) + β_penalty}
+        end for
+        回溯获得断点位置 {CP_1, ..., CP_{K-1}}
+        K_opt_B = len(断点集) + 1
+
+    /* ————— Step 3: 一致性验证 ————— */
+    if max(|CP_A_k - CP_B_k| for all k) <= 2:
+        时段划分结果可靠，取两种方案的均值作为最终断点
+    else:
+        标记为"高不确定性"，在报告中注明两种方案的分歧
+        最终断点取两种方案的均值，并给出±1窗口的误差带
+
+    /* ————— Step 4: 转向概率的贝叶斯平滑估计 ————— */
+    // 替代原MLE，增加小样本平滑
+    for each intersection i in I:
+        // 4.1 先验设定（基于全天数据）
+        for each dir_in in D:
+            n_total[dir_in][dir_out] = count(R where intersection==i and dir_in==dir_in)
+            theta_MLE[dir_in] = n_total[dir_in] / sum(n_total[dir_in])
+            alpha_prior[dir_in] = 30 * theta_MLE[dir_in]  // κ=30
+        end for
+
+        // 4.2 按时段更新后验
+        for each period k:
+            for each dir_in in D:
+                n_k[dir_in][dir_out] = count(R_k where intersection==i and dir_in==dir_in and dir_out=dir_out)
+                n_sum = sum(n_k[dir_in])
+
+                // 小样本门控
+                if n_sum < 5:
+                    merge period k with adjacent period (k-1 or k+1, pick whichever has more data)
+                    redo estimate for merged period
+                    continue
+                end if
+
+                // Dirichlet后验期望
+                alpha_post = alpha_prior[dir_in] + n_k[dir_in]
+                theta_post[dir_in][dir_out] = alpha_post[dir_out] / sum(alpha_post)
+            end for
+            Θ_i^{(k)} = [theta_post[dir_in][dir_out]]_{dir_in, dir_out ∈ D}
+        end for
+    end for
+
+    /* ————— Step 5: 相位流量计算 ————— */
+    for each period k, each intersection i, each dir_in:
+        q_{i,dir_in,straight}^{(k)} = q_{i,dir_in}^{(k)} × Θ_i^{(k)}[dir_in][opposite]
+        q_{i,dir_in,left}^{(k)} = q_{i,dir_in}^{(k)} × Θ_i^{(k)}[dir_in][left]
+        q_{i,dir_in,right}^{(k)} = q_{i,dir_in}^{(k)} × Θ_i^{(k)}[dir_in][right]
+    end for
+    ```
+
+    ---
+    ### 算法2：信号灯配时优化（问题2）【修订版】
+
+    ```
+    输入：各交叉口各时段相位流量 q[i][k][j] (veh/s)
+    参数：S_sat=0.5 veh/s, t_y=3s, t_r=2s, t_s=2s, g_min=15s, C_min=60s, C_max=180s
+    输出：公共周期 C_0^*, 绿灯时间 {g_{i,j}^*}, 相位差 {Δ_{i,i+1}^*}
+
+    /* ————— 阶段A：修正后的Webster单点计算（下层） ————— */
+    for each intersection i in I:
+        for each period k:
+            // 计算流量比（注意：使用正确的饱和流率量纲——veh/s）
+            λ_{i,j} = q[i][k][j]  // veh/s
+            y_{i,j} = λ_{i,j} / S_sat  // 无量纲
+            Y_i = sum(y_{i,j} for j in phases)
+
+            if Y_i >= 0.9:
+                C_opt[i][k] = C_max  // 饱和/过饱和，采用最大周期
+            else:
+                // 正确的Webster最佳周期公式
+                L_i = phases_count * (t_y + t_r + t_s)
+                C_opt[i][k] = (1.5 * L_i + 5) / (1 - Y_i)
+                C_opt[i][k] = clip(C_opt[i][k], C_min, C_max)
+
+            // 预检查最小绿灯可行性
+            if sum(g_min for j) > C_opt[i][k] - L_i:
+                C_opt[i][k] = max(C_opt[i][k], sum(g_min) + L_i + 1)
+                // 若C_opt超过C_max，标记该交叉口为"约束主导"，取C_max
+            end if
+        end for
+    end for
+
+    /* ————— 阶段B：绿波GA优化（上层）【含可行性检查】 ————— */
+    Step 1: 公共周期范围确定
+      C_low = max_i min_k C_opt[i][k]
+      C_high = min(max_i max_k C_opt[i][k], C_max)
+
+    Step 2: GA初始化
+      种群大小 N_pop = 50
+      染色体编码: [C_0, Δ_{1,2}, Δ_{2,3}, ..., Δ_{11,12}]  // 13维实数向量
+      C_0 ∈ [C_low, C_high], Δ ∈ [0, C_0)
+      初始化种群 P = uniform_random(N_pop, 13, bounds)
+
+    /* 【新增】可行性预过滤：在评价适应度之前先检查 */
+    Function is_feasible(C_0):
+        for each intersection i:
+            L_i = phases_count * (t_y + t_r + t_s)
+            if sum(g_min for all phases of i) > C_0 - L_i:
+                return False  // 该公共周期无法满足所有交叉口的最小绿灯
+            end if
+        end for
+        return True
+
+    Step 3: GA主循环
+      for generation = 1 to Gen_max (e.g., 200):
+          for each individual chrom in P:
+              C_0, Δ[1..11] = decode(chrom)
+
+              // 【关键修订】可行性检查
+              if not is_feasible(C_0):
+                  fitness[chrom] = -1e9  // 硬惩罚，不可行解不参与选择
+                  continue
+              end if
+
+              // 绿灯分配（含边界截断，无等比缩放）
+              for each intersection i:
+                  L_i = phases_count * (t_y + t_r + t_s)
+                  available_green = C_0 - L_i
+                  for each phase j:
+                      // Webster比例分配
+                      g_raw = (y_{i,j} / Y_i) * available_green
+                      g_{i,j} = clip(g_raw, g_min, g_max)
+                  end for
+                  // 二次分配：若截断后总和不足available_green，将剩余时间按可调容量比例分配
+                  residual = available_green - sum(g_{i,j})
+                  if residual > 0:
+                      // 仅向未达g_max的相位分配
+                      adjust_phases = {j | g_{i,j} < g_{i,j}^{max}}
+                      for j in adjust_phases:
+                          capacity_j = g_{i,j}^{max} - g_{i,j}
+                          g_{i,j} += residual * (capacity_j / sum(capacity))
+                      end for
+                  end if
+                  // 注：二次分配后总和严格等于available_green
+
+                  // 【关键修正】使用正确的Webster延误公式
+                  //    E[W_i] = C_0 * (1 - g_i/C_0)^2 / (2 * (1 - λ_i/S_sat))
+                  //    其中绿信比 g_i/C_0 为无量纲量
+                  green_ratio = g_{i,关键相位} / C_0  // 关键相位的绿信比
+                  arrival_rate = λ_{i,关键相位}       // veh/s
+                  E[W_i] = (C_0 * (1 - green_ratio)^2) / (2 * (1 - arrival_rate / S_sat))
+              end for
+
+              // 计算平均车速
+              total_time = 0
+              for each road segment (i, i+1):
+                  free_flow_time = L_{i,i+1} / v_free
+                  phase_delay = green_wave_delay(C_0, Δ[i], free_flow_time)
+                  total_time += free_flow_time + E[W_i]
+              end for
+              avg_speed = L_total / total_time
+              fitness[chrom] = avg_speed
+          end for
+
+          // 选择、交叉、变异
+          P_new = tournament_selection(P, fitness, size=3)
+          P_new = simulated_binary_crossover(P_new, rate=0.8)
+          P_new = polynomial_mutation(P_new, rate=0.1, eta=20)
+          P = P_new
+          // 精英保留（确保最优可行解不被丢弃）
+          best_feasible = argmax fitness among feasible
+          P[0] = best_feasible
+      end for
+
+    Step 4: 最优解提取
+      best_chrom = argmax fitness(P over all generations)
+      C_0^*, Δ^* = decode(best_chrom)
+      对每个交叉口按阶段A的修正Webster方法计算最优绿灯时间 g_{i,j}^*
+      验证所有约束是否满足（硬约束检查通过后输出）
+
+    /* ————— 阶段C：DQN强化学习（降级为备选方法说明） ————— */
+    // 定位：仅作为GA结果的交叉验证，不参与主要流程
+    // 状态：排队长度通过累积到达-离去模型推断
+    //        l_{i,j}(t) = ∫λ dt - ∫S_sat·I(queue>0) dt
+    // 动作：相位保持/切换决策（与GA中的相位差方案对齐）
+    // 弃用条件：见数学模型2.5节
+    // 若弃用：直接以阶段B的GA结果作为最终方案
+    ```
+
+    ---
+    ### 算法3：巡游车辆识别（问题3）【修订版】
+
+    ```
+    输入：五一期间（5/1-5/5）所有交叉口记录 R_all
+    参数：τ_match=30min, N_threshold=3, v_max=5km/h
+    输出：巡游车辆清单 C，轨迹断裂比例 r_break，停车位需求 P_demand（保守/乐观双值）
+
+    /* ————— Step 1: 车辆轨迹重建与侧方进出检测 ————— */
+    trajectories = {}
+    for each record r in R_all:
+        trajectories[r.plate].append((r.ts, r.i, r.dir_in, r.dir_out))
+    end for
+    for each plate in trajectories:
+        trajectories[plate] = sort_by_time(trajectories[plate])
+    end for
+
+    /* 【新增】侧方进出检测与轨迹断裂量化 */
+    total_segments = 0
+    break_events = 0
+    for each plate with trajectory traj:
+        for k = 0 to len(traj)-2:
+            total_segments += 1
+            dist = manhattan_distance(traj[k].i, traj[k+1].i)
+            time_diff = traj[k+1].ts - traj[k].ts
+            normal_drive_time = dist * segment_length / (v_free * 1.5)  // 秒
+
+            if dist > 1 and normal_drive_time < time_diff < τ_match:
+                // 侧方进出事件：车辆从非监控点离开后重新进入
+                break_events += 1
+                traj[k].side_exit = True
+            end if
+        end for
+    end for
+    r_break = break_events / max(total_segments, 1)
+
+    // 若 r_break > 0.15，降低巡游检测置信度
+
+    /* ————— Step 2: 巡游特征计算与判定 ————— */
+    C = []
+    for each plate with trajectory traj:
+        if len(traj) < 3: continue
+
+        // 时空重复度 N_repeat
+        N_repeat = 0
+        for each anchor p in traj:
+            count = sum(1 for q in traj
+                        if abs(q.ts - p.ts) <= τ_match
+                        and manhattan_dist(q.i, p.i) <= 2)
+            N_repeat = max(N_repeat, count)
+        end for
+
+        // 平均行程速度 v_avg
+        total_dist = sum(manhattan_dist(traj[k].i, traj[k+1].i) * segment_length
+                        for k in 0..len(traj)-2)
+        total_time = traj[-1].ts - traj[0].ts
+        v_avg = total_dist / max(total_time, 1)  // m/s
+        v_avg = v_avg * 3.6  // 转换为 km/h
+
+        // 方向熵 H
+        dir_counts = [0]*4
+        for each move in traj:
+            dir_idx = index_of(move.dir_out)  // 0=N, 1=S, 2=E, 3=W
+            dir_counts[dir_idx] += 1
+        end for
+        probs = dir_counts / sum(dir_counts)
+        H = -sum(p * log(p) for p in probs if p > 0)
+
+        // H_threshold 双基准确定（见数学模型3.2节）
+        // 此处简化为：使用非五一期间90%分位数
+
+        if N_repeat >= N_threshold and v_avg <= v_max and H >= H_threshold:
+            C.append(plate)
+            cruise_info[plate] = (traj[0].ts, traj[-1].ts, N_repeat, v_avg, H)
+        end if
+    end for
+
+    /* ————— Step 3: 停车位需求估算（保守/乐观双方案） ————— */
+    // 计算瞬时巡游车辆数时间序列（15min粒度）
+    time_series = dict()  // t -> count
+    for each plate in C:
+        t_start = cruise_info[plate].first_ts
+        t_end = cruise_info[plate].last_ts
+        for each 15-min window t in [floor_15min(t_start), ceil_15min(t_end)]:
+            time_series[t] = time_series.get(t, 0) + 1
+        end for
+    end for
+
+    /* 方案I: 保守方案（含侧方进出修正） */
+    P_95 = percentile(time_series.values(), 95)
+    P_demand_conservative = ceil(P_95 * μ_occ / ρ * (1 + r_break))
+
+    /* 方案II: 乐观方案（无修正） */
+    P_demand_optimistic = ceil(P_95 * μ_occ / ρ)
+
+    /* 窗口敏感性分析 */
+    for τ in [15, 30, 45, 60]:
+        重新运行 Step 1-3（替换τ_match = τ）
+        记录 P_demand_conservative(τ)
+    end for
+    CV = std(P_demand(τ)) / mean(P_demand(τ))
+    if CV > 0.2:
+        标记"高敏感性"，建议在报告中注明P_demand对窗口参数敏感
+
+    /* 参数敏感性分析 */
+    for μ in [0.25, 0.5, 0.75, 1.0, 1.5]:
+        for ρ in [2, 4, 6, 8]:
+            P_demand_matrix[μ][ρ] = evaluate(μ, ρ)
+        end for
+    end for
+    推荐值 = median(P_demand_matrix)
+    不确定性范围 = [Q25(P_demand_matrix), Q75(P_demand_matrix)]
+
+    Step 4: 输出
+      输出C（巡游车辆ID及特征），r_break（轨迹断裂比例），
+      P_demand的范围（保守/乐观 + 窗口敏感性 + 参数敏感性）→ 最终给出推荐区间
+    ```
+
+    ---
+    ### 算法4：管控措施效果评价（问题4）【修订版】
+
+    ```
+    输入：4月1日-5月6日全量数据 R_full
+    参数：显著性水平 α=0.05
+    输出：修正DID估计表（含节假日效应分离），动态DID事件研究图，综合评分 S_i
+
+    /* ————— Step 1: 数据划分与日期类型标注 ————— */
+    将36天数据标注如下:
+      date_type[d] =
+        holiday   if d in [5/1, 5/2, 5/3, 5/4, 5/5]
+        weekday   if weekday(d) in [Mon-Fri] and date_type != holiday
+        weekend   if weekday(d) in [Sat-Sun] and date_type != holiday
+
+    // 确定管控覆盖范围（需从题目上下文或数据特征推断）
+    // 假设：通过比较各交叉口在4月最后一周和五一期间的流量变化率来判断
+    for each i in I:
+        Q_before_i = mean(day_volume(i, d) for d in [4/24-4/30])
+        Q_during_i = mean(day_volume(i, d) for d in [5/1-5/5])
+        change_rate_i = (Q_during_i - Q_before_i) / Q_before_i
+        // 若 change_rate_i 显著低于景区平均水平，判定i受管控
+        treated_i = (change_rate_i < median(change_rate) - 0.1)
+    end for
+
+    /* ————— Step 2: DID回归（含节假日虚拟变量） ————— */
+    // 构造面板数据
+    panel_data = []  // 每行: [i, date, Treat, Post, Holiday, Weekday, Y]
+    for each i in I, each date d in [4/1, 5/6]:
+        Treat_i = 1 if treated_i else 0
+        Post_d = 1 if d >= 5/1 else 0
+        Holiday_d = 1 if d in [5/1, 5/2, 5/3, 5/4, 5/5] else 0
+        Weekday_d = weekday_index(d)  // 1=Mon, ..., 7=Sun
+        Y_{i,d} = compute_metric(i, d)  // 平均车速、车流量等
+        panel_data.append([i, d, Treat_i, Post_d, Holiday_d, Weekday_d, Y_{i,d}])
+    end for
+
+    // 修正DID回归（含节假日虚拟变量和星期固定效应）
+    // 模型: Y ~ Treat + Post + Treat*Post + Holiday + Weekday_dummies
+    X = design_matrix(panel_data, formula="Y ~ Treat + Post + Treat*Post + C(Holiday) + C(Weekday)")
+    Y = panel_data.Y
+    β_hat = (X^T X)^{-1} X^T Y  // OLS估计
+    β_3 = β_hat[Treat:Post]     // 管控净效应
+
+    // 聚类稳健标准误（按交叉口聚类）
+    residuals = Y - X @ β_hat
+    V_cluster = (X^T X)^{-1} @ (sum_i X_i^T @ residuals_i @ residuals_i^T @ X_i) @ (X^T X)^{-1}
+    se_β_3 = sqrt(V_cluster[β_3_index, β_3_index])
+    t_stat = β_3 / se_β_3
+    p_value = 2 * (1 - CDF_t(|t_stat|, df))
+
+    /* ————— Step 3: 动态DID事件研究（平行趋势检验） ————— */
+    // 以4月30日（管控前1天）为基准期
+    for τ in [-7, -6, ..., -1, 1, 2, ..., 5]:
+        // τ=0 为5月1日
+        event_X = add_interaction(panel_data, Treat, time_index==τ)
+    end for
+    // 回归 Y ~ Treat:Event(τ) + Holiday + Weekday FE
+    // 检验事件研究系数:
+    //   管控前: α_τ (τ<0) 应不显著
+    //   管控后: β_τ (τ>0) 表示动态效应
+
+    for each τ in [-7, -1]:
+        if p_value(α_τ) < 0.05:
+            平行趋势假设可能不成立
+            启用替代方案（合成控制法 或 加时间趋势项）
+            // 加时间趋势项的修正模型:
+            // Y ~ Treat + Post + Treat*Post + Holiday + Weekday + Treat*time_trend
+            break
+        end if
+    end for
+
+    /* ————— Step 4: 综合评分（Cohen's d 评分系统） ————— */
+    for each intersection i:
+        // 计算各指标的效应量
+        Δv_i = mean(v_avg[i][during]) - mean(v_avg[i][before])
+        d_v = Δv_i / pooled_std(v_avg[i][during], v_avg[i][before])
+
+        ΔQ_i = mean(Q[i][during]) - mean(Q[i][before])
+        d_Q = (-ΔQ_i) / pooled_std(Q[i][during], Q[i][before])  // 负=改善
+
+        Δw_i = mean(w_avg[i][during]) - mean(w_avg[i][before])
+        d_w = (-Δw_i) / pooled_std(w_avg[i][during], w_avg[i][before])  // 负=改善
+
+        // 综合评分（正分=改善，负分=恶化）
+        S_i = w_1 * d_v + w_2 * d_Q + w_3 * d_w
+    end for
+
+    // AHP权重确定
+    // 构造判断矩阵 A ∈ ℝ^{3×3}，比较速度/流量/等待时间的相对重要性
+    // 计算最大特征值对应的特征向量 → 归一化得到 w = [w_1, w_2, w_3]
+    // CR = CI / RI < 0.1 通过一致性检验
+
+    Step 5: 输出
+      输出:
+        - 修正DID估计表（β_3、聚类稳健标准误、p值、95%置信区间）
+        - 动态DID事件研究图（横轴=时间，纵轴=效应估计，含95%CI）
+        - 平行趋势检验结论（通过/未通过，替代方案）
+        - 各交叉口综合评分（正=改善，负=恶化，零=无变化）
+        - 管控措施总体评价：有效/部分有效/无效（含节假日效应分离说明）
+    ```
+
+    ---
+    ### 边界情况处理【修订版】
+
+    1. **缺失数据**：若某交叉口某时段数据缺失率>20%，标记为"数据不足"并从分析中排除；缺失率<20%使用线性插值补全。若某日期类型（如工作日）的有效天数少于3天，不单独聚类，并入相邻类型。
+
+    2. **异常值**：车流量超过3倍IQR（四分位距）的记录标记为异常，核查后决定取舍。对于巡游车判定中出现的极端$H$值（趋近于0或$\ln 4$），检查轨迹是否只有单一方向移动。
+
+    3. **饱和交叉口**：若流量比$Y_i \geq 0.9$，Webster公式失效（分母$1-Y_i\to 0$），改用最大周期$C_{\max}=180$s。此时GA中的可行性检查更为严格——若$C_{\max}$仍无法满足$\sum g_{\min}$，标记该交叉口为"过饱和不可解"，在配时方案中注明。
+
+    4. **车牌识别失败**：对于无法匹配车牌的车辆，在转向概率估计和轨迹重建中忽略，但在流量统计中计入总量。若某交叉口的识别率低于85%（通过比较总记录数与总流量估计值），暂停该交叉口的所有轨迹分析。
+
+    5. **巡游车判定边界**：当$N_{\text{repeat}}=3$且$\bar{v}_m \approx 5$ km/h时，人工复核或提高阈值至4次。当$H_{\text{threshold}}$的基准A和基准B差异超过20%时，以两者中的较大值为准（更保守的判定标准）。
+
+    6. **DID平行趋势假设检验**：使用事件研究法（动态DID）进行统计检验，同时绘制时间序列图进行视觉确认。若检验未通过：（a）在模型中加入交叉口特定的线性时间趋势$\eta_i \cdot t$；（b）若仍不满足，改用合成控制法，将未管控交叉口的加权组合作为反事实。
+
+    7. **GA不可行解处理**：使用硬惩罚（适应度=-1e9）而非软惩罚，确保不可行解不被选入下一代。精英保留策略确保最优可行解不会丢失。若所有个体均不可行（即$C_{\min}$到$C_{\max}$范围内不存在可行周期），触发异常处理——将各交叉口按独立周期运行，放弃干线协调。
+
+    8. **同期未管控数据不可获取时的DID替代**：若无法获得同期未管控景区数据作为对照，且所有交叉口均受管控，则放弃经典DID框架，改用"节假日效应减法"：以五一前三年的同期数据建立节假日效应基线模型（时序分解），从总效应中减去季节性+节假日效应后得到管控净效应。
+  </algorithm_flow>
+</model_design>

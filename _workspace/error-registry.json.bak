@@ -1,0 +1,795 @@
+{
+  "version": "1.0",
+  "description": "MCM 流水线错误注册表 — 按 error-taxonomy 分类体系记录所有审计发现的漏洞",
+  "last_updated": "2026-05-30T22:30:00",
+  "total_runs": 6,
+  "total_errors": 79,
+  "errors_by_phase": {
+    "modeling": 79,
+    "coding": 0,
+    "paper": 0
+  },
+  "errors": [
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "ERR-001",
+      "risk": "High",
+      "category": "模型完整性缺失",
+      "description": "温室地块(G_ord∪G_smart, 20个单元)未纳入任何数学约束和决策变量定义，占种植单元37%",
+      "location": "符号表+数学模型约束a-f",
+      "principle_violated": "模型应覆盖题目所有实体要素"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "ERR-002",
+      "risk": "High",
+      "category": "数学模型错误",
+      "description": "问题3边际分布变换 (1+δ·Φ(u)) 仅允许正向波动，违反±5%/±10%双向波动要求",
+      "location": "算法5 Step4",
+      "principle_violated": "随机扰动应中心为零对称分布"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "ERR-003",
+      "risk": "High",
+      "category": "算法可复现性",
+      "description": "DEGA编码方案(DecodeIndividual/Crossover/mutate)未定义，代码手无法实现",
+      "location": "算法1 阶段2",
+      "principle_violated": "算法伪代码应具有足够细节支撑无歧义实现"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "ERR-004",
+      "risk": "High",
+      "category": "计算可行性",
+      "description": "2000情景×200个体×500代=2×10^8次评估，约10^12次浮点运算，超出MCM环境限制",
+      "location": "算法4/算法1参数",
+      "principle_violated": "模型求解应在竞赛时限和环境内可行"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "ERR-005",
+      "risk": "High",
+      "category": "模型定义矛盾",
+      "description": "数学模型的硬约束MILP与算法实现的罚函数法对应两个不同的优化问题",
+      "location": "数学模型第3节 vs 算法6",
+      "principle_violated": "数学模型与算法实现必须一致"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "ERR-006",
+      "risk": "Med",
+      "category": "约束冲突",
+      "description": "两季蔬菜约束 x_{i,veg1}+x_{i,veg2}≤1 与总面积约束 Σ_j x≤1 冲突，压缩产能",
+      "location": "数学模型约束(d)",
+      "principle_violated": "约束之间应逻辑一致无冲突"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "ERR-007",
+      "risk": "Med",
+      "category": "时序建模缺陷",
+      "description": "两阶段随机规划忽略多年度序贯决策的灵活价值",
+      "location": "问题2/3整体框架",
+      "principle_violated": "多周期决策应反映时序依赖性"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "ERR-008",
+      "risk": "Med",
+      "category": "数学严谨性",
+      "description": "Cholesky分解未处理非正定相关矩阵的退化情形",
+      "location": "问题3第2节",
+      "principle_violated": "数值算法需涵盖异常路径处理"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "ERR-009",
+      "risk": "Med",
+      "category": "符号管理",
+      "description": "ε, δ_S, δ_p, δ_Y, penalty_coeff 未入符号表；M_{ij}/M_{kj}记号不一致",
+      "location": "符号表 + 数学模型",
+      "principle_violated": "所有数学符号须在符号表中统一定义"
+    },
+    {
+      "run_id": "run-20260530-002",
+      "phase": "modeling",
+      "id": "ERR-010",
+      "risk": "Med",
+      "category": "方法论脱节",
+      "description": "问题分析承诺的作物聚类降维策略未在算法中实现",
+      "location": "问题分析 vs 算法流程",
+      "principle_violated": "分析阶段的策略应在实现阶段兑现"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-001",
+      "risk": "High",
+      "category": "dimension_mismatch",
+      "description": "Webster 延误公式中 (1-g/C) 误写为 (1-λ/C)，λ/C 量纲不匹配",
+      "location": "mathematical_model > 公式(213)",
+      "directive": "更正为标准 Webster 延误公式 d = C(1-g/C)^2 / (2(1-λ/S))"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-002",
+      "risk": "High",
+      "category": "missing_assumption",
+      "description": "DID 模型未分离节假日效应与管控效果，β₃ 无法识别纯净因果效应",
+      "location": "mathematical_model > 4.2 DID",
+      "directive": "补充节假日效应控制方法，明确处理组/对照组划分依据"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-003",
+      "risk": "High",
+      "category": "overly_strong_assumption",
+      "description": "K-Means 做时间分段忽略时序依赖性，可能产生碎片化时段",
+      "location": "mathematical_model > 1.2 K-Means",
+      "directive": "替换为时序约束聚类或贝叶斯断点检测，对比结果一致性"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-004",
+      "risk": "High",
+      "category": "missing_assumption",
+      "description": "Problem 3 轨迹重建因侧方进出导致系统性偏差",
+      "location": "mathematical_model > 3.1 + assumptions > 1",
+      "directive": "量化侧方进出比例，设计保守/乐观两套估计方案，对阈值 τ 做敏感性分析"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-005",
+      "risk": "High",
+      "category": "overly_strong_assumption",
+      "description": "GA 双层优化中绿灯分配可能违反 g_min 约束，等比缩放不可行",
+      "location": "algorithm_flow > Algorithm 2 Step 3",
+      "directive": "增加 C_0 可行性检查，对不可行解施加硬性惩罚，删除等比缩放处理"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-006",
+      "risk": "Med",
+      "category": "missing_assumption",
+      "description": "低流量时段转向概率 MLE 估计面临数据稀疏性",
+      "location": "mathematical_model > 1.3 转向概率估计",
+      "directive": "添加最小样本量门控或 Dirichlet-Multinomial 贝叶斯平滑"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-007",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "DQN 部分缺乏可实现的工程方案，伪代码不可执行",
+      "location": "algorithm_flow > Algorithm 2 Stage C",
+      "directive": "回答队列估计/仿真器/动作空间问题，或从核心算法流中移除详细伪代码"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-008",
+      "risk": "Med",
+      "category": "overly_strong_assumption",
+      "description": "综合评分 min-max 归一化在所有指标同向变化时反转物理含义",
+      "location": "mathematical_model > 4.5 公式(387)-(390)",
+      "directive": "替换为以零为基准的变换，添加效应方向符号指示器"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-009",
+      "risk": "Med",
+      "category": "missing_assumption",
+      "description": "多天数据平均混叠工作日/周末/节假日三种不同交通模式",
+      "location": "algorithm_flow > Algorithm 1 Step 1",
+      "directive": "分日期类型计算平均，或使用所有单天样本点而非均值"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-010",
+      "risk": "Med",
+      "category": "overly_strong_assumption",
+      "description": "DID 平行趋势检验采用低效力的交互项前测，未提供替代方案",
+      "location": "algorithm_flow > 边界情况 6",
+      "directive": "补充事件研究法/合成控制法作为平行趋势不成立时的替代"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-011",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "巡游车 H_threshold 阈值固定，未考虑管控措施改变方向分布",
+      "location": "mathematical_model > 3.3 公式(290)",
+      "directive": "讨论管控措施与巡游判定阈值的交互效应，考虑动态阈值方案"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-012",
+      "risk": "Low",
+      "category": "ambiguous_algorithm",
+      "description": "相位-方向映射函数 direction_to_phase_idx 未定义",
+      "location": "algorithm_flow > Algorithm 1 Step 1",
+      "directive": "明确交叉口相位方案并定义映射函数"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-013",
+      "risk": "Low",
+      "category": "missing_error_handling",
+      "description": "停车位需求参数 μ_occ 和 ρ 缺乏敏感性分析",
+      "location": "mathematical_model > 3.4 公式(315)",
+      "directive": "添加参数敏感性分析，报告 μ_occ 和 ρ 合理取值范围内的 P_demand 变化范围"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-014",
+      "risk": "Low",
+      "category": "ambiguous_algorithm",
+      "description": "符号表中 KL 散度和 W_k 未被模型引用",
+      "location": "symbol_table",
+      "directive": "移除未使用符号或在模型中补充相关公式"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-015",
+      "risk": "High",
+      "category": "circular_reasoning",
+      "description": "Algorithm 4 Step 1 用 outcome 变量（流量变化率 change_rate_i）推断处理组划分 treated_i，是循环论证——DID 的目的是估计处理效应，但处理状态本身由潜在结果变化定义。阈值 median(change_rate)-0.1 无理论依据。若全部交叉口均受管控，此方法会错误划分部分为未处理组；若部分未受管控，由此产生选择偏误。",
+      "location": "algorithm_flow > Algorithm 4 > Step 1",
+      "directive": "删除基于 outcome 的 treated_i 推断逻辑。明确管控覆盖范围：若全部 12 交叉口受控则简化为前后对比模型；若部分受控则基于外部政策信息划分处理组。"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-016",
+      "risk": "Med",
+      "category": "dimension_mismatch",
+      "description": "PELT/BIC 惩罚项使用 12+12x12=156 参数/时段，但协方差矩阵 Σ 跨时段共享，每新增时段仅增加 12 个均值参数。惩罚项是正确值 (0.5*ln(N)*12) 的 13 倍，导致 BIC 严重偏好较少时段（K 被低估）。",
+      "location": "mathematical_model > 1.2 > 方案B > PELT用BIC惩罚",
+      "directive": "β_penalty 改为 0.5 * ln(N) * 12（仅均值向量参数数量），而非 0.5 * ln(N) * (12 + 12*12)。"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-017",
+      "risk": "High",
+      "category": "constraint_violation",
+      "description": "GA 绿灯二次分配仅处理 residual > 0（第619行），当 residual < 0（截断后总绿灯超可用时间）时不做任何处理，输出 Σg_{i,j} > C_0 - L_i 的违规配时方案。4相位示例：available_green=104, Webster分配[60,30,7,7], clip后[60,30,15,15]=120>104, residual=-16, 约束被违反。",
+      "location": "algorithm_flow > Algorithm 2 > 阶段B > Step 3 > 二次分配",
+      "directive": "将流程改为 '先分配 g_min 再按流量比分配剩余'，替代当前 'Webster 比例分配 + 后截断' 流程。天然保证 Σg = C_0 - L_i 且各相位 ≥ g_min。"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-018",
+      "risk": "Low",
+      "category": "missing_assumption",
+      "description": "Algorithm 3 Step 1 使用 segment_length 变量（第700行）计算行驶时间，但该变量未在符号表或算法参数列表中定义。",
+      "location": "algorithm_flow > Algorithm 3 > Step 1 > 侧方进出检测",
+      "directive": "在符号表中添加 segment_length 定义，或说明路段长度从交叉口间距计算的方法。"
+    },
+    {
+      "run_id": "run-20260530-005",
+      "phase": "modeling",
+      "id": "M-20260530-019",
+      "risk": "Low",
+      "category": "overly_strong_assumption",
+      "description": "GA 适应度仅用单个 '关键相位' 延误 E[W_i] 代表交叉口总延误，未说明单相位延误作为交叉口延误代理的合理性及误差范围。对于四相位交叉口，非关键相位延误可能显著不同，优化目标可能偏向某方向。",
+      "location": "algorithm_flow > Algorithm 2 > 阶段B > Step 3 > 延误计算",
+      "directive": "说明使用关键相位延误作为代理变量的理由，或在适应度中使用各相位延误的流量加权平均。"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-001",
+      "risk": "High",
+      "category": "physics_violation",
+      "description": "Y染色体浓度(Y_conc)与总cffDNA浓度概念混用，T_min相对总cffDNA定义但建模用Y_conc，缺转换公式",
+      "location": "Q2-A2, Q2-S1",
+      "directive": "澄清Y_conc与cffDNA的映射关系或为T_min定义等效Y_conc阈值",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-002",
+      "risk": "High",
+      "category": "dimension_mismatch",
+      "description": "BIC公式使用风险值R*替代log-likelihood，统计上无效",
+      "location": "Q2-S2 式20",
+      "directive": "删除或重命名BIC公式，改用肘部法或轮廓系数选择K",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-003",
+      "risk": "High",
+      "category": "overly_strong_assumption",
+      "description": "MAR假设在NIPT数据中不合理——检测失败与浓度偏低相关(MNAR)，未指定缺失指示变量或Heckman修正",
+      "location": "G-A1",
+      "directive": "增加MNAR讨论，指定缺失指示变量是否纳入模型",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-004",
+      "risk": "High",
+      "category": "overly_strong_assumption",
+      "description": "DeepHit双层LSTM+MLP在300-500个男胎个体上参数/样本比~40:1，严重过拟合风险",
+      "location": "Q3-S2",
+      "directive": "简化架构、增加Cox基线对比、或在模型设计中量化讨论过拟合风险",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-005",
+      "risk": "High",
+      "category": "ambiguous_algorithm",
+      "description": "GA适应度中penalty_violation从未定义，代码手无法实现约束违反惩罚",
+      "location": "ALG-Q2 Step 2.1.e",
+      "directive": "明确定义罚函数形式(静态/动态/自适应/ε-约束)",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-006",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "n_i=1孕妇GPR的'群体均值函数'未精确定义",
+      "location": "ALG-Q2 Step 1.1 n_i==1",
+      "directive": "精确定义均值函数来源(如LMM固定效应预测值)",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-007",
+      "risk": "Med",
+      "category": "overly_strong_assumption",
+      "description": "DeepHit非信息删失假设不成立——检测频率可能与BMI/年龄等协变量相关",
+      "location": "Q3-A2",
+      "directive": "增加对假设违反方向性偏差的敏感性分析",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-008",
+      "risk": "Med",
+      "category": "dimension_mismatch",
+      "description": "P_penalty指数增长量级未校准，可支配F_ail∈[0,1]的贡献",
+      "location": "Q2-S2 式18",
+      "directive": "提供λ的校准方法(交叉验证/Pareto前沿/逆推)",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-009",
+      "risk": "Med",
+      "category": "overly_strong_assumption",
+      "description": "Q4堆叠集成在~240个女胎个体上架构复杂度过高，缺乏置信区间",
+      "location": "Q4-S1, Q4-S2",
+      "directive": "论证4+1架构在n~240上的合理性，给出AUROC的95%CI",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-010",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "F_ail(t|g)在指示函数式16与连续近似式17之间二择一未指定",
+      "location": "Q2-S2 Step 2.1.b",
+      "directive": "明确指定使用连续近似形式并说明理由",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-011",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "Q4基模型同时指定class_weight='balanced'和自定义加权交叉熵，两种机制不兼容",
+      "location": "Q4-S1 式28 vs LightGBM参数",
+      "directive": "明确选用其中一种机制",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-012",
+      "risk": "Med",
+      "category": "ambiguous_algorithm",
+      "description": "Q1→Q2 GPR均值函数在常见框架中的实现方式未指定",
+      "location": "data_flow Q1→Q2",
+      "directive": "指定如何在scikit-learn/GPyTorch中设置非零均值函数",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-013",
+      "risk": "Med",
+      "category": "missing_assumption",
+      "description": "孕周计算标准(LMP vs B超)可能混用但未指定一致性检验或校正",
+      "location": "G-A2",
+      "directive": "增加孕周标准一致性检验步骤",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-014",
+      "risk": "Low",
+      "category": "overly_strong_assumption",
+      "description": "BMI孕早期至中期变化<5%的假设对妊娠剧吐/GDM人群不成立",
+      "location": "Q1-A4",
+      "directive": "在灵敏度分析中纳入BMI变化的不确定性",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-015",
+      "risk": "Low",
+      "category": "ambiguous_algorithm",
+      "description": "Optuna 50次搜索在7维超参空间中覆盖不足",
+      "location": "Q4-S1 optuna_optimization",
+      "directive": "增加搜索次数至200以上或缩小搜索空间",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-016",
+      "risk": "Low",
+      "category": "missing_assumption",
+      "description": "Q3时序插值策略可能引入前瞻偏差(后向填充使用未来数据)",
+      "location": "ALG-Q3 Step 1.1.2",
+      "directive": "插值必须使用因果方法(仅用过去信息)",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-017",
+      "risk": "Low",
+      "category": "missing_assumption",
+      "description": "w_early/w_late标注无量纲但有效量纲取决于P_penalty值域",
+      "location": "symbol_table",
+      "directive": "标注权重取值范围或增加量纲注释",
+      "resolved_in_revision": "rev1"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-018",
+      "risk": "Low",
+      "category": "overly_strong_assumption",
+      "description": "染色体异常互斥假设在NIPT层面不稳健(母体CNV致多条染色体偏离)",
+      "location": "Q4-A3",
+      "directive": "讨论非三体原因导致的假阳性信号"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-019",
+      "risk": "Low",
+      "category": "missing_assumption",
+      "description": "引用bayesian-estimation和monte-carlo-simulation但模型未使用",
+      "location": "meta > methodology_references",
+      "directive": "删除未使用的知识库引用",
+      "resolved_in_revision": "rev1"
+    },
+
+    --- NEW ERRORS FROM REV1 AUDIT ---
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-020",
+      "risk": "Med",
+      "category": "data_leakage",
+      "description": "Q4堆叠集成CV在记录级(605条)而非患者级(~240名)划分数据，同患者记录可跨训练/验证集分布",
+      "location": "ALG-Q4 pseudocode line 1386",
+      "principle_violated": "交叉验证应保持样本独立性，同一患者的多次测量不可跨折叠",
+      "found_in_revision": "rev1",
+      "status": "open"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-021",
+      "risk": "Med",
+      "category": "algorithm_inconsistency",
+      "description": "GPR均值函数在数学模型(含beta5交互项, line 429)与伪代码(无beta5, line 1121)间不一致",
+      "location": "mathematical_model line 429 vs ALG-Q2 pseudocode line 1121",
+      "principle_violated": "数学模型与算法伪代码必须一致",
+      "found_in_revision": "rev1",
+      "status": "open"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-022",
+      "risk": "Low",
+      "category": "boundary_condition",
+      "description": "GA伪代码P_penalty未施加t>=t_ideal保护，t<t_ideal时惩罚为负值激励过早检测",
+      "location": "ALG-Q2 pseudocode line 1177 vs mathematical model line 513",
+      "principle_violated": "伪代码应忠实反映数学模型的约束条件",
+      "found_in_revision": "rev1",
+      "status": "open"
+    },
+    {
+      "run_id": "run-20260530-003",
+      "phase": "modeling",
+      "id": "ERR-023",
+      "risk": "Low",
+      "category": "ambiguous_protocol",
+      "description": "Q4堆叠集成元模型评估协议不完整，未指定嵌套CV或独立测试集",
+      "location": "ALG-Q4 step 2.3 (line 1437)",
+      "principle_violated": "评估协议须明确数据隔离机制，防泄漏",
+      "found_in_revision": "rev1",
+      "status": "open"
+    },
+
+    {
+      "run_id": "run-20260530-004",
+      "phase": "modeling",
+      "problem": "2025-D",
+      "timestamp": "2026-05-30T12:00:00",
+      "flaws": [
+        {
+          "id": "M-2025D-001",
+          "risk": "High",
+          "category": "ambiguous_algorithm",
+          "location": "TIME_DEPENDENT_DIJKSTRA: dry passage condition",
+          "summary": "时变 Dijkstra 用 OR 而非 AND 判断巷道干燥，部分湿润巷道被错误当作完全干燥",
+          "status": "open"
+        },
+        {
+          "id": "M-2025D-002",
+          "risk": "High",
+          "category": "ambiguous_algorithm",
+          "location": "DUAL_SOURCE_FLOOD: collision detection",
+          "summary": "双源碰撞检测仅覆盖节点级碰撞，边级碰撞（两端分别被 AB 占据）未在算法中实现",
+          "status": "open"
+        },
+        {
+          "id": "M-2025D-003",
+          "risk": "High",
+          "category": "ambiguous_algorithm",
+          "location": "PRACTICAL_DIJKSTRA_STRATEGY: greedy BFS",
+          "summary": "伪实用 Dijkstra 为贪心 BFS 扩展，不等价于最短路径算法，665节点无需此替代方案",
+          "status": "open"
+        },
+        {
+          "id": "M-2025D-004",
+          "risk": "High",
+          "category": "physics_violation",
+          "location": "SINGLE_SOURCE_FLOOD_3D: BFS Step 3",
+          "summary": "3D BFS 遍历 z>z_A 的高层节点连接 V_low 未覆盖点，隐含物理不可能的水流路径",
+          "status": "open"
+        },
+        {
+          "id": "M-2025D-005",
+          "risk": "Med",
+          "category": "physics_violation",
+          "location": "0. 图网络构建: point-to-segment distance",
+          "summary": "点到直线距离公式实际计算点到无限直线距离，非点到线段距离",
+          "status": "open"
+        },
+        {
+          "id": "M-2025D-006",
+          "risk": "Med",
+          "category": "physics_violation",
+          "location": "1.1 流量分配公式",
+          "summary": "流量平均分配未排除上升巷道，与 Assumption 3 矛盾",
+          "status": "open"
+        },
+        {
+          "id": "M-2025D-007",
+          "risk": "Med",
+          "category": "physics_violation",
+          "location": "Iterative expansion: partial fill not tracked",
+          "summary": "迭代式贪婪扩展忽略慢速分支的已填充量，流量重分配后剩余时间计算有系统性误差",
+          "status": "open"
+        },
+        {
+          "id": "M-2025D-008",
+          "risk": "Med",
+          "category": "ambiguous_algorithm",
+          "location": "SINGLE_SOURCE_FLOOD: while loop termination",
+          "summary": "迭代扩展 while 循环无终止保护，不连通子图导致死循环",
+          "status": "open"
+        },
+        {
+          "id": "M-2025D-009",
+          "risk": "Med",
+          "category": "ambiguous_algorithm",
+          "location": "trigger_break_flow: flow reallocation",
+          "summary": "断流重分配忽略剩余分支在断流前已积累的部分填充量",
+          "status": "open"
+        },
+        {
+          "id": "M-2025D-010",
+          "risk": "Med",
+          "category": "ambiguous_algorithm",
+          "location": "TIME_DEPENDENT_DIJKSTRA: mid-traversal flooding",
+          "summary": "未检查矿工在巷道行进中水位超过 0.3m 的中间淹没风险",
+          "status": "open"
+        },
+        {
+          "id": "M-2025D-011",
+          "risk": "Med",
+          "category": "overly_strong_assumption",
+          "location": "REPLAN_PATH: path comparison",
+          "summary": "重规划假设原路径在双源模型下仍可通行作为比较基准，但原路径可能已被新模型预测淹没",
+          "status": "open"
+        },
+        {
+          "id": "M-2025D-012",
+          "risk": "Low",
+          "category": "dimension_mismatch",
+          "location": "TIME_DEPENDENT_DIJKSTRA: unit inconsistency",
+          "summary": "速度单位 m/s 与时间单位 min 混用，转换文档不充分",
+          "status": "open"
+        },
+        {
+          "id": "M-2025D-013",
+          "risk": "Low",
+          "category": "missing_assumption",
+          "location": "model_validation_notes",
+          "summary": "验证参考值依赖优秀论文声明，未独立核实原始数据",
+          "status": "open"
+        },
+        {
+          "id": "M-2025D-014",
+          "risk": "Low",
+          "category": "missing_assumption",
+          "location": "边界情况处理",
+          "summary": "未处理矿工初始位置已在淹没区的边缘情况",
+          "status": "open"
+        }
+      ]
+    },
+    {
+      "run_id": "run-20260530-001",
+      "phase": "modeling",
+      "problem": "2022-A-wave-energy",
+      "timestamp": "2026-05-30T17:00:00",
+      "flaws": [
+        {
+          "id": "M-2022A-001",
+          "risk": "High",
+          "category": "physics_violation",
+          "location": "mathematical_model > 1.2 方程(121-122) > PTO 力符号",
+          "summary": "PTO 弹簧力和阻尼力符号方向使阻尼器向机械系统注入正能量(+Ch·v_rel²)，而非提取能量。能量平衡显示 PTO 平均做功为正，违反被动 PTO 系统物理。",
+          "status": "open"
+        },
+        {
+          "id": "M-2022A-002",
+          "risk": "High",
+          "category": "ambiguous_algorithm",
+          "location": "algorithm_flow > Algorithm 1/2 > T_total = 40T",
+          "summary": "仿真时长 T_total = 40T 在 Q2(ω=2.2143, T=2.837s, T_total=113.5s)、Q3(ω=1.7152, T_total=146.5s)、Q4(ω=1.9806, T_total=126.9s) 均小于所需 180s(100+80)，功率积分将下标越界。",
+          "status": "open"
+        },
+        {
+          "id": "M-2022A-003",
+          "risk": "High",
+          "category": "ambiguous_algorithm",
+          "location": "algorithm_flow > Algorithm 4 > 步46 > 精英保留",
+          "summary": "精英保留执行 population[0]=best 而非替换最差个体，可能丢弃优良子代解，且注释与实际行为不符。",
+          "status": "open"
+        },
+        {
+          "id": "M-2022A-004",
+          "risk": "Med",
+          "category": "missing_assumption",
+          "location": "mathematical_model > 全部 > 附加质量 m' 和兴波阻尼 Cxh",
+          "summary": "m' 和 Cxh 作为常数处理，但势流理论中二者随波浪频率变化。四题工作频率不同(1.4005-2.2143 rad/s)，需指定频率→参数映射方法。",
+          "status": "open"
+        },
+        {
+          "id": "M-2022A-005",
+          "risk": "Med",
+          "category": "missing_assumption",
+          "location": "mathematical_model > 2.2 > 问题2情形2",
+          "summary": "问题2情形2将幂指数 α 作为自由变量(0≤α≤1)优化，未首先求解问题基本要求：α=0.5 固定时的最优 C_h。",
+          "status": "open"
+        },
+        {
+          "id": "M-2022A-006",
+          "risk": "Med",
+          "category": "ambiguous_algorithm",
+          "location": "algorithm_flow > Algorithm 4 > 步30/42 > SBX/多项式变异参数",
+          "summary": "SBX 分布指数 η 和多项式变异指数 ηm 在算法中用于计算 beta/delta，但未定义其数值，代码手无法实现。",
+          "status": "open"
+        },
+        {
+          "id": "M-2022A-007",
+          "risk": "Med",
+          "category": "ambiguous_algorithm",
+          "location": "algorithm_flow > Algorithm 4 > 终止条件",
+          "summary": "GA 列举了 N_gen=200 和早停(30代变化<1e-6)两个条件，但伪代码只实现了世代循环，未包含早停检查。",
+          "status": "open"
+        },
+        {
+          "id": "M-2022A-008",
+          "risk": "Med",
+          "category": "missing_assumption",
+          "location": "mathematical_model > 3.1 > I_z(t) 公式中 d₀",
+          "summary": "平行移轴公式中 d₀（振子参考质心到转轴距离）在符号表和假设中未定义。",
+          "status": "open"
+        },
+        {
+          "id": "M-2022A-009",
+          "risk": "Low",
+          "category": "missing_assumption",
+          "location": "mathematical_model > 1.2 > 公式(121-124) α=0 情形",
+          "summary": "通用幂公式 Ch|v_rel|^α·sgn(v_rel) 在 α=0 时退化为 Ch·sgn(v_rel)（库伦摩擦），而非线性阻尼 Ch·v_rel。虽在降阶形式中已纠正，但原始公式有误导。",
+          "status": "open"
+        },
+        {
+          "id": "M-2022A-010",
+          "risk": "Low",
+          "category": "ambiguous_algorithm",
+          "location": "algorithm_flow > Algorithm 3 > 步21-24",
+          "summary": "功率积分同时提到了矩形法和梯形法，未最终确定选用哪一种。",
+          "status": "open"
+        },
+        {
+          "id": "M-2022A-011",
+          "risk": "Low",
+          "category": "overly_strong_assumption",
+          "location": "assumptions > 5 > 纵摇-垂荡解耦",
+          "summary": "假设5忽略纵摇时水线面积变化对垂荡恢复力系数 B 的影响，未提供量化论证。",
+          "status": "open"
+        },
+        {
+          "id": "M-2022A-012",
+          "risk": "Low",
+          "category": "missing_assumption",
+          "location": "mathematical_model > 全部 > 振子行程约束",
+          "summary": "未考虑振子在浮子内的有限行程约束，高阻尼参数组合下 x_r 可能超出物理限位。",
+          "status": "open"
+        },
+        {
+          "id": "M-2022A-013",
+          "risk": "Low",
+          "category": "ambiguous_algorithm",
+          "location": "algorithm_flow > 调用序列 > f/L 查附件3",
+          "summary": "附件3参数 f(ω) 和 L(ω) 无指定插值方法（线性/样条），频率点不重合时代码手无法确定取值。",
+          "status": "open"
+        }
+      ]
+    }
+  ]
+}

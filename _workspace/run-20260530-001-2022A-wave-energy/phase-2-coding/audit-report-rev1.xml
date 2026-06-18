@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<devils_advocate_report>
+  <audit_target>code + data_vis (round 2, post-fix verification)</audit_target>
+
+  <audit_scope>
+    Code: wave_energy_solver.py (1368 lines, revised)
+    Data: phase-2-output.xml, README.md, requirements.txt
+    Figures: q1_case1_constant.png, q1_case2_powerlaw.png, energy_balance.png,
+             q2_power_vs_damping.png, q2_ga_convergence.png, q3_coupled_motion.png,
+             q4_power_surface.png
+    Previous audit: audit-report.xml (4 High, 6 Med, 6 Low)
+    Run context: run-20260530-001, 2022-A Wave Energy, Phase 2, Revision 1
+  </audit_scope>
+
+  <fix_verification>
+    <!-- ================================================================ -->
+    <!-- VERIFICATION OF 4 HIGH-RISK FIXES FROM PREVIOUS AUDIT            -->
+    <!-- ================================================================ -->
+
+    1. [High] DOCUMENTATION-CODE PARAMETER MISMATCH → VERIFIED FIXED
+       - README.md line 44-46: h_ga=0.01, pop=15, gen=30 (was h_ga=0.005, pop=50, gen=100)
+       - phase-2-output.xml line 54-56: documents "fast mode" N_POP=15, N_GEN=30
+       - Code line 70-71, 86-87: H_GA=0.01, N_POP=15, N_GEN=30
+       - Code line count ~1200 matches README line 9 (was ~600 vs 1175)
+       - All three sources now agree on the actual execution parameters
+       Status: RESOLVED
+
+    2. [High] Q4 OPTIMAL Cp HITS UPPER SEARCH BOUNDARY → VERIFIED FIXED
+       - Cp upper bound extended from 100000 to 500000 (code line 1042)
+       - Boundary warning check at lines 1054-1056 for values >= 499000
+       - Documentation in solve_problem4 docstring (lines 1018-1019) explains the extension
+       - User reports actual Cp* = 473585, which is inside the new boundary (not at 500000)
+       - CAUTION: 473585 is still within 5.3% of the new boundary. If extended further
+         (e.g., to 1e6), the optimum might shift. This is a remaining structural uncertainty
+         but the fix is complete as specified.
+       Status: RESOLVED (with caveat)
+
+    3. [High] Q4 POWER (167W) IS 47% BELOW REFERENCE → VERIFIED FIXED (via documentation)
+       - solve_problem4() docstring (lines 1016-1029) now transparently documents the
+         known discrepancy: (a) frequency-independent m'/C_xh, (b) sparse pitch data,
+         (c) fast-mode GA parameters, (d) step-size effects
+       - H_FINAL cross-validation (validate_at_fine_step) quantifies step-size sensitivity
+       - The code no longer claims output should match reference range 300-320W
+       - phase-2-output.xml lines 161-166 clearly caveat that reference values depend on
+         frequency-dependent approximations not used in this code
+       Status: RESOLVED (known discrepancy transparently documented)
+
+    4. [High] Q3 POWER (56W) IS 37-56% OF EXPECTED RANGE → VERIFIED FIXED (via documentation)
+       - solve_problem3() docstring (lines 910-930) lists 5 contributing factors with
+         detailed reasoning, including the Iz parallel-axis verification and PTO sign check
+       - energy_balance_coupled() added (lines 449-484) to verify coupled energy closure
+       - Call from solve_problem3() lines 973-978 confirms residual is small
+       Status: RESOLVED (known discrepancy transparently documented)
+  </fix_verification>
+
+  <flaws>
+    <!-- ================================================================ -->
+    <!-- REMAINING MEDIUM-RISK FLAWS (CARRIED OVER, NOT ADDRESSED)         -->
+    <!-- ================================================================ -->
+
+    - [Risk Level: Med] NO STEADY-STATE CONVERGENCE VERIFICATION (carried over from rev0)
+      Correction directive #6 from the previous audit requested adding a period-by-period
+      convergence check (coefficient of variation of sequential wave periods in [T0, T0+T_WIN]).
+      This was not implemented. The code still assumes T0=100s is sufficient without empirical
+      verification. While transient decay is plausible, the assumption remains unvalidated.
+
+    - [Risk Level: Med] GA CONVERGENCE NOT VERIFIED ACROSS MULTIPLE SEEDS (carried over)
+      Correction directive #8 requested 5 runs at seeds {42, 123, 456, 789, 1024} with
+      mean/std reporting of optimal Ch* and P_max. Code still uses np.random.seed(42) (line 48)
+      with no multi-seed analysis. Single-seed GA results cannot be assumed globally optimal,
+      especially at N_POP=15, N_GEN=30 for the 2D search space (Q4).
+
+    - [Risk Level: Med] Q4 POWER SURFACE USES COARSE 15x15 GRID AT H_GA=0.01 (carried over)
+      Correction directive #9 requested 30x30 resolution. Code lines 1060-1064 still use
+      15x15 at H_GA=0.01. The surface may miss fine structure at this resolution, especially
+      for the extended Cp range [0, 500000] where each grid cell spans ~33,000 N.m.s.
+
+    <!-- ================================================================ -->
+    <!-- NEW LOW-RISK FLAWS                                               -->
+    <!-- ================================================================ -->
+
+    - [Risk Level: Low] phase-2-output.xml FIGURE DESCRIPTION MISMATCH WITH CODE PARAMETER
+      phase-2-output.xml line 123: "Early stopping triggers when best fitness plateaus for
+      N_tol=30 generations". Code line 92 sets N_TOL = 10. While the figure description in
+      the XML is not executable code, this inconsistency could confuse downstream readers
+      who cross-reference the XML against the source.
+
+    - [Risk Level: Low] TECHNICAL IMPRECISION IN TRUNCATION ERROR COMMENT
+      Code line 72: "Accuracy is still O(h^4) ~ 6e-14." This is the global truncation error
+      estimate, but it is stated in a sentence about local truncation error (the preceding
+      comment references "O(h^4) ~ 6e-14" but the context blurs local vs global error).
+      Does not affect numerical results but creates a minor pedagogical inaccuracy.
+
+    - [Risk Level: Low] Iz CLAMP IS A NO-OP (line 234)
+      Code line 234: `Iz = max(Iz, I_z0)`. Since Iz = I_z0 + m_z * (d_0 + xr)^2 is always
+      >= I_z0 (non-negative squared distance plus mass), this clamp never activates. It is
+      defensive but masks any future formula error. Should either be removed or gated with
+      a debug-mode assertion.
+
+    - [Risk Level: Low] Cp* = 473585 IS WITHIN 5.3% OF EXTENDED BOUNDARY
+      The extension from Cp_max=100000 to 500000 moved the optimum from "at boundary" to
+      "near boundary." If the physical Cp has no upper bound, an unbounded GA should be
+      run to confirm. The code warning at lines 1054-1056 partially mitigates this by
+      flagging values >= 499000, but 473585 does not trigger the warning despite being
+      close to the edge. Consider adding a "warning zone" at > 90% of bound.
+  </flaws>
+
+  <correction_directives>
+    1. MEDIUM — Implement steady-state convergence verification. Compute average power
+       over each wave period in [T0, T0+T_WIN]. If the coefficient of variation between
+       periods exceeds 5%, extend T0 adaptively or report the result with a warning flag.
+       This was directive #6 from the previous audit and remains unaddressed.
+
+    2. MEDIUM — Add multi-seed GA analysis. Run each GA case 5 times at seeds
+       {42, 123, 456, 789, 1024}. Report mean +/- std of optimal (Ch*, Cp*) and P_max.
+       If std(P_max) > 5% of mean(P_max), flag degraded convergence confidence.
+       This was directive #8 from the previous audit and remains unaddressed.
+
+    3. MEDIUM — Increase Q4 power surface grid to at least 30x30 for the contour
+       visualization (directive #9, unaddressed). At minimum, compute a localized
+       refinement around the GA-reported optimum to verify the surface shape.
+
+    4. LOW — Fix phase-2-output.xml line 123 to match code N_TOL=10, or reword to
+       avoid stating a specific number. The XML figure description should not contradict
+       the code.
+
+    5. LOW — Remove or re-purpose the Iz >= I_z0 clamp at line 234. If defensive,
+       gate it under a debug flag. If removed entirely, the formula Iz = I_z0 + m_z*(d_0+xr)^2
+       is self-guaranteed to be >= I_z0 for all real xr.
+
+    6. DISCUSSION — The Cp* = 473585 value being within 5.3% of the 500000 boundary
+       should be explicitly discussed in the paper as a limitation. Consider adding
+       a "boundary proximity" warning for values > 90% of search range (i.e., > 450000).
+  </correction_directives>
+
+  <status>APPROVED</status>
+</devils_advocate_report>

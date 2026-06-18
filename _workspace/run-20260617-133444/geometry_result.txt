@@ -1,0 +1,22 @@
+R_s=10m, v_m=300m/s
+
+M1: start=[20000, 0, 2000] vel=[-298.5,-0.0,-29.9]
+  FY1: BEHIND
+  FY2: BEHIND
+  FY3: BEHIND
+  FY4: BEHIND
+  FY5: BEHIND
+
+M2: start=[19000, 600, 2100] vel=[-298.0,-9.4,-32.9]
+  FY1: BEHIND
+  FY2: BEHIND
+  FY3: BEHIND
+  FY4: BEHIND
+  FY5: BEHIND
+
+M3: start=[18000, -600, 1900] vel=[-298.2,9.9,-31.5]
+  FY1: BEHIND
+  FY2: BEHIND
+  FY3: BEHIND
+  FY4: BEHIND
+  FY5: BEHIND

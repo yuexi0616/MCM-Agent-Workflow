@@ -1,0 +1,8 @@
+problem_id,metric_name,value,unit,method,figure_ref,formula_ref
+Q3,最大有效遮蔽时长,5.839016499771214,s,DE/rand/1/bin,fig03_q3_de_optimization.png,Eq.(9)
+Q3,弹1投放时刻,0.0,s,DE/rand/1/bin,fig03_q3_de_optimization.png,DE x[2]
+Q3,弹1起爆时刻,3.808498217595977,s,DE/rand/1/bin,fig03_q3_de_optimization.png,DE x[5]
+Q3,弹2投放时刻,1.0,s,DE/rand/1/bin,fig03_q3_de_optimization.png,DE x[3]
+Q3,弹2起爆时刻,4.90337409236719,s,DE/rand/1/bin,fig03_q3_de_optimization.png,DE x[6]
+Q3,弹3投放时刻,45.0,s,DE/rand/1/bin,fig03_q3_de_optimization.png,DE x[4]
+Q3,弹3起爆时刻,65.0,s,DE/rand/1/bin,fig03_q3_de_optimization.png,DE x[7]

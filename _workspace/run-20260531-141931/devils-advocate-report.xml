@@ -1,0 +1,48 @@
+<devils_advocate_report>
+  <audit_target>model_design</audit_target>
+  <flaws>
+
+- [Risk Level: High] [Category: ambiguous_algorithm] Algorithm 5 (SolveProblem2) 第610行引用了未初始化的变量 T_overall_best。Phase A 多起点模式搜索的循环内部，best_T 已在第579行初始化为0并被用于追踪全局最优，但第610行突然使用 T_overall_best 进行比较（"IF best_T > T_overall_best: 更新全局最优"）——该变量从未在任何位置被赋值。代码手无法判断这是笔误（应为 best_T）还是独立变量，直接实现将触发 NameError。
+
+- [Risk Level: High] [Category: ambiguous_algorithm] Algorithm 6 (SolveProblem3) 第746-749行中，prev_best_F 在首次使用时（gen=31 时的比较条件中）尚未赋值。第749行 prev_best_F = best_F 在比较之后才执行，导致第746行的 |best_F - prev_best_F| < 1e-3 在 gen=31 时引用未定义变量。代码手无法无歧义地实现此早停逻辑。
+
+- [Risk Level: High] [Category: ambiguous_algorithm] v_b 参数的含义在数学模型与算法伪代码之间存在根本性歧义。数学模型第145行明确声明"初始速度 v_b,jl 为无人机速度与弹射速度的矢量和"（即包含 UAV 水平速度），但 Algorithm 5 第559行将 params_fixed.v_b 描述为"弹射速度向量"（ejection only，不含 UAV 速度）。Algorithm 4 第520行又称其为"烟幕弹初始速度向量"。同一个符号在三种描述下含义不同。若代码手将 v_b 实现为仅弹射速度（如文字描述所述），则 Bomb 的轨迹将丢失 UAV 20-50m/s 的向前速度分量，导致云团形成位置严重偏误（差 2-10 倍），直接影响所有 5 个子问题的遮蔽时长计算结果。
+
+- [Risk Level: Med] [Category: missing_assumption] 符号表中缺少 Q3 优化问题约束中使用的参数：δ_min（第281行，弹间最小投放间隔）、δ_gap 和 Δ_gap（第283行，弹间衔接约束范围）。Algorithm 6 中使用的 T_max = 60 [s]（优化时域上限，第672行）也未在符号表中定义。这些参数是无歧义实现 Q3/Q5 算法所必需的，缺漏会迫使代码手自行假设数值。
+
+- [Risk Level: Med] [Category: missing_assumption] Q5 未将 Q4 的空间重叠回避约束（云团中心最小间距 ≥ η·R_s）扩展到多机编组场景。当多架 UAV 分配至同一枚导弹（Algorithm 8 第342-343行"多机协同问题"调用 Q4 算法）时，空间重叠约束仅在该组内局部生效，但不同导弹组之间的云团也可能重叠（例如 UAV1 和 UAV4 虽分配至不同导弹，其云团仍可能在空间上重叠），模型未做任何限制或讨论。
+
+- [Risk Level: Med] [Category: overly_strong_assumption] 引理2（连续性引理）的证明不充分。第196-197行的证明仅描述了"临界点为有限个孤立时间点"且"至多一次 0→1→0 变化"，但未给出严格的数学论证。对于非球形的物理过程或极端运动参数（例如云团掠过圆柱边缘时可能产生的多次遮蔽-暴露交替），"至多一个连续区间"的结论并不自明。该引理是 Algorithm 3 区间搜索算法正确性的基石——若事实上存在多个分离的遮蔽区间，Algorithm 3 的第476-481行（找 first_occ 和 last_occ）会将合并后的伪区间返回为"有效遮蔽时长"，显著高估单弹遮蔽效果。
+
+- [Risk Level: Med] [Category: overly_strong_assumption] 引理1（圆柱全遮挡判定）虽几何直观成立，但在离散采样实现下存在采样不足风险。Algorithm 2 使用 N_pts 个均匀采样点代表连续圆周。当云团半径 R_s 较小或导弹视点距离较远时，云团的投影面积可能小于采样点间的间隔面积，导致采样点全部通过遮挡判定而实际圆周弧段未被覆盖的 false positive。模型建议"优化用50, 验证用300"但未给出此选择的误差界分析。50个采样点对应 7.2° 角分辨率，在 5km 视距下对应的圆周弧长约 628m，而云团有效半径仅 40-60m——云团完全可能在采样点之间的间隙"漏过"。
+
+- [Risk Level: Low] [Category: missing_assumption] 符号表中 α_k（导弹来袭方位角）和 β_k（导弹来袭俯仰角）被定义但从未在数学模型的任何方程中被引用。导弹运动完全通过 M_k0 和方向单位向量 d_mk 描述，α_k 和 β_k 是冗余符号。同样，N_time 在符号表中定义但未被任何算法或模型公式引用。
+
+- [Risk Level: Low] [Category: missing_assumption] Q5 的目标函数将"对全部 3 枚导弹的总有效遮蔽时长"明确解释为三个遮蔽区间的交集（第349-351行: μ(∩ T_m)），但未论证为何选择交集而非并集或加权和。从军事战术角度，"同时遮蔽所有导弹"与"最大化单枚导弹遮蔽时长之和"是完全不同的策略目标。模型未讨论这一设计选择的合理性，也未与赛题表述对照验证。
+
+- [Risk Level: Low] [Category: ambiguous_algorithm] Algorithm 7 (SolveProblem4) 阶段A2的"时序错开排列"（第785-793行）使用启发式贪心调整（直接修改 t_d 并重算 t_b），但未明确重算后是否重新验证完整约束集（弹道不触地、飞行时间窗口等）。此外，第788行"重新计算 x_j_opt.t_b = x_j_opt.t_d + Δt"中的 Δt 是飞行时间变量还是时间步长常量？符号冲突。
+
+  </flaws>
+  <correction_directives>
+    1. 修正 Algorithm 5（SolveProblem2）中 T_overall_best 的初始化问题：要么在变量声明中初始化该变量，要么合并 best_T 与 T_overall_best 的逻辑，消除歧义。
+
+    2. 修正 Algorithm 6（SolveProblem3）中 prev_best_F 的初始化顺序：将该变量的赋值移至首次引用之前。
+
+    3. 解决 v_b 参数的歧义：在 Algorithm 4 和 Algorithm 5 的参数描述中统一 v_b 的定义，明确标注它是"总初始速度（UAV速度 + 弹射速度的矢量和）"还是"纯弹射速度（不含 UAV 速度贡献）"。若为前者（与数学模型一致），则所有算法的参数描述必须删除"弹射速度向量"字样。若为后者，则所有弹道方程必须补充 UAV 速度项。
+
+    4. 将缺失参数 δ_min、δ_gap、Δ_gap、T_max 补充至符号表，或在对应的算法约束中直接给出建议数值（与 R_s、T_c 等参数的处理方式一致）。
+
+    5. 将 Q4 空间重叠回避约束显式扩展至 Q5 的多机编组场景：无论 UAV 属于同一导弹组还是不同导弹组，均需检查云团间的最小间距约束。
+
+    6. 为引理2（连续性引理）补充更严格的数学论证，或在 Algorithm 3 中增加多区间检测能力（不依赖"至多一个区间"假设），以覆盖引理失效的边界情况。
+
+    7. 为离散采样精度补充误差界分析：给出 N_pts=50（优化用）和 N_pts=300（验证用）对应的最坏情况投影覆盖误差，或提供自适应加密策略（在云团投影边界附近增加采样密度）。
+
+    8. 从符号表移除 α_k、β_k、N_time 三个未使用的符号，或在模型中补充它们的用途。
+
+    9. 在 Q5 的数学模型中明确论证"交集"目标函数的合理性，并将空间重叠回避约束的 η 参数也扩展至 Q5 整个 5UAV×3Missile 场景。
+
+    10. 修正 Algorithm 7 中 Δt 的符号冲突（时间步长 vs 飞行时间），将"时序错开排列"阶段的启发式调整步骤替换为标准约束优化（或至少约束可行性检查）。
+  </correction_directives>
+  <status>REJECTED</status>
+</devils_advocate_report>

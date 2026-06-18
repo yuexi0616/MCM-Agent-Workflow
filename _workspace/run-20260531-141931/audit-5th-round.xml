@@ -1,0 +1,25 @@
+<devils_advocate_report>
+  <audit_target>model_design (rev5)</audit_target>
+
+  <flaws>
+    - [Risk Level: High] [Category: ambiguous_algorithm] JointFitness 函数第1096行 `ComputeCrossGroupPenalty(all_cloud_trajectories)` 引用的 `all_cloud_trajectories` 是 Stage 2 外作用域的原始轨迹，而非当前 DE trial solution 对应云团轨迹。JointFitness 内部"构造弹道和云团轨迹"步骤计算的轨迹未存入 `all_cloud_trajectories`。导致 DE 优化过程中跨组空间重叠罚函数对 trial solution 无梯度响应——无论 DE 探索什么解，cross_penalty 项始终返回 Stage 2 原始解的重叠值。Stage 2.5 标题注明"跨组重叠联合DE精化"，但跨组约束的梯度完全缺失，DE 无法主动推开重叠云团。这是 ERR-A-020（rev3 引入、rev4 存留）在 rev5 单轮DE架构下的再现——旧问题的 WHILE 循环+GOTO 已删除，但跨组罚函数的陈旧轨迹引用问题在新的 JointFitness 函数中未修复。
+
+    - [Risk Level: Med] [Category: ambiguous_algorithm] UAV 索引歧义：`missile_groups[m]` 内存储的是 1-indexed UAV 编号（j=1..5，由 Stage 1.2 第1000-1002行 `missile_groups[assigned_map[j]].append(j)` 写入），但 Stage 2 第1044行 `[U_j0 for j in group]` 中 `U_j0` 作为 5x3 矩阵在代码实现中很可能是 0-indexed list。若 `U_j0` 是 Python list，则 `U_j0[1]` 获取的是 UAV2 的位置而非 UAV1，导致 SolveProblem4 接收错误的位置数据。该歧义未经明确约定解决。
+
+    - [Risk Level: Low] [Category: ambiguous_algorithm] Algorithm 8 Stage 2 第1047行 `missile_intervals[m] = Union of all intervals`：`missile_intervals` 在第1021行初始化为空列表 `[]`，但在 FOR m=0..2 循环中用下标赋值 `missile_intervals[m] = ...`。若用 Python 实现，空列表下标赋值将抛出 IndexError（与同位置的 `x_opt_group[m]` 初始化方式不一致，后者在第1023行正确初始化为 `[None, None, None]`）。
+
+    - [Risk Level: Low] [Category: ambiguous_algorithm] 第1025-1026行伪代码编号重复：Stage 2 的 FOR 循环头和循环体第一行均标注为步骤编号 `35.`，minor 排版错误。
+  </flaws>
+
+  <correction_directives>
+    1. (High, ERR-A-020 再现) 修正 JointFitness 中跨组重叠罚函数的陈旧轨迹问题。有两种方案：方案A 在 JointFitness 内部维护局部 `local_cloud_trajectories`，每次根据当前 x_joint 的 trial 解重新构造所有云团轨迹后传入 `ComputeCrossGroupPenalty`；方案B 将 `ComputeCrossGroupPenalty` 的第一参数改为"所有分组当前 trial 的云团轨迹列表"，并在 JointFitness 的 m=0..2 循环中累积轨迹后传入。两种方案都要求 JointFitness 内的"构造弹道和云团轨迹"步骤具有存储轨迹到局部容器的显式步骤。
+
+    2. (Med) 明确约定 UAV 索引的数据结构约定：建立 `U_j0` 是 1-indexed dict（key=1..5）还是 0-indexed list（索引0对应UAV1）的统一规则。所有引用 `U_j0[j]` 的地方需与此约定一致。将约定写入符号表或假设部分。
+
+    3. (Low) 将 `missile_intervals` 的初始化从 `[]` 改为 `[None, None, None]` 以与其他数组初始化方式一致，消除空列表下标赋值的实现歧义。
+
+    4. (Low) 修正伪代码编号重复（第1025-1026行两个 `35.`），使其保持唯一递增。
+  </correction_directives>
+
+  <status>REJECTED</status>
+</devils_advocate_report>

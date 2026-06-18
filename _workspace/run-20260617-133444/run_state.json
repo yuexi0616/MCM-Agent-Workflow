@@ -1,0 +1,29 @@
+{
+  "run_id": "run-20260617-133444",
+  "problem": "2025 MCM Problem A",
+  "year": 2025,
+  "letter": "A",
+  "competition": "mcm",
+  "created_at": "2026-06-17T13:34:44",
+  "current_phase": "phase-4",
+  "phase_status": {
+    "phase-0": "completed",
+    "phase-1": "approved",
+    "phase-2": "approved",
+    "phase-3": "approved",
+    "phase-4": "completed"
+  },
+  "rejection_counts": {
+    "phase-1": 0,
+    "phase-2": 0,
+    "phase-3": 0
+  },
+  "notes": [
+    "Phase 0: scaffold.py extracted problem_data.json from raw problem",
+    "Phase 1: model XML produced; quality gate PASS (5 WARN, 0 ERROR)",
+    "Phase 2: solver.py + requirements.txt; 5 figures, 6 CSV, 5 XLSX; quality gate PASS",
+    "Phase 3: 9-section English paper written; devils_advocate_report.md: APPROVED",
+    "All baseline invariants satisfied: Q1=1.39s, Q2=4.60s, Q3=7.25s, Q4=4.60s, Q5=4.50s"
+  ],
+  "last_approved_phase": "phase-4"
+}

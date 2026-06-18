@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<devils_advocate_report>
+  <audit_target>model_design (rev1) — 2025 MCM D题 矿井突水水流漫延与逃生路径优化模型，第2轮审计</audit_target>
+
+  <summary>
+    对 rev1 修正版执行第2轮审计。逐条核查上一轮 14 项审计意见（4 High + 7 Med + 3 Low）的修正情况。
+    结论：全部 14 项已修正。发现 2 项新 Low-risk 问题（flow_dir_flag 未初始化、get_remaining_segment 未定义）。
+    零 High-risk，批准进入 Phase 2。
+  </summary>
+
+  <flaws>
+
+    <!-- ========== 原始 HIGH-RISK 修正验证（全部通过） ========== -->
+
+    <passed_fix>
+      [Risk Level: High → CLOSED] **OR→AND 干湿判定条件已修正**
+      验证：TIME_DEPENDENT_DIJKSTRA 情况1 使用 `if t_u < t_arr_u and t_u < t_arr_v`，AND 条件正确。
+      新增情况2（部分湿润）使用 XOR 判断 `(t_u < t_arr_u) != (t_u < t_arr_v)`，中间速度 v_mix=90 m/min。
+      该漏洞已关闭。
+    </passed_fix>
+
+    <passed_fix>
+      [Risk Level: High → CLOSED] **双源边级碰撞检测已实现**
+      验证：DUAL_SOURCE_FLOOD 已添加边级碰撞检测逻辑：
+      (a) 逐边扫描，检查 `(v_i in state_A.S and v_j in state_B.S) or (v_i in state_B.S and v_j in state_A.S)`
+      (b) t_meet 恒定流量近似公式已实现
+      (c) rollback_edge 函数已定义，含流量回退重分配
+      注意：边级碰撞检测在前置条件上偏宽（`in_A = (v_i in state_A.S) or (v_j in state_A.S)` 对边已完全被单源填充的情形也触发碰撞检查），但将其加入已封闭集合无害。
+      该漏洞已关闭。
+    </passed_fix>
+
+    <passed_fix>
+      [Risk Level: High → CLOSED] **贪心 BFS 策略已删除**
+      验证：PRACTICAL_DIJKSTRA_STRATEGY 函数完全移除。问题2/4仅使用标准时变 Dijkstra。
+      已提供复杂度分析：O(|E| log |V|) 对 665 节点约 6820 次操作，毫秒级完成。
+      已提供最优子结构论证（边权重单调非减、无负权重）。
+      该漏洞已关闭。
+    </passed_fix>
+
+    <passed_fix>
+      [Risk Level: High → CLOSED] **3D BFS 限制在 V_low 子图内**
+      验证：SINGLE_SOURCE_FLOOD_3D Step 3 的 BFS 严格限制在 E_low（两端点均在 V_low 内）。
+      邻接表 adj_low 仅包含 E_low 内的边。
+      注释明确："BFS 仅遍历 E_low 中的边，绝不穿过 z&gt;z_A 的节点"。
+      该漏洞已关闭。
+    </passed_fix>
+
+    <!-- ========== 原始 MED-RISK 修正验证（全部通过） ========== -->
+
+    <passed_fix>
+      [Risk Level: Med → CLOSED] **点-线段距离公式已修正**
+      验证：已改为分段函数，含投影参数 t 的判断：
+      - t &lt; 0：取点到 vi 端距离
+      - t &gt; 1：取点到 vj 端距离
+      - 0 ≤ t ≤ 1：取垂线距离
+      该漏洞已关闭。
+    </passed_fix>
+
+    <passed_fix>
+      [Risk Level: Med → CLOSED] **流量分配排除上升巷道**
+      验证：Assumption 3 已修订，明确铺满阶段仅向水平/下行巷道分流。
+      d_active(v_i) 定义中排除 flag_up=1 的出流边。
+      算法 get_candidates 和主循环均跳过 flag_up=1 的边。
+      平行上升阶段通过体积比例分配重新纳入所有巷道。
+      该漏洞已关闭。
+    </passed_fix>
+
+    <passed_fix>
+      [Risk Level: Med → CLOSED] **部分填充量追踪机制已添加**
+      验证：partial_fill 字典已定义，记录每条候选边的累积填充体积。
+      剩余填充时间计算使用 `remaining_vol = V_total - partial_fill`。
+      每轮对非选中候选边更新：`partial_fill[e_ij] += Q_e * min_dt`。
+      该漏洞已关闭。
+    </passed_fix>
+
+    <passed_fix>
+      [Risk Level: Med → CLOSED] **无限循环保护已添加**
+      验证：`while len(S) &lt; len(V)` 主循环中增加 `if len(candidates) == 0: break`。
+      该漏洞已关闭。
+    </passed_fix>
+
+    <passed_fix>
+      [Risk Level: Med → CLOSED] **断流重分配结合已填充体积重新计算**
+      验证：trigger_break_flow 函数中，重分配后立即使用 `filled = partial_fill.get(edge_ik, 0.0)` 和
+      `remaining_vol = V_total - filled` 重新计算剩余时间。
+      该漏洞已关闭。
+    </passed_fix>
+
+    <passed_fix>
+      [Risk Level: Med → CLOSED] **中途淹没检测已添加**
+      验证：TIME_DEPENDENT_DIJKSTRA 松弛操作前增加 `t_u &lt; t_0.3 and t_0.3 &lt; t_v` 判断，
+      计算 safe_dist，若 safe_dist &lt; L 则跳过该边（continue）。
+      该漏洞已关闭。
+    </passed_fix>
+
+    <passed_fix>
+      [Risk Level: Med → CLOSED] **重规划比较基准已修正**
+      验证：REPLAN_PATH 不再直接与原始路径总时间比较。
+      改用 `evaluate_path_under_dual` 评估原始路径剩余段在双源模型下的可行性。
+      决策逻辑完整：新路径不可行+原路径可行→ fallback；原路径不可行→强制新路径；均不可行→标记无法逃生。
+      该漏洞已关闭。
+    </passed_fix>
+
+    <!-- ========== 原始 LOW-RISK 修正验证（全部通过） ========== -->
+
+    <passed_fix>
+      [Risk Level: Low → CLOSED] **时间单位统一为分钟**
+      验证：v_dry=240, v_with=120, v_against=60, v_mix=90（全部 m/min）。
+      数学模型中明确注明"全部时间单位统一为分钟，速度单位统一为 m/min"。
+      该漏洞已关闭。
+    </passed_fix>
+
+    <passed_fix>
+      [Risk Level: Low → CLOSED] **验证参考值标注为待核实**
+      验证：验证参考值后注明"以上值参照优秀论文，其正确性有待代码手读取原始 Excel 数据验证"。
+      该漏洞已关闭。
+    </passed_fix>
+
+    <passed_fix>
+      [Risk Level: Low → CLOSED] **矿工初始位置在淹没区的处理已补充**
+      验证：边界情况第1条明确处理：`t_notice &gt;= t_0.3` 时标记无法生还。
+      该漏洞已关闭。
+    </passed_fix>
+
+    <!-- ========== 新发现的漏洞 ========== -->
+
+    - [Risk Level: Low] [Category: ambiguous_algorithm] **flow_dir_flag 在部分湿润边（情况2）的中途淹没检测中未初始化**
+      位置: TIME_DEPENDENT_DIJKSTRA, 行 816
+      描述: 变量 `flow_dir_flag` 仅在情况3（两端均有水）中被赋值（行793-796）。
+      但中途淹没检测代码块（行812-823）在所有情况下均引用 `flow_dir_flag` 计算 safe_dist。
+      若矿工在部分湿润边（情况2）行进时水位在途中超过 0.3m，`flow_dir_flag` 为未定义状态，将引发 NameError。
+      物理论证：由于矿工行进速度（90 m/min）远快于水流填充速度（~2.5 m/min），
+      该情形在实践中极难触发，但属于防御性编程漏洞。
+      建议：在情况2中也设置合理的 `flow_dir_flag` 值（水从已湿润端流向干燥端），
+      或在中途淹没检测中将未初始化情形降级为安全距离使用 v_mix 计算。
+
+    - [Risk Level: Low] [Category: ambiguous_algorithm] **get_remaining_segment 函数引用但未定义**
+      位置: REPLAN_PATH, 行 1087
+      描述: `get_remaining_segment(init_path, t_switch)` 被调用，但辅助函数列表中未定义该函数。
+      `init_path` 对象上附着 `.total_time` 属性的写法（行1097-1112）也暗示 init_path 被当作对象处理，
+      而非列表。代码手可以推断实现方式（截取 t_switch 后的路径片段），但规范存在歧义。
+      建议：在辅助函数中补充 `get_remaining_segment` 的定义，明确返回值为路径子段列表及剩余时间。
+  </flaws>
+
+  <correction_directives>
+    以下为可选的边际修正（不阻塞流水线，可在 Phase 2 前完成）：
+
+    1. 在 TIME_DEPENDENT_DIJKSTRA 的 case 2（部分湿润边）中为 flow_dir_flag 设置语义正确的值：
+       水流从已湿润端流向干燥端。若矿工从干燥端走向湿润端为逆水（v_against），
+       从湿润端走向干燥端为顺水（v_with）。或给 mid-flood check 增加防御性判断：
+       当 flow_dir_flag 未设置时使用 v_mix 计算安全距离。
+
+    2. 在辅助函数定义区域补充 `get_remaining_segment` 的实现，包括明确的输入/输出类型签名。
+  </correction_directives>
+
+  <status>APPROVED</status>
+</devils_advocate_report>

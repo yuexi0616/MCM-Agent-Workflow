@@ -1,0 +1,1556 @@
+[
+    {
+        "type": "text",
+        "text": "无人机遂行编队飞行中的纯方位无源定位",
+        "text_level": 1,
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "摘要 ",
+        "text_level": 1,
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "本文主要主要研究无人机纯方位无源定位，建立定位模型和调整方案模型完成有效定位被动接收信号无人机以及进行纯方位无源定位调整工作。",
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "针对问题一（1），首先根据3架无人机相对位置信息进行分类讨论，再结合正弦定理以及其他几何关系，确定六种定位模型，采用遍历算法，固定一架发射信号无人机，遍历另外两架无人机的相对位置关系，求解每种情况下所有位置上被动接收无人机的实际坐标，输出图解结果，发现定位效果良好，模型合理。",
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "针对问题一（2），在无人机知道自身编号与其余无人机的相对位置关系的假设条件下，确定位置编号发射信号无人机的相对位置，再推断其准确标号。随后结合问题一（1）定位模型计算被动接受无人机坐标，确定定位是否有效。利用仿真模拟生成的无人机实际坐标样本，验证得仅需通过增加一架无人机发射信号就能够有效定位接受信号无人机位置。",
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "针对问题一（3），分析给定初始坐标值，调整方案分为三步骤，步骤一：利用问题一（1）的定位模型，调整同一圆周上的三架无人机的相对位置接近理想位置关系。步骤二：以步骤一中三架无人机为参照系，利用问题一（1）的定位模型，调节余下无人机的角度坐标，使之接近理想相对位置，输出角度调节量；步骤三：同步骤二参照基准，建立几何关系模型，调节余下无人机的长度坐标。每一步骤都对应各自独立的调整模型，模型求解利用迭代算法进行。通过输出调整后的坐标位置信息，对比初始位置信息确认此方案模型可行、实用。",
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "针对问题二，将锥形编队分解成多个同心圆的圆形编队，利用问题一（3）中给出的调节方案调整各圆周上无人机，针对特殊点通过共线无人机制定相应的调整方案。",
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "关键词：遍历算法、定位模型、调整方案模型、迭代算法、仿真模拟 ",
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "一、问题重述",
+        "text_level": 1,
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "1.1问题背景",
+        "text_level": 1,
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "无人机集群遂行编队飞行，为避免外界干扰，将尽可能减少向外发射电磁波信号。为保持编队队形，将采用纯方位无源定位的方法对编队无人机进行位置调整。即由编队中某几架无人机发射信号、其余无人机被动接受信号，从中提取方位信息进行定位，来调整无人机位置。接受信息无人机所受到的方位信息约定为：该无人机与任意两架发射信号的无人机连线之间的夹角（如图1-1所示）。其中编号FY01、FY02、FY03的无人机发射信号，编号FY04的无人机接收的方位信息是 $\\alpha _ { 1 }$ $\\alpha _ { 2 } \\hbar \\alpha _ { 3 }$ 。",
+        "page_idx": 1
+    },
+    {
+        "type": "image",
+        "img_path": "images/564db9bffee5dc4424f669cffcdca8af5c9802cc3de2eabf6818839e116e1928.jpg",
+        "img_caption": [
+            "图1-1无人机接收方向信息示意图"
+        ],
+        "img_footnote": [],
+        "page_idx": 1
+    },
+    {
+        "type": "image",
+        "img_path": "images/4d2633295f95976f3314cd6b6246761a51ec9ac4ffb99324f95d2e5265a11917.jpg",
+        "img_caption": [
+            "图1-2圆形无人机编队示意图"
+        ],
+        "img_footnote": [],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "1.2问题重述",
+        "text_level": 1,
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "问题1：编队由10架无人机组成，形成圆形编队，其中编号FY01～FY09的9架无人机均匀分布在某一圆周上，另一架无人机（编号FY00）位于圆心（见图1­2）。第一小问：假定位于圆心无人机（FY00）和编队中另2架无人机的发射信号，在发射信号无人机位置无偏且编号已知条件下，建立被动接收信号无人机的定位模型（被动接收无人机的位置有偏）。第二小问：探究某位置无人机在除FYO0和FYO1外，还需几架无人机发射信号（其他发射信号无人机编号位置，位置无偏），才能实现自身的有效定位。第三小问：按图1-2的编队要求。当初始时刻无人机的位置略有偏差，给出合理具体的无人机位置调整方案，发射信号的无人机数为圆心无人机FY00和圆周上最多3架无人机，进过多次调整，实现所有无人机在理想位置。 C  \n福",
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "问题2：实际飞行中，无人机集群存在其他编队队形，如锥形编队队形（见图1-3，相邻两架无人机的直线间距相等）。考虑纯方位无源定位情形，设计无",
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "人机调整方案。",
+        "page_idx": 2
+    },
+    {
+        "type": "image",
+        "img_path": "images/7240515ea7027c6ef5c91ab0fd39d0d2cd057c4b8b230049e7b4cf44356c1b8e.jpg",
+        "img_caption": [
+            "图1-3锥形无人机编队示意图"
+        ],
+        "img_footnote": [],
+        "page_idx": 2
+    },
+    {
+        "type": "text",
+        "text": "二、问题分析",
+        "text_level": 1,
+        "page_idx": 2
+    },
+    {
+        "type": "text",
+        "text": "2.1问题一（1）的分析",
+        "text_level": 1,
+        "page_idx": 2
+    },
+    {
+        "type": "text",
+        "text": "问题一首先根据无偏差的位置坐标确定圆周上两架发射信号无人机与单架接收信号无人机的相对位置关系，根据相对位置关系进行定位模型的分流，其中定位模型根据圆周上的三架无人机以及圆心无人机（FY00）之间的几何关系，利用正弦定理建立。最后在此定位模型的框架下，固定一架发射信号无人机位置，遍历第二架发射信号无人机和被动接收信号无人机的无偏位置坐标的所有可能，随机生成无偏坐标基础上的有偏接收无人机坐标值，求解出每一种可能情况下被动接收信号无人机的位置信息。",
+        "page_idx": 2
+    },
+    {
+        "type": "text",
+        "text": "2.2问题一（2）的分析",
+        "text_level": 1,
+        "page_idx": 2
+    },
+    {
+        "type": "text",
+        "text": "问题二首先确定来自编号FY01无人机发出的信号，此过程需要圆周上另外的两架无人机。通过两组无人机的三组角度信息确定FY01无人机发出的信息后，再从两架无人机中随机选择一架所提供的角度信息通过几何关系判断发射源与接收源的相对位置（此处假设被动接收信号无人机知道自身编号），根据相对位置的条件再进一步确定未知编号发射信号无人机的编号，从而利用已知的角度信息和坐标信息，代入问题一所得的定位模型，计算出被动接收信号无人机的实际坐标，建立偏差值的范围判定定位有效性，将实际坐标与无偏坐标作差并对比偏差值的范围，得出结论。 国",
+        "page_idx": 2
+    },
+    {
+        "type": "text",
+        "text": "2.3问题一（3）的分析",
+        "text_level": 1,
+        "page_idx": 2
+    },
+    {
+        "type": "text",
+        "text": "问题三首先分析给定的无人机初始位置表，确定基准圆周，本题考虑FY02（ρ,0）、FY05(ρ,0）、 $\\mathrm { F Y 0 8 } ( \\rho _ { \\bar { \\nu } } , \\theta _ { \\bar { \\nu } } .$ 所在半径 $9 8 m$ 的圆作为调整方案的理想圆周。调整方案大致分为三大步骤：一、 $\\theta _ { z ^ { \\star } }$ $\\theta _ { s } ,$ $\\theta _ { \\mathrm { { s } } }$ 的调整，使得无人机FY02、FY05、FY08的相对位置接近理想值或达到理想值。二、由步骤一得到 $\\smash { \\theta _ { z ^ { 2 } } ^ { ' } }$ 中 $\\theta _ { s 2 } ^ { + }$ $\\boldsymbol { \\theta } _ { 8 } ^ { ' }$ 将其作为发射信号无人机，且为圆周上的参考系，调整余下圆周上所有无人机的角度坐标 $\\theta _ { i } , k = 1 , 3 , . . . , 9$ 。三、经过前两步骤的调整，此时所有无人机均匀分布在以无人机FY00为圆心的同心圆上，以无人机FY02、FY05、FY08为参照系，利用几何关系调整其余无人机的长度坐标 $\\rho _ { i } , k = 1 , 3 , . . . , 9$ ，使得所有无人机均匀分布在半径为 $9 8 m$ 的圆上。",
+        "page_idx": 3
+    },
+    {
+        "type": "text",
+        "text": "2.4问题二的分析",
+        "text_level": 1,
+        "page_idx": 3
+    },
+    {
+        "type": "text",
+        "text": "问题二首先在锥形编队内找出一个无人机，使得以它作为圆心，划分多个同心圆，是尽可能多的无人机的理想坐标在圆周上，此无人机编号确定为FY05，随后分组调整无人机，每组包括的无人机为相互所成圆形编队的无人机，最后套用问题一（3）的方案模型，对各个圆形编队的无人机进行调整。唯一单独考虑的无人机编号为FY11和FY15，采用调整位置后的两组共线发射信号的无人机与FY05所成的角度信息的变化关系进去制定调整方案。",
+        "page_idx": 3
+    },
+    {
+        "type": "text",
+        "text": "三、模型假设",
+        "text_level": 1,
+        "page_idx": 3
+    },
+    {
+        "type": "text",
+        "text": "1、假设无人机发射信号与接收信号稳定不受干扰。  \n2、假设忽略被动接受无人机处理信号的时间。  \n3、假设每架无人机知道自身编号以及相对位置关系。",
+        "page_idx": 3
+    },
+    {
+        "type": "text",
+        "text": "四、符号说明",
+        "text_level": 1,
+        "page_idx": 3
+    },
+    {
+        "type": "table",
+        "img_path": "images/9fe05ceb5894d181211c270bfd9f91aae6ba74716aed444ea28193ded2e8f043.jpg",
+        "table_caption": [],
+        "table_footnote": [],
+        "table_body": "<html><body><table><tr><td>符号</td><td>含义 A</td></tr><tr><td>k</td><td>被动接收信号无人机k</td></tr></table></body></html>",
+        "page_idx": 3
+    },
+    {
+        "type": "table",
+        "img_path": "images/23811cc4a7fed882809219f68a34f71db7cd7721e33a8b63f9536884259d637c.jpg",
+        "table_caption": [],
+        "table_footnote": [
+            "注：其他符号将在下文中给出具体说明。"
+        ],
+        "table_body": "<html><body><table><tr><td>i</td><td>圆周上发射信号无人机i</td></tr><tr><td></td><td>圆周上发射信号无人机j</td></tr><tr><td>()</td><td>极坐标下无人机i的坐标点</td></tr><tr><td></td><td>表示无人机i与无人机FY00发出的角度信息</td></tr><tr><td></td><td>表示无人机j与无人机FY00发出的角度信息</td></tr><tr><td>n</td><td>表示无人机i与无人机k之间间隔的无人机数量</td></tr><tr><td></td><td>无人机i在均匀分布下的无偏坐标值</td></tr><tr><td>a</td><td>表示无人机FYOi与FYO0发出的无偏角度信息</td></tr></table></body></html>",
+        "page_idx": 4
+    },
+    {
+        "type": "text",
+        "text": "五、问题一（1）模型的建立与求解",
+        "text_level": 1,
+        "page_idx": 4
+    },
+    {
+        "type": "text",
+        "text": "5.1相对位置关系的确立",
+        "text_level": 1,
+        "page_idx": 4
+    },
+    {
+        "type": "text",
+        "text": "根据无人机圆形编队的特性，以圆心无人机FY00为原点建立极坐标系，则圆周上的两架发射信号的无人机和所需确立位置坐标的被动接收无人机坐标可分别表示为 $\\left( \\rho _ { i } , \\theta _ { i } \\right)$ 、 $\\left( \\rho _ { j } , \\theta _ { j } \\right)$ 、 $\\left( \\rho _ { k } , \\theta _ { k } \\right)$ 。根据 $\\theta _ { i } ,$ θ $\\theta _ { k }$ ，将相对位置关系分为如下三类（其中包括9种形态， $i , j$ 为发射信号无人机，k为接收信号无人机， $\\theta _ { i } < \\theta _ { j }$ ）",
+        "page_idx": 4
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\textcircled { 1 } \\theta _ { i } < \\theta _ { j } < \\theta _ { k } :\n$$",
+        "text_format": "latex",
+        "page_idx": 4
+    },
+    {
+        "type": "image",
+        "img_path": "images/b9b9434743c0e8c3635d7f2a68cc2bb4ed80cbd08b78b432411f8b9cdd11b92b.jpg",
+        "img_caption": [
+            "图5-1相对位置关系图-1"
+        ],
+        "img_footnote": [],
+        "page_idx": 4
+    },
+    {
+        "type": "text",
+        "text": "1 $\\textcircled { 2 } \\theta _ { i } < \\theta _ { k } < \\theta _ { j } ;$ ",
+        "page_idx": 5
+    },
+    {
+        "type": "image",
+        "img_path": "images/2c0b578fa9623605e7b31e425a0f069f681c7e0076e8889ed2430cb9f0f0cf28.jpg",
+        "img_caption": [
+            "图5-2相对位置关系图-2"
+        ],
+        "img_footnote": [],
+        "page_idx": 5
+    },
+    {
+        "type": "image",
+        "img_path": "images/09e694680efaf871de41878c451243eb3fca4ac8c726b1a05871f471acc24a42.jpg",
+        "img_caption": [
+            "图5-3相对位置关系图-3"
+        ],
+        "img_footnote": [],
+        "page_idx": 5
+    },
+    {
+        "type": "text",
+        "text": "在针对以上三类九种形态的位置关系仅考虑分类讨论的类别全面性分析的完整性，但在求解过程中，发现类别 $\\textcircled{1}$ 与类别 $\\textcircled{3}$ 对应的位置关系在几何上具有对称性，可通过旋转重叠，则定位模型是一致可互通的，所以定位模型忽略类别 $\\textcircled{3}$ 的分析，且在程序上为方便遍历，也忽略了类别 $\\textcircled{3}$ 仅对类别 $\\textcircled{1}$ 与类别②做定位模型的建立，共六个具体模型公式。",
+        "page_idx": 5
+    },
+    {
+        "type": "text",
+        "text": "5.2定位模型的确立",
+        "text_level": 1,
+        "page_idx": 5
+    },
+    {
+        "type": "text",
+        "text": "第一类下，a形态： $\\theta _ { k } ^ { ' } - \\theta _ { i } < \\pi , \\theta _ { k } ^ { ' } - \\theta _ { j } < \\pi$ （204",
+        "page_idx": 5
+    },
+    {
+        "type": "text",
+        "text": "指ok与oj、oi所成夹角均小于 $1 8 0 ^ { \\circ }$ ，其中， $\\boldsymbol { \\theta } _ { \\iota } ^ { \\mathsf { ^ { * } } }$ 表示被动接收信号的无人机所对应位置上的无偏角度坐标。 大 ov.cn",
+        "page_idx": 5
+    },
+    {
+        "type": "text",
+        "text": "接收到的方向信息 $\\alpha _ { i } , \\alpha _ { i }$ ，通过几何角度表示如下：",
+        "page_idx": 5
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\left\\{ \\begin{array} { l l } { \\displaystyle \\alpha _ { i } = \\frac { \\pi - \\theta _ { \\star } ^ { \\star } + \\theta _ { i } } { 2 } + \\varepsilon _ { i } } \\\\ { \\displaystyle \\alpha _ { i } = \\frac { \\pi - \\theta _ { \\star } ^ { \\star } + \\theta _ { j } } { 2 } + \\varepsilon _ { i } } \\end{array} \\right.\n$$",
+        "text_format": "latex",
+        "page_idx": 6
+    },
+    {
+        "type": "text",
+        "text": "其中， $\\alpha _ { i }$ 表示FYO0与FYOi发出的角度信息，即 $\\angle o k i$ ：",
+        "page_idx": 6
+    },
+    {
+        "type": "text",
+        "text": "$\\alpha _ { j }$ 表示FYO0与FYOj发出的角度信息，即 $\\angle o k j$ ：",
+        "page_idx": 6
+    },
+    {
+        "type": "text",
+        "text": "（204 $\\varepsilon _ { \\nu }$ 表示接收的信号角度 $\\angle o k i$ 的值存在的偏差；",
+        "page_idx": 6
+    },
+    {
+        "type": "text",
+        "text": "（204号 $\\scriptstyle { \\varepsilon } _ { r }$ 表示接收的信号角度 $\\angle o k j$ 的值存在的偏差；",
+        "page_idx": 6
+    },
+    {
+        "type": "text",
+        "text": "由正弦定理可得如下等式：",
+        "page_idx": 6
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\left\\{ \\begin{array} { l } { \\displaystyle { \\frac { \\rho _ { k } } { \\sin \\big ( \\theta _ { k } + \\alpha _ { j } - \\theta _ { j } \\big ) } } = \\frac { \\rho _ { j } } { \\sin \\alpha _ { j } } } \\\\ { \\displaystyle { \\frac { \\rho _ { k } } { \\sin \\big ( \\theta _ { k } + \\alpha _ { i } - \\theta _ { i } \\big ) } } = \\frac { \\rho _ { i } } { \\sin \\alpha _ { i } } } \\end{array} \\right.\n$$",
+        "text_format": "latex",
+        "page_idx": 6
+    },
+    {
+        "type": "text",
+        "text": "长度变量 $\\rho _ { \\nu }$ 可通过式（1-2）分离所得：",
+        "page_idx": 6
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\rho _ { k } = { \\frac { \\rho _ { \\mathrm { * } } { \\sin \\left( \\theta _ { \\mathrm { * } } + \\alpha _ { \\mathrm { * } } - \\theta _ { \\mathrm { * } } \\right) } } { \\sin \\alpha _ { \\mathrm { * } } } } { \\overrightarrow { \\mathrm { a y } } } \\rho _ { k } = { \\frac { \\rho _ { \\mathrm { * } } { \\sin \\left( \\theta _ { \\mathrm { * } } + \\alpha _ { \\mathrm { * } } - \\theta _ { \\mathrm { * } } \\right) } } { { \\sin \\alpha _ { \\mathrm { * } } } } }\n$$",
+        "text_format": "latex",
+        "page_idx": 6
+    },
+    {
+        "type": "text",
+        "text": "由于式（1-3）中的两个等式是等价的，下文将选取 $\\rho _ { i } , \\alpha _ { i }$ 的等式。",
+        "page_idx": 6
+    },
+    {
+        "type": "text",
+        "text": "角度变量 $\\theta _ { \\nu }$ 可通过式（1-2）联立所得：",
+        "page_idx": 6
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\tan \\theta _ { i } = { \\frac { \\sin ( \\alpha _ { j } - \\theta _ { j } ) \\sin \\alpha _ { i } - \\sin ( \\alpha _ { i } - \\theta _ { i } ) \\sin \\alpha _ { j } } { \\cos ( \\alpha _ { i } - \\theta _ { i } ) \\sin \\alpha _ { j } - \\cos ( \\alpha _ { j } - \\theta _ { j } ) \\sin \\alpha _ { i } } }\n$$",
+        "text_format": "latex",
+        "page_idx": 6
+    },
+    {
+        "type": "text",
+        "text": "联合式（1-3）、式（1-4），给出定位模型1：",
+        "page_idx": 6
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\{ \\begin{array} { l l } { \\rho _ { \\varepsilon } = \\frac { \\rho _ { \\varepsilon } \\sin ( \\theta _ { \\varepsilon } + \\alpha _ { j } - \\theta _ { j } ) } { \\sin \\alpha _ { j } } } \\\\ { \\operatorname* { s u p } _ { \\theta _ { k } } = \\frac { \\sin ( \\alpha _ { j } - \\theta _ { j } ) \\sin \\alpha _ { i } - \\sin ( \\alpha _ { i } - \\theta _ { i } ) \\sin \\alpha _ { j } } { \\cos ( \\alpha _ { i } - \\theta _ { i } ) \\sin \\alpha _ { j } - \\cos ( \\alpha _ { j } - \\theta _ { j } ) \\sin \\alpha _ { i } } } \\\\ { [ \\theta _ { \\varepsilon } + \\theta _ { j } < \\theta _ { k }  } \\\\ {  \\theta _ { \\varepsilon } ^ { \\varepsilon } - \\theta _ { i } < \\pi  } \\\\ {  \\varepsilon \\mathcal { L } _ { \\varepsilon } \\mathcal { L } _ { \\varepsilon } - \\theta _ { j } < \\pi  } \\\\ {  ( \\alpha _ { i } = ( \\pi - \\theta _ { \\varepsilon } ^ { \\varepsilon } + \\theta _ { i } ) / 2 + \\varepsilon _ { i }  } \\\\ { \\alpha _ { j } = ( \\pi - \\theta _ { \\varepsilon } ^ { \\varepsilon } + \\theta _ { j } ) / 2 + \\varepsilon _ { j } } \\end{array} \n$$",
+        "text_format": "latex",
+        "page_idx": 7
+    },
+    {
+        "type": "text",
+        "text": "第一类下，b形态： $\\theta _ { \\varepsilon } ^ { * } - \\theta _ { i } > \\pi , \\theta _ { \\varepsilon } ^ { * } - \\theta _ { j } < \\pi$ ",
+        "page_idx": 7
+    },
+    {
+        "type": "text",
+        "text": "指 $\\mathbf { o k }$ 与oi所成夹角大于 $1 8 0 ^ { \\circ }$ ，ok与oj所成夹角小于 $1 8 0 ^ { \\circ }$ 。",
+        "page_idx": 7
+    },
+    {
+        "type": "text",
+        "text": "接收到的方向信息 $\\alpha _ { i } , \\alpha _ { j }$ ，通过几何角度表示如下：",
+        "page_idx": 7
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\left\\{ \\begin{array} { l l } { \\alpha _ { i } = \\displaystyle \\frac { \\theta _ { \\star } ^ { \\star } - \\theta _ { i } - \\pi } { 2 } + \\varepsilon _ { i } } \\\\ { \\alpha _ { i } = \\displaystyle \\frac { \\pi - \\theta _ { \\star } ^ { \\star } + \\theta _ { j } } { 2 } + \\varepsilon _ { j } } \\end{array} \\right.\n$$",
+        "text_format": "latex",
+        "page_idx": 7
+    },
+    {
+        "type": "text",
+        "text": "由正弦定理可得如下等式：",
+        "page_idx": 7
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\left\\{ \\begin{array} { l } { \\displaystyle { \\frac { \\rho _ { k } } { \\sin \\big ( \\theta _ { k } + \\alpha _ { j } - \\theta _ { j } \\big ) } } = \\frac { \\rho _ { j } } { \\sin \\alpha _ { j } } } \\\\ { \\displaystyle { \\frac { \\rho _ { k } } { \\sin \\big ( \\theta _ { k } + \\alpha _ { i } + \\theta _ { i } \\big ) } } = \\frac { \\rho _ { j } } { \\sin \\alpha _ { i } } } \\end{array} \\right.\n$$",
+        "text_format": "latex",
+        "page_idx": 7
+    },
+    {
+        "type": "text",
+        "text": "长度变量 $\\rho _ { \\ast }$ 可通过式（1-7）分离所得：",
+        "page_idx": 7
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\rho _ { k } = \\frac { \\rho _ { \\mathrm { * } } \\sin \\left( \\theta _ { \\mathrm { * } } + \\alpha _ { \\mathrm { * } } + \\theta _ { \\mathrm { * } } \\right) } { \\sin \\alpha _ { \\mathrm { * } } } \\overrightarrow { \\mathrm { s u p } } _ { k } = \\frac { \\rho _ { \\mathrm { * } } \\sin \\left( \\theta _ { \\mathrm { * } } + \\alpha _ { \\mathrm { * } } - \\theta _ { \\mathrm { * } } \\right) } { \\sin \\alpha _ { \\mathrm { * } } }\n$$",
+        "text_format": "latex",
+        "page_idx": 7
+    },
+    {
+        "type": "text",
+        "text": "由于式（1-8）中的两个等式是等价的，下文将选取 $\\rho _ { i } , \\alpha _ { i }$ 的等式。",
+        "page_idx": 7
+    },
+    {
+        "type": "text",
+        "text": "角度变量 $\\theta _ { \\nu }$ 可通过式（1-7）联立所得：",
+        "page_idx": 7
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\tan \\theta _ { i } = { \\frac { \\sin ( \\theta _ { j } - \\alpha _ { j } ) { \\sin \\alpha _ { i } } + \\sin ( \\alpha _ { i } + \\theta _ { i } ) { \\sin \\alpha _ { j } } } { \\cos ( \\alpha _ { i } + \\theta _ { i } ) { \\sin \\alpha _ { j } } + \\cos ( \\alpha _ { j } - \\theta _ { j } ) { \\sin \\alpha _ { i } } } }\n$$",
+        "text_format": "latex",
+        "page_idx": 7
+    },
+    {
+        "type": "text",
+        "text": "联合式（1-8）、式（1-9），给出定位模型2：",
+        "page_idx": 7
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\{ \\begin{array} { l l } { \\rho _ { \\varepsilon } \\equiv \\frac { \\rho _ { t } \\sin ( \\theta _ { t } + \\alpha _ { j } - \\theta _ { j } ) } { \\sin \\alpha _ { j } } } \\\\ { \\mathrm { t a n } \\theta _ { k } = \\frac { \\sin ( \\theta _ { j } - \\alpha _ { j } ) \\sin \\alpha _ { i } + \\sin ( \\alpha _ { i } + \\theta _ { j } ) \\sin \\alpha _ { j } } { \\cos ( \\alpha _ { i } + \\theta _ { i } ) \\sin \\alpha _ { j } + \\cos ( \\alpha _ { j } - \\theta _ { j } ) \\sin \\alpha _ { i } } } \\\\ { [ \\theta _ { i } < \\theta _ { j } < \\theta _ { k }  } \\\\ {  \\theta _ { k } ^ { \\varepsilon } - \\theta _ { i } > \\pi  } \\\\ {  \\varepsilon _ { k } ] \\theta _ { k } ^ { \\varepsilon } - \\theta _ { j } < \\pi } \\\\ {  \\alpha _ { i } = ( \\theta _ { k } ^ { \\varepsilon } - \\theta _ { i } - \\pi ) / 2 + \\varepsilon _ { i }  } \\\\ {  \\alpha _ { i } = ( \\pi - \\theta _ { i } ^ { \\varepsilon } + \\theta _ { j } ) / 2 + \\varepsilon _ { i } } \\end{array} \n$$",
+        "text_format": "latex",
+        "page_idx": 8
+    },
+    {
+        "type": "text",
+        "text": "此后 $_ 4$ 种状态的定位模型分析情况与上述分析一致，篇幅原因不再赘述，下文直接给出定位模型表达式：",
+        "page_idx": 8
+    },
+    {
+        "type": "text",
+        "text": "第一类下，c形态： $\\theta _ { \\varepsilon } ^ { * } - \\theta _ { \\varepsilon } > \\pi , \\theta _ { \\varepsilon } ^ { * } - \\theta _ { \\varepsilon } > \\pi$ ",
+        "page_idx": 8
+    },
+    {
+        "type": "text",
+        "text": "指ok与oi、oj所成夹角均大于 $1 8 0 ^ { \\circ }$ 。",
+        "page_idx": 8
+    },
+    {
+        "type": "text",
+        "text": "定位模型3：",
+        "page_idx": 8
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\begin{array}{c} \\{ \\begin{array} { l l } { \\displaystyle { \\rho _ { k } = \\frac { \\rho _ { j } \\sin ( \\theta _ { j } + \\alpha _ { j } + \\theta _ { j } ) } { \\sin \\alpha _ { j } } } } \\\\ { \\displaystyle { \\operatorname* { s u p } _ { \\theta _ { k } = 0 } \\frac { \\sin ( \\theta _ { j } + \\alpha _ { j } ) \\sin \\alpha _ { i } - \\sin ( \\alpha _ { i } + \\theta _ { i } ) \\sin \\alpha _ { j } } { \\cos ( \\alpha _ { j } - \\theta _ { j } ) \\sin \\alpha _ { i } - \\cos ( \\alpha _ { i } + \\theta _ { i } ) \\sin \\alpha _ { j } } } } \\\\ { \\displaystyle { [ \\theta _ { i } < \\theta _ { j } < \\theta _ { k }  } } \\\\ { \\displaystyle {  \\theta _ { k } ^ { e } - \\theta _ { i } > \\pi } } \\\\ { \\displaystyle {  \\delta { { \\varepsilon } _ { i } } \\cdot \\theta _ { j } ^ { e } - \\theta _ { j }  } } \\\\ { \\displaystyle {  \\alpha _ { i } = ( \\theta _ { k } ^ { e } - \\theta _ { i } - \\pi ) / 2 + \\varepsilon _ { i } } } \\\\ { \\displaystyle { ( \\alpha _ { j } = ( \\theta _ { k } ^ { e } - \\theta _ { j } - \\pi ) / 2 + \\varepsilon _ { i } } } \\\\ { \\displaystyle { \\alpha _ { j } = ( \\theta _ { k } ^ { e } - \\theta _ { j } - \\pi ) / 2 + \\varepsilon _ { i } } } \\end{array} ]   \\end{array} \n$$",
+        "text_format": "latex",
+        "page_idx": 8
+    },
+    {
+        "type": "text",
+        "text": "第二类下，a形态： $\\theta _ { \\ast } ^ { ^ { \\ast } } - \\theta _ { \\ast } < \\pi , \\theta _ { \\ast } - \\theta _ { \\ast } ^ { ^ { \\ast } } < \\pi$ （204",
+        "page_idx": 8
+    },
+    {
+        "type": "text",
+        "text": "定位模型4：",
+        "page_idx": 8
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\{ \\begin{array} { l l } { \\rho _ { \\varepsilon } = \\frac { \\rho _ { t } \\sin ( \\alpha _ { j } + \\theta _ { j } - \\theta _ { t } ) } { \\sin \\alpha _ { j } } } \\\\ { \\operatorname { t a n } \\theta _ { k } = \\frac { \\sin ( \\theta _ { j } + \\alpha _ { j } ) \\sin \\alpha _ { i } - \\sin ( \\alpha _ { i } - \\theta _ { i } ) \\sin \\alpha _ { j } } { \\cos ( \\alpha _ { j } + \\theta _ { j } ) \\sin \\alpha _ { i } + \\cos ( \\alpha _ { i } - \\theta _ { i } ) \\sin \\alpha _ { j } } } \\\\ { [ \\theta _ { i } < \\theta _ { i } < \\theta _ { j }  } \\\\ {  \\theta _ { i } ^ { \\varepsilon } - \\theta _ { i } < \\pi  } \\\\ {  \\varepsilon A _ { i } \\cdot \\theta _ { j } - \\theta _ { \\varepsilon } ^ { \\star } - \\pi  } \\\\ {  \\alpha _ { i } = ( \\pi - \\theta _ { \\varepsilon } ^ { \\star } + \\theta _ { i } ) / 2 + \\varepsilon _ { i } } \\\\ {  \\alpha _ { j } = ( \\pi - \\theta _ { j } + \\theta _ { k } ^ { \\star } ) / 2 + \\varepsilon _ { j }  } \\end{array} \n$$",
+        "text_format": "latex",
+        "page_idx": 9
+    },
+    {
+        "type": "text",
+        "text": "第二类下，b形态： $\\theta _ { \\varepsilon } ^ { * } - \\theta _ { i } > \\pi , \\theta _ { \\varepsilon } - \\theta _ { \\varepsilon } ^ { * } < \\pi$ （204号",
+        "page_idx": 9
+    },
+    {
+        "type": "text",
+        "text": "定位模型5：",
+        "page_idx": 9
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\{ \\begin{array} { l l } { \\rho _ { \\varepsilon } = \\frac { \\rho _ { \\varepsilon } \\sin ( \\theta _ { \\varepsilon } - \\alpha _ { j } - \\theta _ { j } ) } { \\sin \\alpha _ { j } } } \\\\ { \\operatorname { t a n } _ { \\theta _ { k } } = \\frac { \\sin ( \\alpha _ { k } - \\theta _ { j } ) \\sin \\alpha _ { j } - \\sin ( \\theta _ { j } + \\alpha _ { j } ) \\sin \\alpha _ { i } } { \\cos ( \\alpha _ { i } - \\theta _ { j } ) \\sin \\alpha _ { j } - \\cos ( \\alpha _ { j } + \\theta _ { j } ) \\sin \\alpha _ { i } } } \\\\ { [ \\theta _ { i } < \\theta _ { k } < \\theta _ { j }  } \\\\ {  \\theta _ { k } ^ { \\prime } - \\theta _ { i } > \\pi } \\\\ {  \\delta _ { i } { , } ] ( \\theta _ { i } - \\theta _ { i } ^ { \\prime } - \\pi  } \\\\ {  \\alpha _ { j } - \\theta _ { i } ^ { \\prime } - \\theta _ { j } - \\pi ) / 2 + \\varepsilon _ { i } } \\\\ { [ \\alpha _ { j } = ( \\theta _ { \\varepsilon } ^ { \\prime } - \\theta _ { i } - \\pi ) / 2 + \\varepsilon _ { i }  } \\\\ {  \\alpha _ { j } = ( \\pi - \\theta _ { j } + \\theta _ { \\varepsilon } ^ { \\prime } ) / 2 + \\varepsilon _ { j }  } \\end{array} \n$$",
+        "text_format": "latex",
+        "page_idx": 9
+    },
+    {
+        "type": "text",
+        "text": "第二类下，II形态： $\\theta _ { \\varepsilon } ^ { * } - \\theta _ { \\varepsilon } < \\pi , \\theta _ { , } - \\theta _ { \\varepsilon } ^ { * } > \\pi$ “",
+        "page_idx": 9
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\begin{array} { r l } { 6 : } & { \\{ \\begin{array} { l l } { \\rho _ { \\xi } = \\frac { \\rho _ { j } \\cdot \\sin \\big ( \\theta _ { \\xi } + \\alpha _ { j } - \\theta _ { j } \\big ) } { \\sin \\alpha _ { j } } } \\\\ { \\quad } \\\\ { \\mathrm { t a n } _ { \\theta _ { \\xi } } = \\frac { \\sin ( \\alpha _ { z } - \\theta _ { j } ) \\cdot \\sin \\alpha _ { z } + \\sin ( \\alpha _ { z } - \\theta _ { j } ) \\cdot \\sin \\alpha _ { i } } { \\cos ( \\alpha _ { x } - \\theta _ { j } ) \\cdot \\sin \\alpha _ { j } + \\cos ( \\alpha _ { j } - \\theta _ { j } ) \\cdot \\sin \\alpha _ { i } } } \\\\ { \\quad } \\\\ { [ \\theta _ { \\xi } - \\theta _ { \\xi } < \\theta _ { j }  } \\\\ {  \\theta _ { \\xi } - \\theta _ { \\xi } > \\pi } \\\\ { \\quad } \\\\ {  \\alpha _ { i } = ( \\pi - \\theta _ { \\xi } ^ { \\prime } - \\theta _ { i } ) \\cdot 2 + \\varepsilon _ { i } } \\\\ { \\alpha _ { i } = ( \\pi - \\theta _ { \\xi } ^ { \\prime } - \\pi ) / 2 + \\varepsilon _ { i } } \\\\ { ( \\alpha _ { j } - \\theta _ { \\xi } ^ { \\prime } - \\pi ) / 2 + \\varepsilon _ { j } } \\end{array}  } \\end{array}\n$$",
+        "text_format": "latex",
+        "page_idx": 9
+    },
+    {
+        "type": "text",
+        "text": "5.3定位模型的求解 ",
+        "text_level": 1,
+        "page_idx": 9
+    },
+    {
+        "type": "text",
+        "text": "本题利用遍历算法，遍历每一种定位模型下所有可能存在的无人机位置关系，输入已知量 $\\alpha _ { i } , \\alpha _ { j } , \\theta _ { \\iota } ^ { \\ast } ( \\rho _ { i } , \\theta _ { i } ) , ( \\rho _ { j } , \\theta _ { j } ) \\circ$ 其中 $\\alpha _ { i } , \\alpha _ { j }$ 中所带的偏差量 $\\mathbf { \\delta } _ { \\mathcal { E } _ { i } , \\mathcal { E } _ { i } }$ 的范围均为-1°到 $1 ^ { \\circ }$ 。以步长为 $0 . 1 ^ { \\circ }$ 在偏差量 $\\mathbf { \\delta } _ { E _ { i } , E _ { i } }$ 的范围呢遍历计算每一个 $\\alpha _ { i } , \\alpha _ { i }$ 所对应的无人机 $k$ 的实际位置坐标。",
+        "page_idx": 10
+    },
+    {
+        "type": "text",
+        "text": "Step1：将发射信号无人机 $i$ 的坐标始终固定，为 $\\left( \\rho _ { i } , 0 \\right) , \\rho _ { i } = 1 0 0 m$ ，遍历发射信号无人机 $j$ 的所有可能坐标位置：",
+        "page_idx": 10
+    },
+    {
+        "type": "text",
+        "text": "Step2：遍历定位模型1­6情况下，被动接收无人机 $k$ 与无人机 $i , j$ 的位置关系，得出无偏情况下的接收到的角度信号，记为,；：",
+        "page_idx": 10
+    },
+    {
+        "type": "text",
+        "text": "Step3：已知实际接受角度信息 $\\dot { \\alpha } _ { i } , \\dot { \\alpha } _ { i }$ 的范围，以步长 $0 . 1 ^ { \\circ }$ 开始遍历，利用对应定位模型计算无人机 $k$ 的实际坐标可能；",
+        "page_idx": 10
+    },
+    {
+        "type": "text",
+        "text": "Step4：记录所得全部结果，并绘图输出结果，作为本文所给定位模型的求解。",
+        "page_idx": 10
+    },
+    {
+        "type": "text",
+        "text": "5.4问题一（1）的结果分析",
+        "text_level": 1,
+        "page_idx": 10
+    },
+    {
+        "type": "text",
+        "text": "遍历结果如下图5-4所示：",
+        "page_idx": 10
+    },
+    {
+        "type": "text",
+        "text": "",
+        "page_idx": 10
+    },
+    {
+        "type": "image",
+        "img_path": "images/970551d70d798d28dbd4e7debfaa5f73e28c017451b3f2414bc9ec4da5e04332.jpg",
+        "img_caption": [
+            "图5-4全局定位结果展示图"
+        ],
+        "img_footnote": [],
+        "page_idx": 10
+    },
+    {
+        "type": "text",
+        "text": "图中两个五星点为发射信号无人机的无偏坐标点，其中始终视为一架无人机的坐标处于(100,0)，彩色点群表示被动接收无人机 $k$ 所对应的实际坐标的可能位置，其中颜色顺序即为位置遍历的顺序，每个点群包含了20个实际坐标点，",
+        "page_idx": 10
+    },
+    {
+        "type": "text",
+        "text": "如图可以看出被动接收无人机的实际位置略有偏差但满足均匀分布于圆周上。体现所给定位模型的合理性与准确性。",
+        "page_idx": 11
+    },
+    {
+        "type": "text",
+        "text": "六、问题一（2）模型的建立与求解",
+        "text_level": 1,
+        "page_idx": 11
+    },
+    {
+        "type": "text",
+        "text": "通过问题一（1）的定位模型可知，对于被动接收信号的无人机有效定位需要输入的已知量有 $\\alpha _ { i } , \\alpha _ { j } , \\theta _ { k } ^ { \\ast } , ( \\rho _ { i } , \\theta _ { i } ) , ( \\rho _ { j } , \\theta _ { j } )$ ，即两架圆周上已知编号的发射信号无人机 $i , j$ 发射的角度信息以及自身坐标信息和被动接收消息无人机相对位置的无偏角度。问题二给出FY00和FY01的具体位置，在接收信号无人机 $k$ 已知自身编号（确定与FY01的相对位置）的情况下，初步确定为另需一架无人机发射信号，因为发射信号的无人机位置无偏，所以通过确定该无人机与自身的相对位置，即可对自身进行有效定位。",
+        "page_idx": 11
+    },
+    {
+        "type": "text",
+        "text": "6.1未知编号信号发射无人机与接收无人机相对位置的确定",
+        "text_level": 1,
+        "page_idx": 11
+    },
+    {
+        "type": "text",
+        "text": "假定被动接收信号的无人机 $k$ 知道自身具体编号， $k = 2 , 3 , \\ldots 9$ ，即自身与编号FY01无人机的相对位置已知，基于此，再引入一架未知编号的发射信号无人机，记做FYOi（简称“无人机i”）。",
+        "page_idx": 11
+    },
+    {
+        "type": "text",
+        "text": "6.1.1确定FYOk与FYOi的相对位置关系",
+        "text_level": 1,
+        "page_idx": 11
+    },
+    {
+        "type": "text",
+        "text": "对于FYOi，FYOk接收到其与FY00所成的角度信息和与FYO1所成的角度信息，即图6-1所示 $\\alpha _ { i }$ （∠ik0）和 $\\lambda _ { i }$ （∠ik1）",
+        "page_idx": 11
+    },
+    {
+        "type": "image",
+        "img_path": "images/e12f5dd3d0843a649ae71f8f39c100d3e9fecb69410fe966f0e3a2cace826c7f.jpg",
+        "img_caption": [
+            "图6-1接收信号示意图"
+        ],
+        "img_footnote": [],
+        "page_idx": 11
+    },
+    {
+        "type": "text",
+        "text": "在圆形编队内，由于分布的均匀性和圆的对称性，在不考虑无人机自身存在",
+        "page_idx": 11
+    },
+    {
+        "type": "text",
+        "text": "微小位置偏差的情况下，定义 $\\alpha ^ { \\prime }$ 为无人机 $i$ 与无人机 $k$ 的无偏角度信息。 $\\dot { \\alpha }$ 与无人机i、无人机 $k$ 之间间隔的无人机数量 $n$ 存在如下表所示关系：",
+        "page_idx": 12
+    },
+    {
+        "type": "table",
+        "img_path": "images/707f36faef2b5a62747f28236102f7b193d3654e7dcca43611b115add5be1207.jpg",
+        "table_caption": [
+            "表6-1n与α的关系表"
+        ],
+        "table_footnote": [],
+        "table_body": "<html><body><table><tr><td>n（架）</td><td>0</td><td>1</td><td>2</td><td>3</td></tr><tr><td>α（°）</td><td>70</td><td>50</td><td>30</td><td>10</td></tr></table></body></html>",
+        "page_idx": 12
+    },
+    {
+        "type": "text",
+        "text": "由于考虑被动接收信号的无人机 $k$ 存在的偏差不足 $y$ 影响相对位置的判断，所以 $\\alpha _ { i } \\approx \\alpha _ { i } ^ { { \\cdot } }$ 成立，得出无人机i， $k$ 相对位置的关系式如下：",
+        "page_idx": 12
+    },
+    {
+        "type": "equation",
+        "text": "$$\nn = \\frac { 1 8 0 ^ { \\circ } - 2 \\alpha _ { i } ^ { \\cdot } } { 4 0 ^ { \\circ } } - 1\n$$",
+        "text_format": "latex",
+        "page_idx": 12
+    },
+    {
+        "type": "text",
+        "text": "其中， $n$ 表示无人机 $i$ 与无人机 $k$ 之间间隔的无人机数量。通过 $n$ 即可初步判断无人机 $i , k$ 的相对位置关系。",
+        "page_idx": 12
+    },
+    {
+        "type": "text",
+        "text": "由于圆的对称性质，确定的无人机 $\\vec { i }$ 并不是唯一的，如上图6­1，存在无人机i具有相同的角度信息干扰判断，即 $\\alpha _ { i } \\approx \\alpha ^ { i } \\approx \\alpha _ { i } \\approx \\alpha _ { i } ^ { i } .$ 。",
+        "page_idx": 12
+    },
+    {
+        "type": "image",
+        "img_path": "images/3ee110f7141a793d1c690c99171c9fc0509e40a89eda8f134117a63030a8eff7.jpg",
+        "img_caption": [
+            "图6-2无人机i与无人机i的关系图"
+        ],
+        "img_footnote": [],
+        "page_idx": 12
+    },
+    {
+        "type": "text",
+        "text": "6.1.2锁定FY0i的相对位置坐标",
+        "text_level": 1,
+        "page_idx": 12
+    },
+    {
+        "type": "text",
+        "text": "由图6-2，可以观察FY01无人机与无人机 $i ,$ 无人机 $i$ 的发射信号形成的角度信息是不一致的，将无人机i、k、i的信号角度记为 $\\alpha$ ：无人机FY01、k、 $i ^ { \\prime }$ 的信号角度记为 $\\beta$ ；将无人机FY01、𝑘、i的信号角度记为 $\\theta$ 。无人机 $\\mathbf { k }$ 可根据此信息的差异最终锁定这架未知编号无人机的相对位置坐标信息。",
+        "page_idx": 12
+    },
+    {
+        "type": "text",
+        "text": "由于对称性，角 $\\alpha$ 的无偏值与 $i , \\ k$ 之间间隔的无人机数 $n$ 依旧有关系，如下",
+        "page_idx": 12
+    },
+    {
+        "type": "text",
+        "text": "表所示：",
+        "page_idx": 13
+    },
+    {
+        "type": "table",
+        "img_path": "images/91541fd87ff89ed851e942a5caf4fd3fd7ed7fcbace90cd2ec06387059a6f0e4.jpg",
+        "table_caption": [
+            "表 $6 - 2 n$ 与 $\\alpha$ 的关系表"
+        ],
+        "table_footnote": [],
+        "table_body": "<html><body><table><tr><td>n（架）</td><td>0</td><td>1</td><td>2</td><td>3</td></tr><tr><td>α（°）</td><td>140</td><td>100</td><td>60</td><td>20</td></tr></table></body></html>",
+        "page_idx": 13
+    },
+    {
+        "type": "text",
+        "text": "角α、 $\\beta$ ， $\\theta$ 存在如下关系式：",
+        "page_idx": 13
+    },
+    {
+        "type": "text",
+        "text": "k=2，3，4，5：",
+        "page_idx": 13
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\left\\{ \\begin{array} { l } { \\theta = \\alpha + \\beta , n > k - 2 } \\\\ { \\theta = \\alpha - \\beta , n < k - 2 } \\end{array} \\right.\n$$",
+        "text_format": "latex",
+        "page_idx": 13
+    },
+    {
+        "type": "text",
+        "text": "k=6，7，8，9：",
+        "page_idx": 13
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\left\\{ \\begin{array} { l } { \\theta = \\alpha + \\beta , n > 9 - k } \\\\ { \\theta = \\alpha - \\beta , n < 9 - k } \\end{array} \\right.\n$$",
+        "text_format": "latex",
+        "page_idx": 13
+    },
+    {
+        "type": "text",
+        "text": "其中根据无人机 $k$ 与无人机FY01和无人机 $i$ 之间分别间隔的无人机数量的比较确定三个角之间的数量关系，如图6­2所示。当 $n$ 与 $k$ 的关系取等号时，说明无人机 $i$ 与无人机FY01关于无人机 $k$ 对称。无人机 $i$ 的相对位置坐标随即确定。",
+        "page_idx": 13
+    },
+    {
+        "type": "text",
+        "text": "我们假定无人机 $i$ 始终偏离无人机FY01，无人机i始终靠近无人机FY01，则有角度角度大小关系如下：",
+        "page_idx": 13
+    },
+    {
+        "type": "text",
+        "text": "k=2，3，4，5：",
+        "page_idx": 13
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\left\\{ \\begin{array} { l l } { \\theta > \\alpha > \\beta , n > k - 2 } \\\\ { \\theta > \\displaystyle \\frac { \\alpha } { 2 } > \\beta , n < k - 2 } \\end{array} \\right.\n$$",
+        "text_format": "latex",
+        "page_idx": 13
+    },
+    {
+        "type": "text",
+        "text": "k=6，7，8，9: ",
+        "page_idx": 13
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\left\\{ \\begin{array} { l l } { \\theta > \\alpha > \\beta , n > 9 - k } \\\\ { \\theta > \\displaystyle \\frac { \\alpha } { 2 } > \\beta , n < 9 - k } \\end{array} \\right.\n$$",
+        "text_format": "latex",
+        "page_idx": 13
+    },
+    {
+        "type": "text",
+        "text": "即判断 $\\lambda \\approx \\theta \\Xi \\dot { \\chi } \\lambda \\approx \\beta$ 确定最终无人机FYOi的相对位置坐标",
+        "page_idx": 13
+    },
+    {
+        "type": "text",
+        "text": "$6 . 1 . 3$ 判断发射信号无人机FYOi的流程图展示",
+        "page_idx": 13
+    },
+    {
+        "type": "image",
+        "img_path": "images/731ab8865d350199f0489e405980fd6fdbcecef349c15eeea4995c40011f8cb6.jpg",
+        "img_caption": [
+            "图6-3求解流程图"
+        ],
+        "img_footnote": [],
+        "page_idx": 14
+    },
+    {
+        "type": "text",
+        "text": "6.2问题一（2）的求解",
+        "text_level": 1,
+        "page_idx": 14
+    },
+    {
+        "type": "text",
+        "text": "本题求解采用仿真模拟算法，设定角度坐标随机偏差值正负 $1 ^ { \\circ }$ ，对每个 $k$ 的取值随机生成10500组无人机 $k$ 的实际坐标，再遍历发射信号无人机 $i$ 的所有可能位置，针对每一次确定后输入的 $\\alpha _ { i }$ （ $\\angle i k 0$ ）和（∠i𝑘1）值进行求解发射信号无人机 $i$ 的坐标 $( \\rho _ { i } , \\theta _ { i } )$ ，将所有已知量输入问题一（1）的定位模型，求解被动接收信号无人机 $k$ 的实际坐标，并利用与无偏坐标进行作差判断有效性。求解步骤如下：",
+        "page_idx": 14
+    },
+    {
+        "type": "text",
+        "text": "Step1：输入随机生成的10500组被动接收信号无人机 $k$ 的实际坐标和发射信号无人机 $i$ 的相对位置，其中无人机 $i$ 的坐标位置，无人机 $k$ 的无偏坐标已知；",
+        "page_idx": 14
+    },
+    {
+        "type": "text",
+        "text": "Step2：利用已知量 $\\alpha _ { _ i }$ 和求解无人机 $i$ 与无人机 $k$ 之间间隔无人机数 $n$ ",
+        "page_idx": 14
+    },
+    {
+        "type": "text",
+        "text": "Step3：判断 $n$ 和无人机 $k$ 与无人机 $\\mathbf { \\widetilde { F Y 0 1 } }$ 之间间隔无人机数量的数量关系，确定信号角度的数量关系； 国 .go",
+        "page_idx": 14
+    },
+    {
+        "type": "text",
+        "text": "Step4：利用与Step3所给信号角度的关系进行拟对，锁定无人机 $i$ 的位置",
+        "page_idx": 14
+    },
+    {
+        "type": "text",
+        "text": "坐标：",
+        "page_idx": 15
+    },
+    {
+        "type": "text",
+        "text": "Step5：取出已知量 $\\alpha _ { \\iota } , \\alpha _ { 1 } , \\theta _ { k } , ( \\rho _ { i } , \\theta _ { \\iota } ) , ( \\rho _ { 1 } , \\theta _ { 1 } )$ ，利用问题一（1）的定位模型，求解无人机 $k$ 的实际坐标 $( \\rho _ { \\varepsilon } , \\theta _ { \\varepsilon } )$ ",
+        "page_idx": 15
+    },
+    {
+        "type": "text",
+        "text": "Step6：计算模型求解实际坐标值与随机生成坐标值的平均偏差，做有效性分析。",
+        "page_idx": 15
+    },
+    {
+        "type": "text",
+        "text": "6.3问题一（2）的结果分析",
+        "text_level": 1,
+        "page_idx": 15
+    },
+    {
+        "type": "text",
+        "text": "由于求解方法为仿真模拟，10500组具体结果以exc𝑒𝑙表格形式展示，篇幅问题，详解见支撑材料，文本内仅展示一种情况下的结果分析：",
+        "page_idx": 15
+    },
+    {
+        "type": "table",
+        "img_path": "images/16da4fe413c8d415e096f1168cc7ca8ee47f396979f82d977ec55c10528a21fb.jpg",
+        "table_caption": [
+            "表6­3被动接收无人机FY02定位的遍历结果"
+        ],
+        "table_footnote": [],
+        "table_body": "<html><body><table><tr><td rowspan=\"3\">∠i2i的无偏值</td><td rowspan=\"3\"></td><td rowspan=\"3\">∠i21的无偏值</td><td rowspan=\"3\">FY0i</td><td>角度值的平均</td><td>长度值的平均</td></tr><tr><td>偏差</td><td>偏差</td></tr><tr><td>一</td><td>140.82</td><td>140.31</td><td>FY03</td><td>.0.00</td><td>0.64</td></tr><tr><td>2</td><td>140.77</td><td>140.51</td><td>FY03</td><td>0.00</td><td>0.64</td></tr><tr><td>3</td><td>140.15</td><td>140.10</td><td>FY03</td><td>0.00</td><td>0.64</td></tr><tr><td></td><td>…，</td><td>…</td><td></td><td>…</td><td></td></tr><tr><td>10499</td><td>100.19</td><td>19.84</td><td>FY09</td><td>1.00</td><td>0.00</td></tr><tr><td>10500</td><td>100.68</td><td>19.57</td><td>FY09</td><td>1.00</td><td>0.00</td></tr><tr><td>平均值</td><td></td><td>/</td><td></td><td>0.70</td><td>0.54</td></tr></table></body></html>",
+        "page_idx": 15
+    },
+    {
+        "type": "text",
+        "text": "仿真模拟的准确率达到 $1 0 0 \\%$ 。上表展示的是随机 $k { = } 2$ 的10500组数据，遍历增加一架发射信号的无人机FYOi的所有可能位置，检测是否都能有效确定FY02的实际坐标。如表所示，在每种FYOi作为发射信号无人机的条件下，两个坐标值的平均偏差均较小。且未展示的其余7张表格的结果（支撑材料中见）也十分理想，说明除FY00和FY01外，仅需一架无人机发射信号，即可实现无人机的有效定位。 生",
+        "page_idx": 15
+    },
+    {
+        "type": "text",
+        "text": "七、问题一（3）模型的建立与求解",
+        "text_level": 1,
+        "page_idx": 16
+    },
+    {
+        "type": "text",
+        "text": "7.1基准圆周的选取 ",
+        "text_level": 1,
+        "page_idx": 16
+    },
+    {
+        "type": "text",
+        "text": "问题一（3）要求设计调整方案使得9架无人机最终均匀分布在某一圆周之上，根据题给无人机初始位置信息（如下表7­1所示），确定本题调整到的基准圆周为半径 $9 8 m$ 的圆上，即初始时刻无人机FY02、FY05、FY08所在的圆。即对应极坐标下，圆周上的无人机长度坐标的无偏值为 $\\rho = 9 8 m$ ",
+        "page_idx": 16
+    },
+    {
+        "type": "table",
+        "img_path": "images/9916885f4bf24de56571b43b290984f30c7cf56b6bc81a96f6734c864b15bcdf.jpg",
+        "table_caption": [
+            "表7-1无人机的初始位置"
+        ],
+        "table_footnote": [],
+        "table_body": "<html><body><table><tr><td>无人机编号</td><td>极坐标（m°）</td></tr><tr><td>0</td><td>(0,0)</td></tr><tr><td>1</td><td>(100,0)</td></tr><tr><td>2</td><td>(98,40.10)</td></tr><tr><td>3</td><td>(112,80.21)</td></tr><tr><td>4</td><td>(105,119.75)</td></tr><tr><td>5</td><td>(98,159.86)</td></tr><tr><td>6</td><td>(112,199.96)</td></tr><tr><td>7</td><td>(105,240.07)</td></tr><tr><td>8</td><td>(98,280.17)</td></tr><tr><td>9</td><td>(112,320.28)</td></tr></table></body></html>",
+        "page_idx": 16
+    },
+    {
+        "type": "text",
+        "text": "7.2调整方案设计",
+        "text_level": 1,
+        "page_idx": 16
+    },
+    {
+        "type": "text",
+        "text": "7.2.1调整方案步骤一",
+        "text_level": 1,
+        "page_idx": 16
+    },
+    {
+        "type": "text",
+        "text": "步骤一是调整无人机FY02、FY05、FY08初始位置角度坐标的数据，使其达到无偏理想值或误差尽可能小的理想值。",
+        "page_idx": 16
+    },
+    {
+        "type": "text",
+        "text": "（1）无人机FY02、FY05、FY08的信号发射与接收关系根据两两之间的夹角与 $1 2 0 ^ { \\circ }$ 作差的绝对值的大小判断，判断模型为：",
+        "page_idx": 16
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\operatorname* { m i n } \\{ | 1 2 0 - \\theta _ { s } + \\theta _ { 2 } | , \\left| 1 2 0 - \\theta _ { s } + \\theta _ { s } \\right| , \\left| 1 2 0 - ( 2 \\pi - \\theta _ { s } + \\theta _ { 2 } ) \\right| \\}\n$$",
+        "text_format": "latex",
+        "page_idx": 16
+    },
+    {
+        "type": "text",
+        "text": "其中， $\\theta$ 表示对应极坐标上的角度坐标。如图7-1，可表示为：",
+        "page_idx": 16
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\operatorname* { m i n } \\{ | 1 2 0 - \\beta _ { z s } | , | 1 2 0 - \\beta _ { s s } | , | 1 2 0 - \\beta _ { z s } | \\}\n$$",
+        "text_format": "latex",
+        "page_idx": 16
+    },
+    {
+        "type": "image",
+        "img_path": "images/41b2c4d942b223debf873ea9c1c2dc1eaec23409d87a86c0478347ce8f305e4e.jpg",
+        "img_caption": [
+            "图7-1两两夹角关系图"
+        ],
+        "img_footnote": [],
+        "page_idx": 17
+    },
+    {
+        "type": "text",
+        "text": "判断结果对应的角度下标值即为信号发射无人机的编号。本题结果为$\\left| 1 2 0 - \\beta _ { 2 8 } \\right| < \\left| 1 2 0 - \\beta _ { 2 5 } \\right| < \\left| 1 2 0 - \\beta _ { 5 8 } \\right|$ ，即确定步骤一中圆周上发射信号无人机为FY02、FY08，被动接收信号无人机为FY05，且FY05需要调整位置坐标，FY02与FY08的相对位置视为理想位置，其坐标也为理想坐标点。",
+        "page_idx": 17
+    },
+    {
+        "type": "text",
+        "text": "（2）无人机FY05位置坐标的调整",
+        "page_idx": 17
+    },
+    {
+        "type": "text",
+        "text": "由问题一（1）中的定位模型4可知发射信号无人机 $i , \\ j$ 与被动接收信号无人机 $k$ 的角度坐标关系式如下：",
+        "page_idx": 17
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\theta _ { k } = \\arctan ( \\frac { \\sin ( \\theta _ { j } + \\alpha _ { j } ) { \\bullet \\sin \\alpha _ { i } } - \\sin ( \\alpha _ { i } - \\theta _ { i } ) { \\bullet \\sin \\alpha _ { j } } } { \\cos ( \\alpha _ { j } + \\theta _ { j } ) { \\bullet \\sin \\alpha _ { i } } + \\cos ( \\alpha _ { i } - \\theta _ { i } ) { \\bullet \\sin \\alpha _ { j } } } )\n$$",
+        "text_format": "latex",
+        "page_idx": 17
+    },
+    {
+        "type": "text",
+        "text": "根据发射信号无人机的理想坐标，我们可以确定接收信号无人机的理想角度坐标，记为 $\\boldsymbol { \\theta } _ { \\nu } ^ { \\dagger }$ ，关系式如下：",
+        "page_idx": 17
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\theta _ { * } ^ { ' } = \\arctan ( \\frac { \\sin ( \\theta _ { j } + \\alpha ^ { ' } ) { \\cdot } \\sin \\alpha ^ { ' } - \\sin ( \\alpha ^ { ' } - \\theta _ { i } ) { \\cdot } \\sin \\alpha } { \\cos ( \\alpha ^ { ' } + \\theta _ { j } ) { \\cdot } \\sin \\alpha ^ { ' } + \\cos ( \\alpha ^ { ' } - \\theta _ { i } ) { \\cdot } \\sin \\alpha ^ { ' } } )\n$$",
+        "text_format": "latex",
+        "page_idx": 17
+    },
+    {
+        "type": "text",
+        "text": "由于本题中无人机 $_ 2$ 、5、8相对位置对称的特殊性，可直接建立 $\\alpha _ { i }$ 与 $\\dot { \\alpha }$ 的关系和 $\\alpha _ { i }$ 与 $\\alpha ^ { \\cdot }$ 的关系：",
+        "page_idx": 17
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\dot { \\alpha _ { i } } = \\alpha _ { i } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) } { 2 }\n$$",
+        "text_format": "latex",
+        "page_idx": 17
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\alpha _ { j } ^ { \\cdot } = \\alpha _ { j } - \\frac { ( \\alpha _ { j } - \\alpha _ { i } ) } { 2 }\n$$",
+        "text_format": "latex",
+        "page_idx": 17
+    },
+    {
+        "type": "text",
+        "text": "联合式（7-3）、（7-4）、（7-5）、（7-6）得调整角度量 $\\Delta \\theta _ { \\varepsilon }$ 的表达式：",
+        "page_idx": 17
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\begin{array} { r l } & { \\Delta \\theta _ { \\varepsilon } = \\arctan ( \\frac { \\sin ( \\theta _ { j } + \\alpha _ { j } - \\frac { ( \\alpha _ { j } - \\alpha _ { i } ) } { 2 } ) \\sin ( \\alpha _ { i } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) } { 2 } ) - \\sin ( \\alpha _ { i } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) } { 2 } - \\theta _ { i } ) \\cdot \\sin ( \\alpha _ { j } - \\frac { ( \\alpha _ { j } - \\alpha _ { i } ) } { 2 } ) } { \\cos ( \\alpha _ { j } - \\frac { ( \\alpha _ { j } - \\alpha _ { i } ) } { 2 } + \\theta _ { j } ) \\cdot \\sin ( \\alpha _ { i } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) } { 2 } ) + \\cos ( \\alpha _ { i } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) } { 2 } - \\theta _ { i } ) \\cdot \\sin ( \\alpha _ { j } - \\frac { ( \\alpha _ { j } - \\alpha _ { i } ) } { 2 } ) } ) } \\\\ & { - \\arctan ( \\frac { \\sin ( \\theta _ { j } + \\alpha _ { j } ) \\cdot \\sin \\alpha _ { i } - \\sin ( \\alpha _ { i } - \\theta _ { i } ) \\cdot \\sin \\alpha _ { j } } { \\cos ( \\alpha _ { j } + \\theta _ { j } ) \\cdot \\sin \\alpha _ { i } + \\cos ( \\alpha _ { i } - \\theta _ { i } ) \\cdot \\sin \\alpha _ { j } } ) } \\end{array}\n$$",
+        "text_format": "latex",
+        "page_idx": 18
+    },
+    {
+        "type": "text",
+        "text": "调整后的 $\\beta _ { z s } ,$ $\\beta _ { \\mathfrak { z } \\mathfrak { z } }$ $\\beta _ {  { \\mathrm { s s } } }$ 再进行式（7-2）的比较，通过迭代反复计算、更新无人机FYO2、FY05、FYO8的坐标，使得方案结果更加逼近无偏值。",
+        "page_idx": 18
+    },
+    {
+        "type": "text",
+        "text": "7.2.2调整方案步骤二",
+        "text_level": 1,
+        "page_idx": 18
+    },
+    {
+        "type": "text",
+        "text": "经过步骤一，圆周上确定三架发射信号无人机，编号分别为FY02、FY05、FYO8，认定其坐标值为近似理想值，步骤二遍历其他任意无人机作为被动接收信号无人机，根据角度信息调整各自的角度坐标 $\\theta _ { \\ast }$ ，使得所有无人机均匀分布在以FYO0为圆心的同心圆之上。",
+        "page_idx": 18
+    },
+    {
+        "type": "text",
+        "text": "（1）圆周上的信号发射无人机的选择",
+        "page_idx": 18
+    },
+    {
+        "type": "text",
+        "text": "利用圆的对称关系，发现无人机2、5、8之间均间隔两架无人机，所以圆周上的信号发射无人机i， $j$ 的选择如下表7-2所示：",
+        "page_idx": 18
+    },
+    {
+        "type": "table",
+        "img_path": "images/220b15213970189590f20fb5d69602f86acb509a2678954b4ccdf07defb784fb.jpg",
+        "table_caption": [
+            "表7-2信号发射无人机的选择 "
+        ],
+        "table_footnote": [
+            "选择情况如图7-2所示："
+        ],
+        "table_body": "<html><body><table><tr><td>k</td><td>2<k<5</td><td>5<k<8</td><td>2<k或k>8</td></tr><tr><td>i</td><td>2</td><td>5</td><td>8</td></tr><tr><td>j</td><td>5</td><td>8</td><td>2</td></tr></table></body></html>",
+        "page_idx": 18
+    },
+    {
+        "type": "image",
+        "img_path": "images/55e60cd1cd76df34cd56620f93afb3d3a6826e8a59d846036a4f10e211176a81.jpg",
+        "img_caption": [
+            "图7-2选定发射信号无人机示意图"
+        ],
+        "img_footnote": [],
+        "page_idx": 18
+    },
+    {
+        "type": "text",
+        "text": "（2）无人机FYOk角度坐标 $\\theta _ { \\nu }$ 的调整",
+        "page_idx": 19
+    },
+    {
+        "type": "text",
+        "text": "此步骤值调解FYOk的角度坐标，即 $\\theta _ { \\ast }$ 。则长度坐标 $\\rho _ { i }$ 为无关变量，假定$\\rho _ { \\varepsilon } = \\rho _ { \\varepsilon } = \\rho _ { \\ j }$ 。由于对称性，调整模型只考虑一种情况下间隔内人两种不同情形。",
+        "page_idx": 19
+    },
+    {
+        "type": "text",
+        "text": "由问题一（1）中的定位模型4可知发射信号无人机 $i , \\ j$ 与被动接收信号无人机 $k$ 的角度坐标关系式如下：",
+        "page_idx": 19
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\theta _ { \\star } = \\arctan ( \\frac { \\sin ( \\theta _ { j } + \\alpha _ { j } ) { \\sin \\alpha _ { i } } - \\sin ( \\alpha _ { i } - \\theta _ { i } ) { \\sin \\alpha _ { j } } } { \\cos ( \\alpha _ { j } + \\theta _ { j } ) { \\sin \\alpha _ { i } } + \\cos ( \\alpha _ { i } - \\theta _ { i } ) { \\sin \\alpha _ { j } } } )\n$$",
+        "text_format": "latex",
+        "page_idx": 19
+    },
+    {
+        "type": "text",
+        "text": "根据发射信号无人机的理想坐标，我们可以确定接收信号无人机的理想角度坐标，记为 $\\boldsymbol { \\theta } _ { \\nu } ^ { \\prime }$ ，关系式如下：",
+        "page_idx": 19
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\theta _ { \\nu } ^ { ' } = \\arctan ( \\frac { \\sin ( \\theta _ { j } + \\alpha _ { j } ^ { ' } ) { \\sin } \\alpha _ { _ { \\nu } } ^ { ' } - \\sin ( \\alpha _ { _ { \\nu } } ^ { ' } - \\theta _ { _ { \\nu } } ) { \\sin } \\alpha _ { _ { \\nu } } ^ { ' } } { \\cos ( \\alpha _ { _ { j } } ^ { ' } + \\theta _ { _ { j } } ) { \\sin } \\alpha _ { _ { \\nu } } ^ { ' } + \\cos ( \\alpha _ { _ { \\nu } } ^ { ' } - \\theta _ { _ { \\nu } } ) { \\sin } \\alpha _ { _ { j } } ^ { ' } } )\n$$",
+        "text_format": "latex",
+        "page_idx": 19
+    },
+    {
+        "type": "text",
+        "text": "信号角度 $\\alpha _ { i } \\mathrm { . }$ $\\alpha _ { \\iota }$ 的大小关系决定了 $\\alpha$ 与 $\\alpha ^ { \\prime }$ 的关系和 $\\alpha _ { \\iota }$ 与 $\\alpha ^ { \\ast }$ 的关系表达式：",
+        "page_idx": 19
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\begin{array} { r l } & { \\underline { { \\underline { { \\Psi } } } } ( \\alpha _ { i } < \\alpha _ { j } \\mathbb { H } ) , } \\\\ & { \\underline { { \\underline { { \\Psi } } } } ( \\alpha _ { i } < \\alpha _ { j } \\mathbb { H } ) , } \\\\ & { \\underline { { \\underline { { \\Psi } } } } ( \\alpha _ { i } < \\alpha _ { j } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) + 2 0 } { 2 } } \\\\ & { \\underline { { \\underline { { \\Psi } } } } ( \\alpha _ { i } > \\alpha _ { j } \\mathbb { H } ) , } \\\\ & { \\underline { { \\underline { { \\Psi } } } } ( \\alpha _ { i } > \\alpha _ { j } \\mathbb { H } ) , } \\end{array}\n$$",
+        "text_format": "latex",
+        "page_idx": 19
+    },
+    {
+        "type": "text",
+        "text": "联合式（7-8）、（7-9）、（7-10）得调整角度量 $\\Delta \\theta _ { \\nu }$ 的表达式：",
+        "page_idx": 19
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\{ \\begin{array} { l l } { \\displaystyle \\Delta \\theta _ { s } = \\arctan ( \\frac { \\sin ( \\theta _ { j } + \\alpha _ { j } - \\alpha _ { j } ) } { 2 } + 2 0 ) \\sin ( \\alpha _ { i } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) } { 2 } ) 2 0 ) - \\sin ( \\alpha _ { i } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) } { 2 } \\ 2 0 - \\theta ) \\sin ( \\alpha _ { j } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) } { 2 } + 2 0 ) } \\\\ { \\displaystyle \\cos ( \\alpha _ { i } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) } { 2 } + 2 0 + \\theta _ { j } ) \\sin ( \\alpha _ { i } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) } { 2 } ) 2 0 ) + \\cos ( \\alpha _ { i } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) } { 2 } ) 2 0 - \\theta ) \\sin ( \\alpha _ { i } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) } { 2 } + 2 0 ) } \\\\ { \\displaystyle - \\pi \\cos ( \\frac { \\sin ( \\theta _ { j } + \\alpha _ { j } ) \\sin \\alpha _ { i } - \\sin ( \\alpha _ { i } - \\theta _ { j } ) \\sin \\alpha _ { j } } { \\cos ( \\alpha _ { i } + \\theta _ { j } ) \\sin \\alpha _ { i } + \\cos ( \\alpha _ { i } - \\theta _ { j } ) \\sin \\alpha _ { j } } ) \\qquad \\alpha _ { i } \\le \\alpha _ { i } } \\\\ { \\displaystyle \\sin ( \\theta _ { i } + \\alpha _ { i } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) } { 2 } - 2 0 ) \\sin ( \\alpha _ { i } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) } { 2 } + 2 0 ) - \\sin ( \\alpha _ { i } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) } { 2 } + 2 0 - \\theta ) \\sin ( \\alpha _ { i } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) } { 2 } - 2 0 ) } \\\\ { \\displaystyle \\cos ( \\alpha _ { i } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) } { 2 } - 2 0 + \\theta _ { j } ) \\sin ( \\alpha _ { i } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) } { 2 } + 2 0 ) + \\cos ( \\alpha _ { i } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) } { 2 } + 2 0 - \\theta ) \\sin ( \\alpha _ { j } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) } { 2 } + 2 0 ) } \\\\  \\displaystyle - \\pi \\tan ( \\frac { \\sin ( \\theta _ { j } + \\alpha _ { j } ) \\sin ( \\alpha _ { i } - \\frac { ( \\alpha _ { i } - \\alpha _ { j } ) \\sin \\alpha _ { j } } { 2 } ) } \\\\  \\displaystyle \\cos ( \\alpha _ { i } +  \\end{array}\n$$",
+        "text_format": "latex",
+        "page_idx": 19
+    },
+    {
+        "type": "text",
+        "text": "7.2.3调整方案步骤三",
+        "text_level": 1,
+        "page_idx": 20
+    },
+    {
+        "type": "text",
+        "text": "经过步骤二，所有飞机的角度坐标均匀分布，相对位置分布呈现为同心圆的各个均匀分布点，这一步调整被动接收无人机 $k$ 的长度坐标，即 $\\rho _ { i } \\circ$ 因为均匀分布， $\\theta _ { \\nu }$ 可认为是无偏值或近似无偏，由步骤二求解得到，即 $\\boldsymbol { \\theta } _ { \\nu } \\approx \\boldsymbol { \\theta } _ { \\nu } ^ { * }$ ，k=1,2,..,.9。",
+        "page_idx": 20
+    },
+    {
+        "type": "text",
+        "text": "（1）圆周上的信号发射无人机的选择",
+        "page_idx": 20
+    },
+    {
+        "type": "text",
+        "text": "此过程与步骤二完全一致。",
+        "page_idx": 20
+    },
+    {
+        "type": "text",
+        "text": "（2）无人机FYOk长度坐标 $\\rho _ { \\ast }$ 调整",
+        "page_idx": 20
+    },
+    {
+        "type": "text",
+        "text": "此步骤求解FYOk长度坐标 $\\rho _ { \\ast }$ ，如图利用正弦定理，建立 $\\rho _ { \\nu }$ 的表达式以及目标长度坐标 $\\rho _ { \\nu } ^ { \\mathrm { ~ ~ } }$ 的表达式：",
+        "page_idx": 20
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\rho _ { k } = \\frac { \\rho _ { i } } { \\sin \\alpha _ { i } } { \\sin ( \\pi - \\alpha _ { i } - \\theta _ { k } + \\theta _ { i } ) }\n$$",
+        "text_format": "latex",
+        "page_idx": 20
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\stackrel { \\cdot } { \\rho _ { k } } = \\frac { \\rho _ { i } } { \\sin \\alpha _ { i } } \\cdot \\sin ( \\pi - \\alpha _ { i } ^ { ' } - \\theta _ { k } + \\theta _ { i } )\n$$",
+        "text_format": "latex",
+        "page_idx": 20
+    },
+    {
+        "type": "image",
+        "img_path": "images/c14c815045bd6c350ebe7e72adf22acba30d8302d253c2745ce5b5992e8fcd34.jpg",
+        "img_caption": [
+            "图7­3长度坐标调整示意图"
+        ],
+        "img_footnote": [],
+        "page_idx": 20
+    },
+    {
+        "type": "text",
+        "text": "将式（7-12）、式（7-13）作差，得到调整长度量 $\\Delta \\rho _ { _ { F } }$ 的表达式：",
+        "page_idx": 20
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\Delta \\rho _ { k } = \\frac { \\rho _ { i } } { \\sin { \\alpha _ { i } } } \\cdot \\sin ( \\pi - \\alpha _ { i } - \\theta _ { k } + \\theta _ { i } ) - \\frac { \\rho _ { i } } { \\sin { \\alpha _ { i } } } \\cdot \\sin ( \\pi - \\alpha _ { i } ^ { ' } - \\theta _ { k } + \\theta _ { i } )\n$$",
+        "text_format": "latex",
+        "page_idx": 20
+    },
+    {
+        "type": "text",
+        "text": "其中， $\\Delta \\rho _ { \\nu }$ 的正负值有方向意义，当 $\\Delta \\rho _ { \\nu }$ 为正，则向圆心方向调整长度距离，当 $\\Delta \\rho _ { _ i }$ 为负，则背离圆心方向调整长度距离。 moe.g",
+        "page_idx": 20
+    },
+    {
+        "type": "text",
+        "text": "7.3方案模型的求解",
+        "text_level": 1,
+        "page_idx": 21
+    },
+    {
+        "type": "text",
+        "text": "7.3.1方案模型汇总 ",
+        "text_level": 1,
+        "page_idx": 21
+    },
+    {
+        "type": "text",
+        "text": "总方案模型如下式所示：",
+        "page_idx": 21
+    },
+    {
+        "type": "text",
+        "text": "（204号 $\\begin{array} { r l } & { \\begin{array} { r l } & { \\quad ( \\mathbf { a } \\otimes \\mathbf { \\hat { z } } \\otimes \\mathbf { \\hat { z } } \\otimes \\mathbf { \\hat { z } } - \\mathbf { \\hat { z } } , \\mathbf { \\hat { z } } \\otimes \\mathbf { \\hat { z } } ) } \\\\ & { \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad } \\quad \\quad \\quad \\quad \\quad } \\\\ & { \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad } \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad  \\\\ & & { \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad } \\\\ & { \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad \\quad } \\\\ &  \\quad \\quad \\quad \\quad \\quad  \\end{array} \\end{array}$ 106",
+        "page_idx": 21
+    },
+    {
+        "type": "text",
+        "text": "利用迭代法实现无人机位置调整对应角度信息 $\\alpha _ { i } , \\alpha _ { i }$ 的更新，最终调整至所得 $\\alpha _ { _ i } , \\alpha _ { _ i }$ 解出对应 $\\boldsymbol { \\theta } _ { \\nu }$ 等于或无限接近无偏值位置时，迭代结束。求解步骤如下：",
+        "page_idx": 21
+    },
+    {
+        "type": "text",
+        "text": "Step1：输入初始位置各无人机的坐标参数；Step2：赋值无人机FY05的参数给无人机k，记录 $\\theta _ { \\ast }$ ，赋值无人机FY02、",
+        "page_idx": 21
+    },
+    {
+        "type": "text",
+        "text": "FY08的参数给无人机 $i , \\ j$ ，计算出 $\\alpha _ { i } , \\alpha _ { i }$ 的初始迭代值；",
+        "page_idx": 21
+    },
+    {
+        "type": "text",
+        "text": "Step3：开始迭代 $\\alpha _ { i } , \\alpha _ { i }$ ，利用定位模型4计算每一轮迭代后对应的 $\\theta _ { \\nu }$ ，直至迭代结束，记录最后一次 $\\theta _ { \\nu }$ ，记为 $\\boldsymbol { \\theta } _ { \\boldsymbol { \\varepsilon } } ^ { * }$ ，与Step2中 $\\theta _ { \\nu }$ 作差记为调整量 $\\Delta \\theta _ { \\nu }$ ：",
+        "page_idx": 21
+    },
+    {
+        "type": "text",
+        "text": "Step4：赋值其余无人机坐标参数给无人机 $k ,$ 记录 $\\theta _ { \\nu }$ ，根据无人机 $k$ 赋值FY02、FY05、FY08的参数给无人机 $i , \\ j$ 计算出 $\\alpha _ { i } , \\alpha _ { i }$ 的初始迭代值； 花",
+        "page_idx": 21
+    },
+    {
+        "type": "text",
+        "text": "Step5：重复Step3，计算出其余无人机的角度坐标 $\\theta _ { \\nu }$ 的调整值：",
+        "page_idx": 21
+    },
+    {
+        "type": "text",
+        "text": "Step6：对Step4中的赋值进行长度坐标 $\\rho _ { \\nu }$ 的调整量计算：",
+        "page_idx": 21
+    },
+    {
+        "type": "text",
+        "text": "Step7：整合调整后的全体无人机坐标参数制表，输出结果。",
+        "page_idx": 21
+    },
+    {
+        "type": "text",
+        "text": "7.4模型求解结果展示",
+        "text_level": 1,
+        "page_idx": 22
+    },
+    {
+        "type": "text",
+        "text": "调整方案模型下的输出结果如下表7­3所示：",
+        "page_idx": 22
+    },
+    {
+        "type": "table",
+        "img_path": "images/e4955b6cecfb58155cdf9cf9b6ca032c82879a4a8685d390fa21cdeb79027014.jpg",
+        "table_caption": [
+            "表7-3调整后各无人机位置"
+        ],
+        "table_footnote": [],
+        "table_body": "<html><body><table><tr><td>无人机编号</td><td>极坐标（m°）</td><td>调整量p</td><td>调整量△</td></tr><tr><td>0</td><td>(0,0)</td><td>0.00</td><td>0.</td></tr><tr><td>1</td><td>(98.12,0.30)</td><td>1.88</td><td>0.30</td></tr><tr><td>2</td><td>(98.00,40.10)</td><td>0.00</td><td>0.</td></tr><tr><td>3</td><td>(98.56,80.25)</td><td>13.44</td><td>0.04</td></tr><tr><td>4</td><td>(97.93,119.75)</td><td>7.07</td><td>0.00</td></tr><tr><td>5</td><td>(98.00,159.86)</td><td>0.00</td><td>0.00</td></tr><tr><td>6</td><td>(97.68,199.95)</td><td>14.32</td><td>0.01</td></tr><tr><td>7</td><td>(97.86,239.95)</td><td>7.16</td><td>-0.12</td></tr><tr><td>8</td><td>(98.00,280.17)</td><td>0.00</td><td>0.00</td></tr><tr><td>9</td><td>(98.29,320.31)</td><td>13.71</td><td>0.03</td></tr></table></body></html>",
+        "page_idx": 22
+    },
+    {
+        "type": "text",
+        "text": "从输出的结果来看，角度上的调整量较小到可以忽略不计，最大为无人机1的调整量为 $0 . 3 ^ { \\circ }$ ，考虑两架无人机距离因素的影响放大了角度变动对相对位置的影响。在长度上的调整是明显的，且调整后的位置坐标与无偏值虽有误差，但误差较小。从整体结果的对比来看，此调整方案具有可行性和实用性。",
+        "page_idx": 22
+    },
+    {
+        "type": "text",
+        "text": "八、问题二模型的建立与求解",
+        "text_level": 1,
+        "page_idx": 22
+    },
+    {
+        "type": "text",
+        "text": "问题二涉及实际飞行中存在的锥形编队队形，设计无人机位置调整方案，使得锥形编队队形通过纯方位无源定位的情形进行各自相对位置的有效定位与调整。",
+        "page_idx": 22
+    },
+    {
+        "type": "text",
+        "text": "8.1编队形状的转化",
+        "text_level": 1,
+        "page_idx": 22
+    },
+    {
+        "type": "text",
+        "text": "如图8­1，首先对锥形无人机编队进行圆形化转化：",
+        "page_idx": 22
+    },
+    {
+        "type": "image",
+        "img_path": "images/b76fe05ee24356ff255c04208b3610e1519462b3ba70e3148fa7a8220876b357.jpg",
+        "img_caption": [
+            "图8-1锥形编队圆形化分类示意图"
+        ],
+        "img_footnote": [],
+        "page_idx": 23
+    },
+    {
+        "type": "text",
+        "text": "以无人机FY05为圆心，我们能将锥形无人机编队上的15架无人机进行分组，第一组包括无人机FY02、FY03、FY04、FY06、FY08、FY09，假定其理想位置坐标分布在半径为 $5 0 m$ 的圆周上，我们将该圆等分成12份，则第二组包括无人机FY01、FY07、FY10、FY13，理想位置坐标分布于半径为 $\\sqrt { 3 } 0 \\sqrt { 3 } m$ 的圆周上、第三组包括无人机FY12、FY14，理想位置坐标分布于半径 $1 0 0 m$ 的圆周上，不对FY11与FY15进行分类，因为上述所有的无人机均能在12等分的位置找到与自身对应的理想坐标值，FY11与FY15无对应点。",
+        "page_idx": 23
+    },
+    {
+        "type": "text",
+        "text": "8.2调整方案设计",
+        "text_level": 1,
+        "page_idx": 23
+    },
+    {
+        "type": "text",
+        "text": "8.2.1角度坐标 $\\boldsymbol { \\theta }$ 的调整模型",
+        "text_level": 1,
+        "page_idx": 23
+    },
+    {
+        "type": "text",
+        "text": "结合问题一（3）对圆形编队设计的调整方案模型，在本题中，依然能够使用该方案了前两步骤，对除FY05、FY11、FY15外所有无人机的相对位置坐标的角度坐标进行调整，直至达到理想位置坐标点。其调整推导与问题一（3）完全一致，对此不再重述，下文给出角度坐标调整方案模型公式：",
+        "page_idx": 23
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\begin{array} { r l } { \\Delta Q _ { i } = } & { \\operatorname* { c u r f } _ { \\phi \\in \\mathcal { N } _ { i } } \\frac { ( \\omega _ { i } , \\omega _ { j } , \\omega _ { j } ) } { ( \\omega _ { i } , \\omega _ { j } ) } \\operatorname* { d e t } ( \\omega _ { i } , \\frac { ( \\omega _ { i } - \\omega _ { j } ) } { 2 } ) + \\operatorname* { d i t } ( \\omega _ { i } , - \\frac { ( \\omega _ { i } - \\omega _ { j } ) } { 2 } ) - \\operatorname* { d i t } ( \\omega _ { i } , - \\frac { ( \\omega _ { i } - \\omega _ { j } ) } { 2 } ) \\operatorname* { d i t } \\mathrm { d } ( \\omega _ { i } , \\frac { ( \\omega _ { i } - \\omega _ { j } ) } { 2 } ) } \\\\ { \\operatorname* { d i t } ( \\omega _ { i } , \\omega _ { j } , - \\frac { \\omega _ { j } } { 2 } ) + \\operatorname* { d i t } ( \\omega _ { i } , - \\frac { \\omega _ { j } } { 2 } ) + \\operatorname* { d i t } ( \\omega _ { i } , - \\frac { ( \\omega _ { i } - \\omega _ { j } ) } { 2 } ) \\operatorname* { d i t } \\mathrm { d } ( \\omega _ { i } , - \\frac { ( \\omega _ { i } - \\omega _ { j } ) } { 2 } ) \\operatorname* { d i t } \\mathrm { d } ( \\omega _ { j } , \\frac { ( \\omega _ { i } - \\omega _ { j } ) } { 2 } ) } \\\\ { - \\operatorname* { d i t } ( \\omega _ { i } , \\omega _ { j } , \\omega _ { i } , \\omega _ { j } , \\omega _ { j } , \\omega _ { i } ) } \\\\ { \\operatorname* { d i t } ( \\omega _ { i } , \\omega _ { j } , \\omega _ { j } , \\omega _ { i } , \\omega _ { j } , \\omega _ { j } , \\omega _ { i } ) } \\\\ { \\operatorname* { d i t } ( \\omega _ { i } , \\omega _ { j } , \\omega _ { i } , \\omega _ { j } , \\omega _ { j } , \\omega _ { i } ) } \\\\ { \\left[ \\omega _ { i } , \\omega _ { i } , \\omega _ { j } , \\omega _ { j } , \\omega _ { i } , \\omega _ { j } , \\omega _ { j } \\right] } \\\\ { \\operatorname* { d i t } ( \\omega _ { i } , \\omega _ { i } , \\omega _ { j } , \\omega _ { i } , \\omega _ { j } ) } \\\\ { \\operatorname* { d i t } ( \\omega _ { i } , \\omega _ { j } , \\omega _ { i } , \\omega _ { j } ) + \\operatorname* { d i t } ( \\omega _ { i } , \\omega _ { j } ) } \\\\ { \\operatorname* { d i t } ( \\omega _ { i } , \\omega _ { j } , \\omega _ { i } , \\omega _ { j } , \\omega _ { j } ) } \\\\ { \\operatorname* { d i t } ( \\omega _ { i } , \\omega _ { j } , \\omega _ { i } , \\omega _ { j } , \\omega _ { i } ) } \\\\  \\operatorname* { d i t } ( \\omega _ { i } , \\omega _  \\end{array}\n$$",
+        "text_format": "latex",
+        "page_idx": 23
+    },
+    {
+        "type": "text",
+        "text": "此方案模型内唯一未确定的值为发射信号无人机i， $j$ 和被动接收信号无人机$k$ 的遍历范围，原因是此范围需要通过给定实际的初始位置坐标确定，但问题二并未给出相关数据。但其范围将在下文的仿真模拟中随机确定，值得注意的是每—组的随机生成的无人机坐标至少存在三个长度坐标相等但角度坐标略有偏差的数据。",
+        "page_idx": 23
+    },
+    {
+        "type": "text",
+        "text": "",
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "8.2.2长度坐标 $\\rho$ 的调整模型",
+        "text_level": 1,
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "长度坐标 $\\rho$ 的调整考虑组别不同所在圆周的半径不同，所有需要分组迭代调整组内无人机的长度坐标值。方案模型推导同问题一（3），公式如下：",
+        "page_idx": 24
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\rho _ { k , c } = \\frac { \\rho _ { i , c } } { \\sin \\alpha _ { i , c } } { \\sin ( \\pi - \\alpha _ { i , c } - \\theta _ { k , c } + \\theta _ { i , c } ) }\n$$",
+        "text_format": "latex",
+        "page_idx": 24
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\dot { \\rho _ { \\dot { \\kappa } , c } } = \\frac { \\rho _ { \\iota , c } } { \\sin \\alpha _ { \\iota , c } ^ { * } } { \\bullet \\sin ( \\pi - \\alpha _ { \\iota , c } ^ { * } - \\theta _ { \\iota , c } + \\theta _ { \\iota , c } ) }\n$$",
+        "text_format": "latex",
+        "page_idx": 24
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\Delta \\rho _ { k , c } = \\frac { \\rho _ { i , c } } { \\sin \\alpha _ { i , c } } { \\sin ( \\pi - \\alpha _ { i , c } - \\theta _ { k , c } + \\theta _ { i , c } ) } - \\frac { \\rho _ { i , c } } { \\sin \\alpha _ { i , c } ^ { ' } } { \\sin ( \\pi - \\alpha _ { i , c } ^ { ' } - \\theta _ { k , c } + \\theta _ { i , c } ) }\n$$",
+        "text_format": "latex",
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "其中，所有变量变成2维坐标，是考虑此时不同组别目标长度不同，共c组，c=1、2、3。",
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "8.1.2FY11、FY15坐标的确定与调整",
+        "text_level": 1,
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "对于FY11、FY15两架无人机的位置调整利用接收到的随机两组共线无人机发射的信号角度信息值来确定。",
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "角度坐标 $\\theta$ 利用角度 $\\alpha _ { i } , \\alpha _ { i }$ 的平均确定：",
+        "page_idx": 24
+    },
+    {
+        "type": "equation",
+        "text": "$$\n\\theta _ { k } = \\frac { 2 \\pi + \\theta _ { i } + \\theta _ { i } - 2 \\alpha _ { i } - 2 \\alpha _ { i } } { 4 } + \\frac { 2 \\pi + \\theta _ { j } + \\theta _ { j } - 2 \\alpha _ { j } - 2 \\alpha _ { j } } { 4 }\n$$",
+        "text_format": "latex",
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "长度坐标 $\\rho$ 根据正弦定理根据角度坐标的确定而确定。",
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "九、模型评价与推广",
+        "text_level": 1,
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "9.1模型评价 ",
+        "text_level": 1,
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "9.1.1模型优点",
+        "text_level": 1,
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "1、准确性高。本文中的定位模型、调整方案模型都是通过纯几何意义推导确定，求解采用遍历、仿真模拟、迭代算法，得到结果准确度高，误差小。",
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "2、层次性高。文本的定位模型、调整方案模型的建立过程由简入繁、根据题目的要求层层递进。",
+        "page_idx": 25
+    },
+    {
+        "type": "text",
+        "text": "9.1.2模型缺点",
+        "text_level": 1,
+        "page_idx": 25
+    },
+    {
+        "type": "text",
+        "text": "调整方案模型适用的假定前提存在一定的严苛性，使得调整的适用范围被局限。",
+        "page_idx": 25
+    },
+    {
+        "type": "text",
+        "text": "9.1.2模型的推广 ",
+        "text_level": 1,
+        "page_idx": 25
+    },
+    {
+        "type": "text",
+        "text": "本文提供的定位模型适用于保持在同一高度飞行所有圆形编队，且无论均匀分布多少架飞机，只要相互直接的飞行不受影响即可。",
+        "page_idx": 25
+    },
+    {
+        "type": "text",
+        "text": "调节方案模型虽假定了至少存在三架飞机在同一半径的圆周上，使得某些编队分布的情况不适用于此模型，但模型的思路是分析调整方案的有效渠道之一。",
+        "page_idx": 25
+    },
+    {
+        "type": "text",
+        "text": "十、参考文献",
+        "text_level": 1,
+        "page_idx": 25
+    },
+    {
+        "type": "text",
+        "text": "[1]范嫦娥,李德毅,彭冬亮,郭云飞.基于遗传算法的单站无源纯方位定位算法[J].计算机仿真,2007(06):168­170＋295.  \n[2]修建娟,王国宏,何友,修建华.纯方位系统中的定位模糊区分析[J].系统工程与电子技术,2005(08):1391-1393＋1424.  \n[3]王本才,王国宏,何友.多站纯方位无源定位算法研究进展[J].电光与控  \n制，2012,19(05):56-62.",
+        "page_idx": 25
+    },
+    {
+        "type": "text",
+        "text": "十一、附录 ",
+        "text_level": 1,
+        "page_idx": 26
+    },
+    {
+        "type": "table",
+        "img_path": "images/8e1dcb214773e877e6d34598f3ecc3bd5991d05339aae07d69a9530bdb82e29f.jpg",
+        "table_caption": [
+            "附件目录："
+        ],
+        "table_footnote": [],
+        "table_body": "<html><body><table><tr><td>问题一(1)</td><td>B_1_1.png：第一小问的结果</td></tr><tr><td>问题一(2)</td><td>B_2.xlsx：位置无偏差时各夹角度数 B_2_标准结果.xlsx：位置无偏差时的标准结果 B_2_模拟结果.xlsx：位置有偏差时的模拟结果</td></tr><tr><td>问题一（3）</td><td>B_3_origin_data.xlsx：原题表一数据 B_3_result.csv：调整后的表一数据 B_3_result.txt：角度、极径调整量以及调整前后结果</td></tr><tr><td>代码目录：</td><td></td></tr><tr><td>问题一(1)</td><td>B_1.py：问题一第一小问绘图程序</td></tr><tr><td>问题一（2）</td><td>B_2.py：问题一第二小问程序</td></tr><tr><td>问题一（3）</td><td>B_3.py：问题一第三小问程序</td></tr></table></body></html>",
+        "page_idx": 26
+    },
+    {
+        "type": "table",
+        "img_path": "images/b6ec79cc277de552335d81fa8eaaeb203ebf7eb4cc0f8d720cbe48455449de92.jpg",
+        "table_caption": [],
+        "table_footnote": [],
+        "table_body": "<html><body><table><tr><td>阿越(３） B_5．ｐ：阿题第二小阿桂丹</td></tr><tr><td>问题一（1）代码（B_1.py）：问题一第一小问绘图程序</td></tr><tr><td>import numpy asnp importmatplotlib.pyplot asplt</td></tr><tr><td>import pandas as pd</td></tr><tr><td>import warnings</td></tr><tr><td>#warnings.filterwarnings('ignore')</td></tr><tr><td>plt.rcParams['font.sans-serif]=['SimHei']#用来正常显示中文标签</td></tr><tr><td>plt.rcParams['axes.unicode_minus']=False#用来正常显示负号</td></tr><tr><td></td></tr><tr><td>classB_1_cls: def__init_(self):</td></tr></table></body></html>",
+        "page_idx": 26
+    },
+    {
+        "type": "text",
+        "text": "此时 $k$ 在中间，偏差为+-1 \"” theta_rad $\\ O =$ None theta_deg $\\ L =$ None （204号 $\\mathbf { r } =$ None color $\\mathbf { \\sigma } = \\mathbf { \\sigma }$ None iftheta_j-theta_k_true $< 1 8 0$ andtheta_k_true-theta_i<180: alpha_i=(18o-theta_k_true+theta_i)/2 alpha_i $\\Bumpeq$ np.arange(alpha_i-1,alpha_i+1,0.1) alpha_j=(18o+theta_k_true-theta_j)/2 alpha_j=np.arange(alpha_j-1,alpha_j+1,0.1) #print(alpha_i) #print(alpha_j) #print(alpha_i.shape) fenzi $\\ L =$ np.sin(np.radians(alpha_j+theta_j))\\*np.sin(np.radians(alpha_i))+np.sin( np.radians(-alpha_i+theta_i))\\*np.sin(np.radians(alpha_j)) fenmu $\\ L =$ np.cos(np.radians(alpha_j+thetaj))\\*np.sin(np.radians(alpha_i)+   \nnp.cos(np.radians(-alpha_i+theta_i))\\*np.sin(np.radians(alpha_j) theta_rad $\\ L =$ np.array(pd.Series(np.arctan(fenzi/fenmu).map(lambda x:xifx>0   \nelsex +np.pi)) theta_deg $\\ L =$ np.rad2deg(theta_rad) r=100\\*np.sin(np.radians(18O-thetaj+theta_deg-alphaj)/   \nnp.sin(np.radians(alpha_j)) #print（=== ”) #print(theta_deg) #print(𝑟) #print(== ==） #print(theta_deg.shape) #print(r.shape) 学生在线 #print(\"theta为：{}.format(theta_deg)） #print(r为：{}\".format(r）） alpha_i=(18o-theta_k_true+theta_i)/2 #print(theta_deg) #print(t) #print(= ===） returntheta_rad,theta_deg,r def__right_or_left_k_func(self,theta_i,theta_j,theta_k_true): 此时 $k$ 在两边，偏差为+-1 ” theta_rad $=$ None theta_deg $$ None r=None iftheta_k_true-theta_j<18oandtheta_k_true-theta_i<180: alpha_i=(18o-theta_k_true+theta_i)/2 alpha_i $\\ O =$ np.arange(alpha_i-1,alpha_i＋1,0.1) alpha_j $\\mathbf { \\sigma } = \\mathbf { \\sigma }$ (180-theta_k_true+theta_j)/2 alpha_j=np.arange(alpha_j-1,alpha_j+1,0.1) fenzi=np.sin(np.radians(alpha_j-theta_j))\\*np.sin(np.radians(alpha_i))-np.sin( np.radians(alpha_i-theta_i))\\*np.sin(np.radians(alpha_j)) fenmu $\\ L =$ np.cos(np.radians(alpha_i-theta_i))\\*np.sin(np.radians(alphaj)-   \nnp.cos(np.radians(alpha_j-theta_j))\\*np.sin(np.radians(alpha_i)) theta_rad $\\ L =$ np.array(pd.Series(np.arctan(fenzi/fenmu)).map(lambdax:xifx>0   \nelse x + np.pi)) theta_deg $\\mathbf { \\bar { \\rho } } = \\mathbf { \\bar { \\rho } }$ np.rad2deg(theta_rad) r =100 \\*np.sin(np.radians(-theta_j+theta_deg+alpha_j))/   \nnp.sin(np.radians(alpha_j)) eliftheta_k_true-theta_j<18Oandtheta_k_true-theta_i>180: 学生在线 alpha_i=(-18O+theta_k_true-theta_i)/2 alpha_i $\\ L =$ np.arange(alpha_i-1,alpha_i+1,0.1) alpha_j=(180-theta_k_true+thetaj）/2   \nnumber：第几架飞机为接受点   \nsep:间隔数   \nifnumber $> = 6$ ifi_2_i $\\scriptstyle = = 0$ or $\\therefore 2 - 2 = 0$ ori $2 . 1 = = 0$ result $\\mathbf { \\Psi } = \\mathbf { \\Psi }$ number-sep elifi_2_i $\\scriptstyle = =$ i_2_1ii_2_1: ifi_2_1>i_2ii/2: result $\\fallingdotseq$ number-sep else: result $\\Bumpeq$ number $^ +$ sepifnumber $^ +$ sep $\\scriptstyle < = 9$ elsenumber+sep-9 else: ifi_2_1>ii_2_1: result $\\mathbf { \\sigma } = \\mathbf { \\sigma }$ number-sep else: result $\\mathbf { \\Psi } = \\mathbf { \\Psi }$ number+sepifnumber $^ { + }$ $\\mathsf { s e p } < = \\mathsf { g }$ elsenumber+sep-9   \nelse: 三 $\\therefore 2 i i = = 0$ 0 $\\therefore 2 - 1 = = 0$ orii $2 - 1 = 0$ result $\\mathbf { \\Psi } = \\mathbf { \\Psi }$ number $^ { + }$ sepif number+sep $< = 9$ elsenumber $^ +$ sep-9 elifi_2 $i i = 1 , 2 , 1 + 1 1$ _2_1: 1 $1 . 2 . 1 > \\dot { 1 } . 2 . \\dot { 1 } \\dot { 1 } 1 >$ 话 result $\\ L =$ number $^ +$ sepifnumber $^ +$ sep $\\scriptstyle < = 9$ elsenumber $^ { + }$ sep-9 else: result $\\mathbf { \\sigma } = \\mathbf { \\sigma }$ number-sepifnumber-sep>1elsenumber $^ +$ (9-sep) else: ifi_2_1>i_2_1: result $\\mathbf { \\tau } = \\mathbf { \\tau }$ number+sepifnumber+sep<=9elsenumber+sep-9 else: result $\\fallingdotseq$ number-sepifnumber-sep>1elsenumber $^ +$ (9-sep)   \nreturnresult 学生在   \n#标准结果   \nwriter $\\mathbf { \\Psi } = \\mathbf { \\Psi }$ pd.ExcelWriterB2准果.lsx,engine=opyl')   \nfori in range（8）： number $= 1 + 2$ #第i+2架飞机作为接受点 data $\\mathbf { \\Psi } = \\mathbf { \\Psi }$ pd.read_excel(\"B_2.xlsx\",sheet_name=i) data_arr $\\mathbf { \\sigma } = \\mathbf { \\sigma }$ np.array(data) #print(data.shape)#（7,3) #print(data) result $\\Bumpeq$ np.zeros(7,)) mean_theta_deg $\\mathbf { \\Psi } = \\mathbf { \\Psi }$ np.zeros(7,)) mean_r $\\Bumpeq$ np.zeros(7,)) mean_true_theta_deg_bias $\\mathbf { \\sigma } = \\mathbf { \\sigma }$ np.zeros(7,)) mean_true_r_bias $\\Bumpeq$ np.zeros(7,)) forjinrange(7)： i2_ii_2_1,i_2_1 $\\mathbf { \\Psi } = \\mathbf { \\Psi }$ data_ar[i,:] sep=1ifi_2_i $\\scriptstyle = =$ 140else2ifi_2 $\\mathrm { i } \\mathrm { j } = = 1 0 0$ else3if $\\therefore 2 - 1 1 = = 6 0$ else4 result[ $\\mathbf { \\sigma } = \\mathbf { \\sigma }$ my_funci2_i,i_2_1,i_2_1,numbersep) data[发射点无人机编号] $\\mathbf { \\Sigma } = \\mathbf { \\Sigma }$ result data.to_excel(writer,sheet_name=\"Sheet{}\".format(i),index=False)   \nwriter.close()   \n#模拟结果   \nwriter2 $\\mathbf { \\sigma } = \\mathbf { \\sigma }$ pd.ExcelWriterB_2模果,ie=l)   \nfori in range（8）： number $= 1 + 2$ #第i+2架飞机作为接受点 data $\\mathbf { \\Psi } = \\mathbf { \\Psi }$ pd.read_excel(\"B_2.xlsx\",sheet_name=i) data_ar $\\Bumpeq$ np.array(data) （204号 ${ \\boldsymbol { r } } =$ np.random.rand(10500)#随机数 new_data $\\Bumpeq$ np.zeros(10500,3)) 中国大学生在线 forjinrange(data.shape[0]）： s=data_arr[,] = $s [ 0 ] = = 0$ $s [ 1 ] = = 0$ 0 $s [ 2 ] = = 0$ noe ",
+        "page_idx": 27
+    },
+    {
+        "type": "text",
+        "text": "",
+        "page_idx": 29
+    },
+    {
+        "type": "table",
+        "img_path": "images/52e2fcc34b04ce581f130bca2d610c1ed0a5629e30a50a059f4f7dc4768b5045.jpg",
+        "table_caption": [],
+        "table_footnote": [],
+        "table_body": "<html><body><table><tr><td></td></tr><tr><td>fenzi=np.sin(np.radians(-alpha_j+theta_j))*np.sin(np.radians(alpha_i))+</td></tr><tr><td>np.sin(np.radians(alpha_i+theta_i))*np.sin(np.radians(alpha_j))</td></tr><tr><td>fenmu=np.cos(np.radians(alpha_i+theta_i))*np.sin(np.radians(alpha_j))+</td></tr><tr><td>np.cos(np.radians(alpha_j- theta_j))*np.sin(np.radians(alpha_i))</td></tr><tr><td>theta_rad=np.arry(pd.Series(np.arctan(fenzi/fenmu).map(lambdax:x+np.piif</td></tr><tr><td>x>0elsex+2*np.pi))</td></tr><tr><td>theta_deg=np.rad2deg(theta_rad）</td></tr><tr><td>r=100*np.sin(np.radians(theta_deg-theta_j+alphaj))/</td></tr><tr><td>np.sin(np.radians(alpha_j))</td></tr><tr><td>eliftheta_k_true-theta_j>18Oandtheta_k_true-theta_i>180:</td></tr><tr><td>alpha_i=(-180+theta_k_true-theta_i)/2</td></tr><tr><td>alpha_i=np.arange(alpha_i-1,alpha_i+1,0.1)</td></tr><tr><td>alpha_j=(-180+theta_k_true-theta_j)/2</td></tr><tr><td>alpha_j=np.arange(alpha_j-1,alpha_j+1,0.1)</td></tr><tr><td>fenzi=np.sin(np.radians(alpha_j+theta_j))*np.sin(np.radians(alpha_i))-np.sin( np.radians(alpha_i+theta_i))*np.sin(np.radians(alpha_j))</td></tr><tr><td>fenmu=np.cos(np.radians(alpha_j+theta_j))*np.sin(np.radians(alpha_i))- np.cos(np.radians(alpha_i+ theta_i)*np.sin(np.radians(alpha_j))</td></tr><tr><td>theta_rad=np.array(</td></tr><tr><td>pd.Series(np.arctan(fenzi/fenmu).map(lambdax:x＋np.piifx>0elsex2</td></tr><tr><td>*np.pi))</td></tr><tr><td>theta_deg=np.rad2deg(theta_rad)</td></tr><tr><td>r=100*np.sin(np.radians(-180+theta_deg-theta_j-alpha_j))/</td></tr><tr><td>np.sin(np.radians(alpha_j))</td></tr><tr><td>returntheta_rad,theta_deg,r</td></tr><tr><td>def polar_plot(self):</td></tr><tr><td>Qi=0</td></tr><tr><td></td></tr><tr><td>Qj=np.arange(40,360,40)</td></tr><tr><td>Qk =np.arange(40,360,40）</td></tr></table></body></html>",
+        "page_idx": 30
+    },
+    {
+        "type": "table",
+        "img_path": "images/508b688e307602890d3b1115faeff30cd8589bbb22db05a26000a4280561a16c.jpg",
+        "table_caption": [],
+        "table_footnote": [],
+        "table_body": "<html><body><table><tr><td>fori,jin enumerate(Qj):</td><td></td></tr><tr><td colspan=\"2\">ax=plt.subplot(2,4,i+1,projection=polar')</td></tr><tr><td>self.theta_rad=np.array([])</td><td></td></tr><tr><td></td><td></td></tr><tr><td></td><td>self.theta_deg=np.array([])</td></tr><tr><td>self.r =np.array([])</td><td></td></tr><tr><td></td><td>self.color =np.array([]) self.counter=0</td></tr><tr><td>for k in Qk:</td><td></td></tr><tr><td>ifk==j:</td><td></td></tr><tr><td colspan=\"2\"></td></tr><tr><td colspan=\"2\">continue else:</td></tr><tr><td colspan=\"2\">ifj>k:</td></tr><tr><td></td><td>theta_rad,theta_deg,temp_r=self._mid_k_func(Qi,j,k)</td></tr><tr><td></td><td>self.theta_rad=np.hstack([self.theta_rad,theta_rad])</td></tr><tr><td></td><td>self.theta_deg=np.hstack([self.theta_deg,theta_deg])</td></tr><tr><td></td><td>self.r =np.hstack([self.r,temp_r])</td></tr><tr><td></td><td>self.color=np.hstack(</td></tr><tr><td></td><td>[self.color,np.array([self.all_color[self.counter]for_in</td></tr><tr><td colspan=\"2\">range(theta_rad.shape[0])])])</td></tr><tr><td>elifj<k:</td><td></td></tr><tr><td></td><td>theta_rad,theta_deg,temp_r=self.__right_or_left_k_func(Qi,j,k)</td></tr><tr><td></td><td>self.theta_rad=np.hstack([self.theta_rad,theta_rad])</td></tr><tr><td></td><td>self.theta_deg=np.hstack([self.theta_deg,theta_deg])</td></tr><tr><td></td><td>self.r=np.hstack([self.r,temp_r])</td></tr><tr><td></td><td>self.color=np.hstack(</td></tr><tr><td></td><td>[self.color,np.array([self.all_color[self.counter]for_in</td></tr><tr><td colspan=\"2\">range(theta_rad.shape[0]])])</td></tr><tr><td colspan=\"2\">self.counter +=1</td></tr><tr><td colspan=\"2\">#print(self.theta_deg)</td></tr><tr><td colspan=\"2\">#print(self.r)</td></tr><tr><td>#print(\"===</td><td>中国大学生在线</td></tr><tr><td>#print(\"=</td><td></td></tr><tr><td></td><td></td></tr><tr><td colspan=\"2\">#print(\"===</td></tr></table></body></html>",
+        "page_idx": 31
+    },
+    {
+        "type": "table",
+        "img_path": "images/80254bcdbad391a35115ce94d8e913af2914d172a88223bb49b8dc92497a60ad.jpg",
+        "table_caption": [],
+        "table_footnote": [],
+        "table_body": "<html><body><table><tr><td></td></tr><tr><td>#ax.scatter(self.theta_rad,self.r,label='定点i极坐标',s=10,c=self.color)</td></tr><tr><td>ax.scater(self.theta_rad,self.r,s=10,c=self.color)</td></tr><tr><td>ax.set_rlim(0,105）</td></tr><tr><td>ax.scater(Qi,100,s=100,c='T,marker=1′)</td></tr><tr><td>ifi==0:</td></tr><tr><td>ax.scatter(np.radians(i),10,s=100,c=T',marker=,label='发射信号无人机 极坐标</td></tr><tr><td>ax.legend(bbox_to_anchor=（.55,1.35))</td></tr><tr><td>#ax.legend(bbox_to_anchor=(0,1.35))</td></tr><tr><td>ax.scatter(np.radians(j),100,s=100,c=',marker=)</td></tr><tr><td>#plt.title(\"极坐标图\",loc='left' plt.show()</td></tr></table></body></html>",
+        "page_idx": 32
+    },
+    {
+        "type": "text",
+        "text": "",
+        "page_idx": 33
+    },
+    {
+        "type": "text",
+        "text": "",
+        "page_idx": 34
+    },
+    {
+        "type": "text",
+        "text": "temp_r_3] ",
+        "page_idx": 35
+    },
+    {
+        "type": "table",
+        "img_path": "images/fa8ab07044e3ce6128e3b8573759f1567a27860c8cc0ef713f6e16d658f748f5.jpg",
+        "table_caption": [],
+        "table_footnote": [],
+        "table_body": "<html><body><table><tr><td>else:</td></tr><tr><td>max_index=np.argmax(s)</td></tr><tr><td>other_index=[ifori,xinenumerate(s)ifx<np.max(s)]</td></tr><tr><td>fork inrange(1500）:</td></tr><tr><td>temp_r=r[1500*j+k]</td></tr><tr><td>temp_r_2=np.random.rand()</td></tr><tr><td>temp_r_3=temp_r-temp_r_2</td></tr><tr><td>new_data[15oo*j+k,max_index]=s[max_index]+temp_r</td></tr><tr><td>new_data[1500*j+k,other_index[0]+=s[other_index[0]+temp_r_2</td></tr><tr><td>new_data[15o0*j+k,other_index[1]]+=s[other_index[1]]+temp_r_3</td></tr><tr><td>result =np.zeros(（10500,)）</td></tr><tr><td>mean_theta_deg=np.zeros(10500,))</td></tr><tr><td>mean_r=np.zeros(10500,)）</td></tr><tr><td>mean_true_theta_deg_bias=np.zeros(10500,))</td></tr><tr><td>mean_true_r_bias=np.zeros(10500,))</td></tr><tr><td>forjinrange(10500）：</td></tr><tr><td>i_2_ii,i_2_1,ii_2_1=new_data[j,:]</td></tr><tr><td>sep=1ifabs(i_2_ii-140）<1else2ifabs(i_2_ii-100）<1else3ifabs(i_2_ii-60)<</td></tr><tr><td>1else4</td></tr><tr><td>result[j]=my_func(i_2_i,i_2_1,ii_2_1,number，sep)</td></tr><tr><td>theta_rad,theta_deg,r=b_1_ls.b_2(40*（result[i]-1),40*(number-1))</td></tr><tr><td>mean_theta_deg[i]=np.mean(theta_deg) mean_r[i]=np.mean(r)</td></tr><tr><td>mean_true_theta_deg_biasi]=np.mean(np.abs(theta_deg-40*(number-1)))</td></tr><tr><td>#平均绝对误差</td></tr><tr><td></td></tr><tr><td>mean_true_r_bias[i]=np.mean(np.abs(r-10o))#平均绝对误差</td></tr></table></body></html>",
+        "page_idx": 35
+    },
+    {
+        "type": "text",
+        "text": "new_data2 $\\mathbf { \\sigma } = \\mathbf { \\sigma }$ pd.DataFrame(new_data,columns=data.columns) new_data2[“发射点无人机编号“] $\\mathbf { \\sigma } = \\mathbf { \\sigma }$ result ",
+        "page_idx": 35
+    },
+    {
+        "type": "table",
+        "img_path": "images/ef707f2dd860ffefbd219c45e9703110e6c0839d022b8b96e8aa0646d4a59155.jpg",
+        "table_caption": [],
+        "table_footnote": [],
+        "table_body": "<html><body><table><tr><td>new_data2[“角}度数\".format(i+2)]=mean_theta_deg new_data2[“角仆极径\".format(i+2)]=mean_r</td></tr><tr><td>new_data2[\"角{}度数平均绝对误差\".format(i+2)]=mean_true_theta_deg_bias</td></tr><tr><td>new_data2[“角仆极径平均绝对误差\".format(i+2)]=mean_true_r_bias</td></tr><tr><td>new_data2.to_excel(writer2,sheet_name=\"Sheet{}\".format(i),index=False) print(\"表}生成结束！\".format(i+2))</td></tr><tr><td>writer2.close()</td></tr><tr><td>问题一（3）代码（B_3.py）：问题一第三小问程序</td></tr><tr><td></td></tr><tr><td>import numpy as np</td></tr><tr><td>importmatplotlib.pyplot asplt</td></tr><tr><td>import pandas as pd</td></tr><tr><td>fromsympy import*</td></tr><tr><td>fromcopy importdeepcopy import warnings</td></tr><tr><td></td></tr><tr><td>#warnings.filterwarnings('ignore') plt.rcParams['font.sans-serif']=['SimHei]#用来正常显示中文标签</td></tr><tr><td>plt.rcParams['axes.unicode_minus']=False#用来正常显示负号</td></tr><tr><td></td></tr><tr><td>class B_3_CLS： def_init__(self，data=None）:</td></tr><tr><td>self.data=data</td></tr><tr><td>self.data_arr=np.array(deepcopy(data))</td></tr><tr><td>deffirst_step(self,theta_i,theta_j,theta_k_true):</td></tr><tr><td>度数更新</td></tr><tr><td>:paramtheta_k_true:指表格的数据度数</td></tr><tr><td></td></tr><tr><td>alpha_i=(180-theta_k_true+theta_i)/2</td></tr><tr><td>alpha_j=(180+theta_k_true-theta_j）/2</td></tr><tr><td>temp=theta_k_true</td></tr><tr><td></td></tr><tr><td>print(调整飞机2,5,8的theta\")</td></tr><tr><td>print(飞机2,5,8的初始theta为0.format(theta_k_true)) 大学生在线</td></tr></table></body></html>",
+        "page_idx": 36
+    },
+    {
+        "type": "table",
+        "img_path": "images/11721f685d31652989d09ee9cb19828c98587815e1a9ccce2e0082983fa6e1ff.jpg",
+        "table_caption": [],
+        "table_footnote": [],
+        "table_body": "<html><body><table><tr><td>while1:</td></tr><tr><td>fenzi=np.sin(np.radians(alpha_j+theta_j)*np.sin(np.radians(alpha_i))+np.sin( np.radians(-alpha_i+theta_i))*np.sin(np.radians(alpha_i))</td></tr><tr><td></td></tr><tr><td>fenmu=np.cos(np.radians(alpha_j+theta_j))*np.sin(np.radians(alpha_i))+</td></tr><tr><td>np.cos(np.radians(-alpha_i+theta_i))*np.sin(np.radians(alpha_j)</td></tr><tr><td>theta_rad=np.array(pd.Series(np.arctan(fenzi/fenmu).map(lambdax:xif x>0 elsex+ np.pi))</td></tr><tr><td>theta_deg=np.rad2deg(theta_rad)</td></tr><tr><td>print(飞机2,5,8的deltatheta为.format(theta_deg-temp))</td></tr><tr><td>if abs(theta_deg-temp)<1e-16:</td></tr><tr><td>更新角度 self.data_arr[5,O]+=theta_deg-temp</td></tr><tr><td>print(\"更新后2,5,8的theta为：{}\".format(theta_deg))</td></tr><tr><td></td></tr><tr><td>print(==========\") break</td></tr><tr><td></td></tr><tr><td>alpha_i-=(alpha_i-alpha_j)/2</td></tr><tr><td>alpha_j-=（alpha_j-alpha_i）/2</td></tr><tr><td>temp=theta_deg</td></tr><tr><td>def second_step(self, number):</td></tr><tr><td>:paramnumber:要更新的飞机编号</td></tr><tr><td></td></tr><tr><td>assertnumber[=2and number！=5andnumber[=8,\"numbershouldn’tequalwith2</td></tr><tr><td></td></tr><tr><td>if2<number<8:</td></tr><tr><td>if2<number<5:</td></tr><tr><td>i=2</td></tr><tr><td>j=5</td></tr><tr><td>else:</td></tr><tr><td>i=5</td></tr><tr><td>j=8</td></tr><tr><td>theta_i,thetaj,theta_ktrue=self.dataali，O],selfdataj，O,</td></tr><tr><td>学生在线</td></tr><tr><td>self.data_arr[number,0]</td></tr></table></body></html>",
+        "page_idx": 37
+    },
+    {
+        "type": "table",
+        "img_path": "images/f4691fa075ed0336dc01a14d45599734165b4ce90eb487cd5d029139d2c5d299.jpg",
+        "table_caption": [],
+        "table_footnote": [],
+        "table_body": "<html><body><table><tr><td>print(\"原theta为：{}”.format(theta_k_true))</td></tr><tr><td>alpha_i=(180-theta_k_true+theta_i)/2</td></tr><tr><td>alpha_j=(180+theta_k_true-thetaj）/2</td></tr><tr><td>temp=theta_k_true while1</td></tr><tr><td>alpha_i,alphaj,temp,sep=self_mid__func(thetai,thetaj</td></tr><tr><td>theta_k_true,alpha_i,alpha_j,temp,number)</td></tr><tr><td>ifsep<0.001:</td></tr><tr><td>self.data_arr[number,0]=temp</td></tr><tr><td>print更新后theta为：{}\".format(temp））</td></tr><tr><td></td></tr><tr><td>print(\"=========\")</td></tr><tr><td>break</td></tr><tr><td>else:</td></tr><tr><td>i=8 j=2</td></tr><tr><td>print(\"原theta为：{}\".format(self.data_arr[number,0]))</td></tr><tr><td></td></tr><tr><td>theta_i=self.data_ar[i，O]+80ifself.data_arr[i，0]+80<=360elseself.dataarrli,</td></tr><tr><td>0]+80-360</td></tr><tr><td>thetaj=self.data_arr[i,0]+80ifself.data_arr[j，0]+80<=360elseself.dataarr[j,</td></tr><tr><td>0]+80-360</td></tr><tr><td>theta_k_true=self.data_arr[number,O]+80ifself.data_arr[number,O]+80<=</td></tr><tr><td>360else self.data_arr[number，O]+80-360</td></tr><tr><td></td></tr><tr><td>alpha_i=(180-theta_k_true+theta_i/2</td></tr><tr><td>alpha_j=(180+theta_k_true-theta_j)/2</td></tr><tr><td>temp=theta_k_true</td></tr><tr><td>while1:</td></tr><tr><td>alpha_i,alpha_j,temp,sep=self._mid_k_func(theta_i,theta_j,</td></tr><tr><td>theta_k_true,alpha_i,alpha_j,temp,number)</td></tr><tr><td></td></tr><tr><td></td></tr><tr><td>ifsep<0.001:</td></tr><tr><td>theta_deg=temp-80if temp-80>=0else temp-80+360 牛在线</td></tr><tr><td></td></tr><tr><td>self.data_arrnumber,0]=theta_deg</td></tr></table></body></html>",
+        "page_idx": 38
+    },
+    {
+        "type": "table",
+        "img_path": "images/5af8abb203e3fe4da6cc6361b450413b3c3fcd1c7dd73975a14c171ce9980d74.jpg",
+        "table_caption": [],
+        "table_footnote": [],
+        "table_body": "<html><body><table><tr><td></td></tr><tr><td>print(\"==========)</td></tr><tr><td>break</td></tr><tr><td>def third_step(self,number):</td></tr><tr><td>m :paramnumber:要更新的飞机编号</td></tr><tr><td></td></tr><tr><td>assertnumber!=2andnumber!=5andnumber!=8,\"numbershouldn’tequalwith2</td></tr><tr><td>58！</td></tr><tr><td>if2<number<8:</td></tr><tr><td>if2<number<5：</td></tr><tr><td>i=2</td></tr><tr><td>j=5</td></tr><tr><td>else:</td></tr><tr><td>i=5</td></tr><tr><td>j=8</td></tr><tr><td>theta_i,theta_j,theta_k=self.data_ar[i，O],self.data_arr[i,O],</td></tr><tr><td>self.data_arrnumber,0]</td></tr><tr><td>alpha_jj=50if number==3or number==6else70</td></tr><tr><td>#alpha_i=(180-theta_k+theta_i)/2</td></tr><tr><td>#alpha_j=(180+theta_k-theta_j）/2</td></tr><tr><td>delta_rho=self.data_arr[number,1]-98*np.sin(np.radians(180-alpha_jj-</td></tr><tr><td>theta_j+theta_k))/np.sin(np.radians(alpha-_ij))</td></tr><tr><td>print(\"原rho为：{\".format(self.data_arr[number,1))</td></tr><tr><td>self.data_arr[number,1]-=delta_rho</td></tr><tr><td>print(\"飞机}的deltarho为{}”.format(number，delta_rho))</td></tr><tr><td>print(\"更新后飞机}的rho为}”.format(number,self.data_ar[number,1))</td></tr><tr><td>else:</td></tr><tr><td>i=8</td></tr><tr><td>j=2</td></tr><tr><td>thetai=selfataar，]+ifselfdataa0+0<60esesea</td></tr><tr><td>0]+80-360 牛在线</td></tr><tr><td>theta_j=self.data_ar[j,0]+80ifself.data_ar[j,0]+80<=360else self.data_arrj,</td></tr></table></body></html>",
+        "page_idx": 39
+    },
+    {
+        "type": "table",
+        "img_path": "images/fe5a104905c67621ac819d096d9077d98df5a066c58cf3a385a1af755e6d3fa2.jpg",
+        "table_caption": [],
+        "table_footnote": [],
+        "table_body": "<html><body><table><tr><td></td></tr><tr><td>0]+80-360</td></tr><tr><td>theta_k=self.data_arr[number，O]+80ifself.data_arr[number,0]+80<=360else</td></tr><tr><td>self.data_arnumber，0]+80-360</td></tr><tr><td>alpha_jj=50if number==9else70</td></tr><tr><td>delta_rho=self.data_ar[number，1]-98*np.sin(np.radians(180-alpha_jj-</td></tr><tr><td>theta_j+theta_k))/np.sin(np.radians(alpha_j)</td></tr><tr><td>print(\"原rho为：{}\".format(self.data_arr[number,1]))</td></tr><tr><td>self.data_arr[number,1]-=delta_rho</td></tr><tr><td>print(\"飞机{}的deltarho为{}\".format(number,delta_rho))</td></tr><tr><td>print(更新后飞机{}的rho为{}”.format(number，self.data_arr[number，1))</td></tr><tr><td>return delta_rho</td></tr><tr><td>def__mid_k_func(self,theta_i,theta_j,theta_k_true,alpha_i,alpha_j,temp,number):</td></tr><tr><td>sep=None</td></tr><tr><td>iftheta_j-theta_k_true<180andtheta_k_true-theta_i<180:</td></tr><tr><td>fenzi=np.sin(np.radians(alphaj+theta_j))*np.sin(np.radians(alpha_i))+np.sin(</td></tr><tr><td>np.radians(-alpha_i+theta_i))*np.sin(np.radians(alpha_j))</td></tr><tr><td>fenmu=np.cos(np.radians(alpha_j+theta_j))*np.sin(np.radians(alpha_i)+</td></tr><tr><td>np.cos(np.radians(-alpha_i+ theta_i)*np.sin(np.radians(alpha_j))</td></tr><tr><td>if5<number<8:</td></tr><tr><td>theta_rad=np.array(pd.Series(np.arctan(fenzi/fenmu)).map(lambdax:x+</td></tr><tr><td>np.pi))</td></tr><tr><td>else:</td></tr><tr><td>theta_rad=np.array(pd.Series(np.arctan(fenzi/fenmu).map(lambdax:xif</td></tr><tr><td>x>0elsex+np.pi)）</td></tr><tr><td>theta_deg=np.rad2deg(theta_rad)</td></tr><tr><td>#print(theta_deg)</td></tr><tr><td>print(\"飞机{的deltatheta为{”.format(number,theta_deg-temp)) 国大学生在线</td></tr><tr><td>if alpha_i<alpha_j:</td></tr><tr><td>alpha_i-=(alpha_i-alpha_j+20)/2</td></tr><tr><td>alpha_j-=(alpha_i-alpha_j-20)/2</td></tr><tr><td>else:</td></tr><tr><td>alpha_i-=(alpha_i-alpha_j-20)/2</td></tr></table></body></html>",
+        "page_idx": 40
+    },
+    {
+        "type": "table",
+        "img_path": "images/27f4115d233973de36e264231739ac4e8e43146d2358dc1aa838cbc145c56d31.jpg",
+        "table_caption": [],
+        "table_footnote": [],
+        "table_body": "<html><body><table><tr><td></td></tr><tr><td>sep=abs(theta_deg-temp) temp=theta_deg</td></tr><tr><td></td></tr><tr><td>returnalpha_i,alpha_j,temp,sep</td></tr><tr><td>if__name__==_main_:</td></tr><tr><td>data=pd.read_excel(\"B_3_origin_data.xlsx\").set_index(\"无人机编号\") #print(data)</td></tr><tr><td>#print(data.shape)#(10,2)</td></tr><tr><td>instance=B_3_CLS(data）</td></tr><tr><td>instance.first_step(40.1,280.17,159.86)</td></tr><tr><td>foriin range（1,10）：</td></tr><tr><td>ifi==2ori==5ori=8:</td></tr><tr><td>continue</td></tr><tr><td>print(调整飞机的theta\".format(i)）</td></tr><tr><td>instance.second_step(i)</td></tr><tr><td>*****)</td></tr><tr><td>print**.......</td></tr><tr><td>print(*****.</td></tr><tr><td>*****水 print*****..**.*..</td></tr><tr><td>foriin range(1,10）：</td></tr><tr><td>ifi==2ori==5ori==8:</td></tr><tr><td>continue</td></tr><tr><td>print(\"调整飞机的rho\".format(i))</td></tr><tr><td>instance.third_step(i)</td></tr><tr><td>print...*...... ********** 学生在线</td></tr></table></body></html>",
+        "page_idx": 41
+    },
+    {
+        "type": "text",
+        "text": "2026年全国大学生国家安全知识答题",
+        "text_level": 1,
+        "page_idx": 42
+    }
+]

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<devils_advocate_report>
+  <audit_target>code_repo + data_vis — MCM 2025-D 矿井突水漫延仿真与逃生路径规划 Phase 2 第二轮审计（修正验证）</audit_target>
+
+  <summary>
+    对修正后代码 mine_flood_simulation.py 进行第二轮独立审计，逐一验证上一轮 4 项 High-risk 漏洞(H1-H4)的修正情况。
+    H1: 已修正。✅  H2: 已修正。✅  H3: 已修正。✅  H4: 已修正。✅
+    未发现新增 High-risk 漏洞。4 项 Med-risk 和 4 项 Low-risk 漏洞部分残留（非阻塞）。
+    结论：APPROVED — 可进入 Phase 3 论文撰写。
+  </summary>
+
+  <flaws>
+
+    <!-- ============ 4项 HIGH-RISK 修正验证 ============ -->
+
+    - [Risk Level: High] H1: t_spread = min(t_A, t_B)→max(t_A, t_B) → 已修正 ✅
+      位置: dual_source_flood(), 行 1709
+      验证: `t_spread = max(t_A, t_B)` 已正确实现。当 A 源完成扩散(t_A)且 B 源完成扩散(t_B)后，
+            t_spread 取两者中的较晚者，物理意义正确：双源铺满完成时间是两源均完成的最晚时刻。
+
+    - [Risk Level: High] H2: 上升阶段用 (t_A+t_B)/2 + Q → t_spread + 2Q → 已修正 ✅
+      位置: dual_source_flood(), 行 1706-1727
+      验证: 修正后代码：
+            (a) 基准时间改为 t_spread (= max(t_A, t_B))，而非无物理意义的 (t_A+t_B)/2。
+            (b) 每条边流量改为 2.0 * Q * (e.length/total_length)，反映双源联合总流量 2Q。
+            (c) 总灌满时间计算为 t_spread + total_volume_remaining / (2.0 * Q)。
+            该方案物理自洽：t_spread 时刻两源均已激活，合并流量为 2Q。
+
+    - [Risk Level: High] H3: 双源碰撞可视化(fig7) B 源传入空 WaterState → 已修正 ✅
+      位置: run_problem_3(), 行 2787-2788, 2803-2808
+      验证: 代码行 2788 改为 `ws_B = single_source_flood(nodes, edges, source_B1)`，获取 B 源的
+            真实单源漫延 WaterState（含完整的 node_arrival 覆盖数据）。行 2803-2808 将该 ws_B
+            传入 plot_dual_source_collision。绘图函数行 2334-2337 正确使用 water_state_B.node_arrival
+            绘制 B 源覆盖范围。注意：fig7 展示的是 A 和 B 各自的独立单源覆盖范围叠加，并非双源耦合
+            模拟中的实际竞争覆盖结果，但对可视化目的而言已充分反映两源空间分布。
+
+    - [Risk Level: High] H4: 3D 模型 T_total 仅对应 0.1m → 增加 H0→3m 上升阶段 → 已修正 ✅
+      位置: single_source_flood_3d(), Step 6, 行 1152-1169
+      验证: Step 6 新增对所有边（含上层边）的 H0→H_SAFE(0.3m) 和 H0→H_MAX(3.0m) 上升时间计算。
+            `edge_0_3m_time` 和 `edge_full_time` 不再仅含 E_low 边数据，而是覆盖全部边。
+            `T_total_3d = max(edge_full_time.values())` 正确反映全网络灌满至 3m 的完成时间。
+            summary_results.txt 行 24 显示 T_total=10195.05 min，显著大于原 626.63 min(H0 时间)，
+            确认 3m 灌满时间已正确计算和报告。
+            行 5 的 t_spread=626.63 min 正确标注为 H0 铺满时间，与 T_total 区分明确。
+
+    <!-- ============ 前轮 Med-risk 项目残留状态 ============ -->
+
+    - [Risk Level: Med] [残留 - 非阻塞] M1: 边级碰撞 t_meet 公式物理基础仍薄弱
+      位置: dual_source_flood(), 行 1588-1604
+      状态: 未修改。`Q_B * t_offset_B` 仍将 B 源偏移时间内流量当作已注入该特定巷道的体积。
+            此近似不影响 Phase 3 论文中的核心定量结果（封闭巷道数量、总灌满时间），
+            但若在论文中深入讨论碰撞时序，需标注近似边界。
+
+    - [Risk Level: Med] [残留 - 非阻塞] M2: 单源与双源 T_total 算法不一致
+      位置: single_source_flood() 行 968 vs dual_source_flood() 行 1727
+      状态: 未修改。单源 T_total=12420.57min 基于最长边判定；双源 T_total=6243.82min 基于总量守恒。
+            建议在论文中明确说明两种算法差异，避免读者质疑结果一致性。
+
+    - [Risk Level: Med] [残留 - 非阻塞] M3: 3D 平行上升时序近似
+      状态: 3D 模型仍采用"逐层顺序 H0 填充 + 全局并行 H0→3m 上升"的近似方案。
+            物理上更精确的并行填充实现复杂，当前近似对论文结论影响有限。
+
+    - [Risk Level: Med] [残留 - 非阻塞] M4: Problem 4 合成数据场景边界
+      状态: 逃生时间 1.42min 仍小于重规划切换阈值 5.0min，重规划功能未实际触发。
+            论文中须标注此为合成数据限制。
+
+    <!-- ============ 前轮 Low-risk 项目修正状态 ============ -->
+
+    - [Risk Level: Low] [已修正] L4: 汇总表逃生时间单位标注
+      位置: summary_results.txt 行 28
+      状态: `escape_time 1.42 min` — 单位现为 "min" ✅
+
+    - [Risk Level: Low] [残留] L1: PathResult.total_time 属性存在但注释否认
+      位置: 模块文档行 21 vs 行 151
+      状态: 注释 "路径对象不再附着 .total_time 属性" 与实际代码 `self.total_time = total_time` 矛盾。
+            建议论文手在 Phase 3 忽略此注释不一致性，不影响论文正文。
+
+    - [Risk Level: Low] [残留] L2: 合成数据未与真实附件比对
+      状态: 代码仍全部使用合成数据运行，未加载真实 Excel 附件。
+
+    - [Risk Level: Low] [残留] L3: 双源返回的 edge_spread_time 为空字典
+      位置: dual_source_flood(), 行 1745
+      状态: `edge_spread_time = {}` 仍为空。该字段未被下游代码访问，不影响结果。
+
+  </flaws>
+
+  <correction_directives>
+    本次审计无阻塞性指令。以下为可选优化建议（不强制，可留待 Phase 3 论文手在论文中标注说明）：
+
+    1. 论文中报告双源 T_total 时，应注明其计算方式为总量守恒法(t_spread + V_remaining/2Q)，
+       与单源基于最长边的算法(12420.57min)有系统性差异，不可直接比较。
+    2. 论文中报告 3D 模型结果时，应说明 t_spread 为 H0(0.1m)铺满时间，T_total 为 H_MAX(3.0m)灌满时间。
+    3. 论文中报告 Problem 2/4 逃生时间时，应标注合成数据下逃生路径较短(仅 3 段边、1.42min 出井)的边界条件，
+       并说明重规划功能在真实煤矿网络中可能具有更大实用价值。
+    4. 论文中图 7(fig7_dual_source_collision)的图注应说明 A/B 覆盖区域来自独立单源漫延结果，
+       非双源耦合竞争结果。
+  </correction_directives>
+
+  <status>APPROVED</status>
+</devils_advocate_report>

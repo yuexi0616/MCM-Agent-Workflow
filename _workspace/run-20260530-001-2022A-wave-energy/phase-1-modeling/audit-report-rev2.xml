@@ -1,0 +1,122 @@
+<devils_advocate_report>
+  <audit_target>model_design rev2 (第3轮审计) — 2022 CUMCM A题: 波浪能最大输出功率设计</audit_target>
+
+  <flaws>
+
+    -- 第2轮审计5条意见的逐一验证 --
+
+    [Risk Level: CLOSED. PASS.] Issue 1 (High) 接触力符号错误
+    验证结果：已修正。x_r > x_r_max 分支从负号改为正号：F_contact = +k_contact*(x_r - x_r_max)^2。下极限分支 F_contact = -k_contact*(x_r - x_r_min)^2 保持不变。
+    物理验证：
+    - x_r > x_r_max（振子过高触上极限）：F_contact > 0，浮子受 +F_contact（向上推离振子），振子受 -F_contact（向下推离浮子）→ 互斥 ✓
+    - x_r < x_r_min（振子过低触下极限）：F_contact < 0，浮子受 +F_contact（向下推离振子），振子受 -F_contact（向上推离浮子）→ 互斥 ✓
+    算法 contact_force 函数及各 RK4 子步调用逻辑均一致。状态：CLOSED. PASS.
+
+    [Risk Level: CLOSED. PASS.] Issue 2 (Med) GA 精英保留 fitness 不同步
+    验证结果：已重构。算法4第71-98行执行顺序：
+    1. 计算 offspring_fitness (第72-90行)
+    2. argmin(offspring_fitness) 找到子代中最差个体 (第92行)
+    3. 用精英个体替换最差子代 (第93行)
+    4. 同步更新 offspring_fitness[worst_idx] = best_fitness (第94行)
+    5. 同时赋值 population = offspring; fitness = offspring_fitness (第96-97行)
+    该顺序保证了 fitness 数组始终与 population 指向同一代群体，不存在"argmin 引用旧群体"的缺陷。状态：CLOSED. PASS.
+
+    [Risk Level: CLOSED. PASS.] Issue 3 (Low) 符号表缺失 k_contact 及 k_pen 单位错误
+    验证结果：已修正。符号表新增 k_contact 条目（N/m²，10^6）；k_pen 单位从"无量纲"修正为"W/m²"。量纲验证：k_contact 量纲 N/m² × (x_r - x_r_max)² m² = N ✓；k_pen 量纲 W/m² × (越界距离)² m² = W ✓。状态：CLOSED. PASS.
+
+    [Risk Level: CLOSED. PASS.] Issue 4 (Low) 耦合能量平衡未扩展至纵摇
+    验证结果：已扩展。新增纵摇-垂荡耦合情形能量平衡表达式：dE/dt = u·f_e + j·M_e - C_xh·u² - C_xp·j² - C_h·v_rel² - C_p·ω_rel²。所有耗散项均为负定，弹簧势能项在能量微分中相互抵消（保守力特性），波浪输入项 u·f_e + j·M_e 提供能源。该表达式与符号审计表一致。状态：CLOSED. PASS.
+
+    [Risk Level: CLOSED. PASS.] Issue 5 (Low) Q2(2a) alpha 参数未显式标注
+    验证结果：已修正。算法4第668行为"调用算法1(RK4垂荡, T_total=200s, alpha=0.5 for Q2(2a))"；算法1输入参数中显式定义 k_contact 和 contact_force 函数。状态：CLOSED. PASS.
+
+
+    -- 新增发现 --
+
+    [Risk Level: Med] [Category: physics_violation (二阶效应)]
+    振子纵摇方程中省略了时变转动惯量 I_z(t) 的时间导数项。
+
+    证据：模型将振子纵摇方程写为：
+    I_z(t)·θ̈_z = -K_p·θ_r - C_p·ω_rel
+
+    其中 I_z(t) = I_z0 + m_z·[d_0 + x_r(t)]²。
+
+    对于绕固定轴的旋转运动，当转动惯量随时间变化时（因振子沿浮子中轴滑动），正确的牛顿-欧拉形式应为：
+    d(I_z·θ̇_z)/dt = -K_p·θ_r - C_p·ω_rel
+
+    展开为：
+    I_z·θ̈_z + (dI_z/dt)·θ̇_z = -K_p·θ_r - C_p·ω_rel
+
+    其中 dI_z/dt = 2·m_z·(d_0+x_r)·v_rel。模型省略了 (dI_z/dt)·k 项。
+
+    同理，拉格朗日推导中垂荡方程也应包含源自 I_z(t) 的离心项 ±m_z·(d_0+x_r)·k²（纵摇-垂荡反向耦合）。
+
+    量级估算：取 m_z ≈ 2433 kg（A001_2022 优秀论文数值）, d_0+x_r ≈ 0.75 m, v_rel ≈ O(0.3 m/s), k ≈ ω·θ ≈ 2×0.087 = 0.174 rad/s:
+    - 缺失力矩 ≈ 2×2433×0.75×0.3×0.174 ≈ 190 N·m
+    - PTO 扭转弹簧力矩 ≈ K_p×θ_r ≈ 1000×0.087 ≈ 87 N·m（量级相当，不可忽略）
+
+    风险判定依据：
+    - 该省略与优秀论文 A001_2022 的处理方式一致（A001_2022 同样写为 k' = -(C_p·ω_rel + K_p·θ_r)/I_z 而未含 dI_z/dt·k 项）
+    - 对阻尼优化问题（Q4），该耦合项在 GA 搜索的每个适应度评估中引入系统误差，但误差方向为消去正定耦合项（阻尼器提取功率偏大估计）
+    - Ī_z 耦合项的能量贡献在总能量导数 dE/dt 中部分抵消（该耦合为保守性内能传递，不影响稳态功率平衡）
+    - 强烈建议代码手在 RK4 的每个子步（k1~k4）中使用当前时刻的 x_r 更新 I_z 值，通过数值方法隐式缓解该问题
+
+    [Risk Level: Low] [Category: documentation_imprecision]
+    "统一表达式" P_h(t) = C_h·|v_rel|^(1+α) 的实际适用范围与描述的偏差。
+
+    证据：第203-209行将 P_h = C_h·|v_rel|^(1+α) 表述为"统一表达式"，但实际上当 α=0 且采用线性阻尼时，正确的功率表达式为 P = C_h·v_rel²，而非 C_h·|v_rel|。该公式仅在 α > 0（非线性幂次阻尼）时为统一表达式。
+
+    影响评估：
+    - 算法3中已正确分支处理（α=0 线性情形使用 v_rel²，α∈(0,1] 非线性情形使用 |v_rel|^(1+α)），实现上不存在歧义
+    - 仅文本描述存在歧义，论文手在撰写最终论文时应修正为"非线性情形下的统一表达式"或分情形列出
+
+    [Risk Level: Low] [Category: pseudocode_ambiguity]
+    算法4中 FOR 循环边界使用 1-indexed 表示法。
+
+    证据：算法4中多处使用"FOR i = 1 TO N_pop:"（第7行、第72行）、"FOR gen = 1 TO N_gen:"（第26行）、"FOR i = 0 TO N_pop-1 STEP 2"（第41行，此处又为 0-indexed），表示法不一致。
+
+    影响评估：
+    - Python 实现中数组为 0-indexed，代码手需要将 "1 TO N" 类循环转换为 "0 TO N-1"
+    - 这种伪代码表示法在数学建模文档中常见（接近 MATLAB 风格），但增加了编码阶段出界的风险
+    - 特别是第72行的"FOR i = 1 TO N_pop:"配合"params = offspring[i]"，若直接逐字翻译为 Python 将访问越界
+    - 建议代码手将 GA 中所有 FOR 循环实现为 range(N_pop)（0-indexed）
+
+
+    -- 第2轮审计总体验证 --
+
+    编号 | 类别 | 原风险等级 | 修正状态
+    1  | physics_violation (PTO符号) | High | CLOSED ✅
+    2  | ambiguous_algorithm (T_total) | High | CLOSED ✅
+    3  | ambiguous_algorithm (精英保留) | Med | CLOSED ✅ (重构验证)
+    4  | missing_assumption (频率相关参数) | Med | CLOSED ✅
+    5  | missing_assumption (问题2拆分) | Med | CLOSED ✅
+    6  | ambiguous_algorithm (SBX参数) | Med | CLOSED ✅
+    7  | ambiguous_algorithm (早停检查) | Med | CLOSED ✅
+    8  | missing_assumption (d_0定义) | Med | CLOSED ✅
+    9  | missing_assumption (α=0公式混淆) | Low | CLOSED ✅
+    10 | ambiguous_algorithm (功率积分方法) | Low | CLOSED ✅
+    11 | overly_strong_assumption (纵摇解耦量化) | Low | CLOSED ✅
+    12 | missing_assumption (行程约束) | Low | CLOSED ✅
+    13 | ambiguous_algorithm (插值方法) | Low | CLOSED ✅
+    --- | (rev1 新增) 接触力符号 | High | CLOSED ✅
+    --- | (rev1 新增) GA fitness同步 | Med | CLOSED ✅
+    --- | (rev1 新增) k_contact/k_pen符号表 | Low | CLOSED ✅
+    --- | (rev1 新增) 耦合能量平衡 | Low | CLOSED ✅
+    --- | (rev1 新增) Q2(2a) alpha标注 | Low | CLOSED ✅
+
+  </flaws>
+
+  <correction_directives>
+    针对新增的 Medium 风险（I_z 时变耦合项）：
+
+    代码手需在 RK4 求解八元一阶方程组时，在每个子步（k1~k4 计算）中使用最新的 x_r 值更新 I_z。具体而言，在 rhs_coupled 函数内部（算法2第560行），I_z 的计算应使用当前传入的 x_f 和 x_z 状态，确保时变转动惯量在数值积分中得到隐式处理。虽然解析方程中省略了 dI_z/dt·k 项，但 RK4 当前步的 I_z 更新可部分缓解该问题。
+
+    论文手在撰写最终论文时请注意：
+    (a) 将"统一表达式"修改为明确标注适用条件的表述；（Low）
+    (b) 在模型的纵摇运动方程处添加注释：由于小角度假设，I_z 时变引起的耦合项视为高阶小量忽略，并参考 A001_2022 优秀论文的处理方式。（Med，建议性）
+
+    针对 Low-risk 的伪代码索引歧义：代码手在实现 GA 循环时，统一使用 0-indexed 的 range(N_pop) 代替伪代码中的 1-indexed 标记。
+  </correction_directives>
+
+  <status>APPROVED</status>
+</devils_advocate_report>

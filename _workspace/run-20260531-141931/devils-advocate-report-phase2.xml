@@ -1,0 +1,50 @@
+<devils_advocate_report>
+  <audit_target>code_repo + data_vis + numerical_results</audit_target>
+  <flaws>
+
+- [Risk Level: High] [Category: missing_error_handling] Q5 returns 0.00s intersection for ALL three missile groups because every group produces empty occlusion intervals. Q5_M0_intervals.csv, Q5_M1_intervals.csv, Q5_M2_intervals.csv each contain zero data rows. The root cause is a fundamental geometric feasibility failure in the task assignment: the two-stage greedy allocation (Algorithm 8 Layer 1) assigns UAVs to missiles based solely on heading-angle alignment (score function = arccos of dot product between UAV heading and UAV-to-missile direction), WITHOUT checking whether the UAV's position allows its cloud to ever intersect the missile's line of sight. For example, UAV2 at (1500, 2598, 500) assigned to Missile 0 (coming from (8000, 0, 150)) -- the UAV is 2598m off the missile's line of sight in the y-direction, yet the score function does not penalize this. SolveProblem3/SolveProblem4 silently return empty intervals when occlusion is geometrically impossible, and Q5 accepts this without diagnostics. The result (0.00s) is technically correct given the assignment, but the algorithm fails at the allocation layer and the code does not detect or flag this.
+
+- [Risk Level: High] [Category: missing_error_handling] Q2 optimization (pattern search + DE) converged to a solution that is WORSE than the Q1 heuristic default for the SAME scenario. Q1 default parameters (theta=pi, v_u=30m/s, t_d=0s, t_b=9s) produce T_eff=8.90s at validation precision (N_pts=300, Delta_t=0.01). The Q2 optimized solution (theta=3.122rad, v_u=45.63m/s, t_d=1.66s, t_b=10.51s) validates to only 8.13s -- an 8.6% regression. The code does not compare the optimization result against a simple heuristic baseline and does not detect this failure. The discrepancy arises because the Q2 optimum delays detonation by 1.5s vs. the Q1 heuristic, reducing the missile's remaining flight path and thus the occlusion window.
+
+- [Risk Level: High] [Category: missing_error_handling] Q3 with 3 bombs (T_eff=6.30s) produces substantially LESS total occlusion than Q1 with 1 bomb (T_eff=8.90s) -- a 29% regression despite using 3x the resources. The Q3 merged interval [11.91s, 18.21s] shows that bombs 2 and 3 contribute NO occlusion: they are dropped late (t_d2=14.65s, t_d3=17.00s) and detonate quickly (t_b2=16.65s, t_b3=19.00s), producing clouds at z~466m altitude while the missile's line of sight is near the ground (z~50m). The DE optimization converged to a local optimum where 2/3 of bombs are wasted. The code has no cross-validation to detect that the 3-bomb solution is inferior to a 1-bomb baseline.
+
+- [Risk Level: High] [Category: missing_error_handling] The Q5 results show all three SolveProblem3/4 calls returning empty intervals, yet the code does not perform ANY diagnostic or fallback. A user seeing "Q5: T_total(交集) = 0.0000s" cannot distinguish between "no feasible solution exists for any missile" (which is what happened here, due to bad task assignment) vs. "the optimization failed to find a solution that exists." The code should at minimum report which specific UAV-missile pairings are geometrically infeasible and why.
+
+- [Risk Level: Med] [Category: reproducibility] The DE optimization results are not reproducible despite np.random.seed(42) at line 31, because multiple calls to the same function (SolveProblem2, SolveProblem3, SolveProblem4) modify the RNG state sequentially. Running the entire main() twice will produce the same final output ONLY if no external RNG state interference occurs. However, different random seeds in the DE initialization will produce different results, and the code does not report which solutions are robust to seed variation. No sensitivity analysis w.r.t. random seed is performed.
+
+- [Risk Level: Med] [Category: misleading_viz] Q1_summary_results.csv stores all data as a single transposed row with Python-list-syntax strings and unit suffixes embedded in numeric values: Parameter column value is "['T_eff', 't_d', 't_b', ...]" and Value column value is "['8.9000s', '0.00s', '9.00s', ...]". This is not standard CSV format and cannot be parsed by pandas.read_csv, numpy.genfromtxt, or any standard data tool without custom string processing. The format makes automated post-processing impossible.
+
+- [Risk Level: Med] [Category: missing_error_handling] The DE early stopping criteria (30 generations with fitness improvement < 1e-3) can trigger when the population has collapsed to a local optimum, not when the global optimum has been found. No population diversity metric (e.g., mean pairwise distance, standard deviation of fitness) is tracked to distinguish between convergence-to-optimum and population-collapse. This affects all 4 DE-using subproblems (Q2 DE, Q3, Q4, and by extension Q5).
+
+- [Risk Level: Med] [Category: missing_error_handling] The Q5 task assignment's score function uses the UAV's INITIAL heading theta_j0 to compute the suitability score for each missile, but the UAV's actual flight direction during optimization can differ from theta_j0 (Q2/Q4 optimize theta). This means the score computed at Layer 1 may not reflect the actual heading used in Layer 2. A UAV that initially faces away from a missile (high score = bad) might still achieve occlusion by turning toward it during optimization, while a UAV with a favorable initial heading might not.
+
+- [Risk Level: Low] [Category: missing_error_handling] The SolveProblem3 bound definition (lines 959-963) sets lb/ub for each t_b based on global t_d_min_Q3/t_d_max_Q3 rather than the actual t_d value of that bomb. The bounds for all bombs' t_b are uniformly [2, 75] regardless of the actual t_d. While the boundary repair on lines 1013-1016 fixes out-of-bounds t_b values, the unnecessarily wide bounds degrade DE search efficiency.
+
+- [Risk Level: Low] [Category: misleading_viz] Fig5 (Q5_intersection.png) contains no data bars because all three interval lists are empty. The plot shows only axis labels and a title claiming "总同时遮蔽时长: 0.00s" with no visual content. A figure with empty data should not be generated, or should at minimum display a text annotation explaining why intervals are empty.
+
+- [Risk Level: Low] [Category: reproducibility] CSV interval files Q5_M0_intervals.csv, Q5_M1_intervals.csv, Q5_M2_intervals.csv contain header rows but zero data rows (empty DataFrames). While technically valid CSV, consuming tools may misinterpret these as files with invalid/no data.
+
+  </flaws>
+  <correction_directives>
+    1. [CRITICAL] Fix the Q5 task assignment: the score function must incorporate a geometric feasibility check -- i.e., whether the UAV's reachable region (given v_u range, t_d range, and bomb trajectory) can produce a cloud within R_s of the missile's line of sight. A simple first-pass filter: compute the perpendicular distance from each UAV to each missile's line of sight (in 3D); if this distance exceeds a threshold (e.g., R_s + UAV displacement capacity), the pairing is infeasible and should be excluded from assignment. Alternatively, reformulate the allocation as a maximum-coverage problem over geometrically feasible pairings.
+
+    2. [CRITICAL] Add a heuristic baseline comparison for Q2: after DE convergence, evaluate the heuristic default (theta=initial heading, v_u=mid-range, t_d=0, t_b=mid-flight-time) at the same optimization precision and keep whichever is better. The code must detect and log when optimization regresses.
+
+    3. [CRITICAL] Add cross-validation for Q3: after DE optimization, evaluate a baseline heuristic (same timing as Q1's best single bomb, plus trailing bombs at equally spaced intervals) and flag if the DE result is 10%+ worse.
+
+    4. [CRITICAL] Add diagnostic output for Q5: for each group, report whether any bomb produced occlusion, and if not, report the perpendicular distance from each UAV's cloud to the missile's line of sight to help identify geometrically infeasible assignments.
+
+    5. Fix the Q1_summary_results.csv format: store data as proper column-oriented CSV with numeric values (no unit suffixes, no embedded Python lists). Use separate columns for each parameter.
+
+    6. Add population diversity tracking to all DE loops: track the mean pairwise Euclidean distance or the standard deviation of parameter values in the population. Add a fallback (re-seeding or controlled restart) when diversity drops below a threshold while the best fitness is still far from expected values.
+
+    7. Fix the Q5 score function to consider actual optimization parameters (theta, v_u) rather than just initial heading theta_j0. The score should be recomputed after optimization, or the assignment should use a conservative geometric bound that remains valid regardless of the UAV's chosen heading.
+
+    8. Tighten the SolveProblem3 bound definitions: compute lb/ub for each t_b as [t_d_k + Delta_t_b_min, t_d_k + Delta_t_b_max] rather than using global t_d_min_Q3/t_d_max_Q3 for all bombs.
+
+    9. Skip generating fig5 when all intervals are empty, or add a text annotation explaining why no bars appear. Do not produce figures with zero visual content.
+
+    10. For empty interval CSVs in Q5, add a dummy row with a note column rather than producing zero-row files that may confuse downstream tools.
+  </correction_directives>
+  <status>REJECTED</status>
+</devils_advocate_report>

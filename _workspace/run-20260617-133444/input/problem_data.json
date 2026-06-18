@@ -1,0 +1,58 @@
+{
+  "problem": "2025 MCM Problem A",
+  "source": "MCMKnowledgeBase/raw/2025/A/A题.md",
+  "parameters": {
+    "missile_speed": 300,
+    "missile_speed_unit": "m/s",
+    "smoke_sinking_speed": 3,
+    "smoke_sinking_speed_unit": "m/s",
+    "smoke_effective_radius": 10,
+    "smoke_effective_radius_unit": "m",
+    "smoke_effective_duration": 20,
+    "smoke_effective_duration_unit": "s",
+    "drone_speed_min": 70,
+    "drone_speed_max": 140,
+    "drone_speed_unit": "m/s",
+    "bomb_release_interval_min": 1,
+    "bomb_release_interval_min_unit": "s",
+    "target_cylinder_radius": 7,
+    "target_cylinder_radius_unit": "m",
+    "target_cylinder_height": 10,
+    "target_cylinder_height_unit": "m",
+    "gravity": 9.8,
+    "gravity_unit": "m/s^2",
+    "max_bombs_per_drone": 3
+  },
+  "initial_positions": {
+    "fake_target": [0, 0, 0],
+    "real_target_bottom_center": [0, 200, 0],
+    "missiles": {
+      "M1": [20000, 0, 2000],
+      "M2": [19000, 600, 2100],
+      "M3": [18000, -600, 1900]
+    },
+    "drones": {
+      "FY1": [17800, 0, 1800],
+      "FY2": [12000, 1400, 1400],
+      "FY3": [6000, -3000, 700],
+      "FY4": [11000, 2000, 1800],
+      "FY5": [13000, -2000, 1300]
+    },
+    "note": "假目标为坐标原点；真目标下底面圆心为 (0,200,0)"
+  },
+  "constraints": {
+    "drone_flight": "等高度匀速直线飞行，航向/速度确定后不变",
+    "bomb_interval": "同一无人机连续投弹至少间隔 1s",
+    "smoke_duration": "起爆后 20s 内 10m 半径范围有效遮蔽",
+    "problem1_given": {
+      "FY1_speed": 120,
+      "FY1_direction": "朝向假目标 (0,0,0)",
+      "release_time": 1.5,
+      "detonation_delay": 3.6,
+      "detonation_time": 5.1
+    },
+    "optimization_objective": "最大化真目标的有效遮蔽时长",
+    "missile_target_all": "所有导弹飞行方向直指假目标 (0,0,0)"
+  },
+  "attachments": ["result1.xlsx", "result2.xlsx", "result3.xlsx"]
+}

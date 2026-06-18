@@ -1,0 +1,169 @@
+<devils_advocate_report>
+  <audit_target>Phase 2 code implementation and visualizations — 2024 MCM Problem E traffic control — coding audit</audit_target>
+
+  <flaws>
+
+    <!-- ===================================================================== -->
+    <!-- HIGH-RISK VULNERABILITIES                                              -->
+    <!-- ===================================================================== -->
+
+    [Risk Level: High] [ID: C-20260530-001] PELT shared covariance pre-estimated with global mean-centering inflates covariance
+    Location: Section 2, TimePeriodPartitioner.pelt_changepoint_detection(), lines 667-671
+    Description: The shared covariance matrix sigma_full is estimated by centering the FULL data around the GLOBAL mean (mu_full). In the presence of genuine change points, the data is NOT i.i.d., and this global-mean-centering conflates between-segment variation with within-segment variation, systematically inflating covariance estimates. The correctly implemented helper method _estimate_shared_covariance() (lines 614-650) computes within-segment pooled covariance by centering each segment around its own mean, but this method is NEVER called in pelt_changepoint_detection(). Instead, the inflated global covariance is used throughout the PELT log-likelihood computation (line 691). This biases the negative log-likelihood, potentially leading to under-detection of true change points (the penalty parameter becomes effectively too small relative to the inflated covariance).
+    Principle violated: Statistical estimation must reflect the model structure (segment-specific means, shared covariance), not pool across segments unconditionally.
+
+    [Risk Level: High] [ID: C-20260530-002] GA allocate_green overflow redistribution breaks without resolution when all phases hit g_max
+    Location: Section 4, SignalTimingOptimizer.allocate_green(), lines 1042-1061
+    Description: The overflow redistribution loop (max_iter=10) detects phases exceeding g_max, caps them, and redistributes excess to under-max phases. If at any iteration ALL phases are at g_max (line 1054-1055), the loop breaks via a bare 'break' statement without adjusting the exceeded green times. The total_g will then exceed G_avail, triggering the assertion at line 1065 (abs(total_g - G_avail) < 1e-4). This is a runtime crash bug, not just a constraint violation. Reproduction: if G_avail > 4 * g_max (which occurs when C_0 &gt; 4*50 + 28 = 228s, but C_max is 180s so this exact case is currently avoided by C_max=180). However, the g_max overflow in early iterations could cascade: if two phases exceed g_max and excess redistribution pushes a third phase to g_max, the next iteration finds all four at g_max and crashes. The current run's C_0=88s, G_avail=88-28=60s, g_min=15s, so total_g_min=60s = G_avail, leaving G_rem=0. This means the current run's parameters avoid the bug by coincidence, but it remains a latent crash in the code path for any C_0 &gt; g_max*4 + L_i = 228s or any high-flow scenario where redistribution cascades to all phases.
+    Principle violated: Algorithm exit paths must leave the solution in a feasible state, not crash.
+
+    [Risk Level: High] [ID: C-20260530-003] Event study parallel trend test uses invalid statistical procedure
+    Location: Section 6, ControlEffectEvaluator.event_study(), lines 1914-1923
+    Description: The parallel trend test computes f_stat = np.sum([c['coef'] / max(c['se'], 1e-10) for c in pre_coefs]) / len(pre_coefs) and then evaluates it against a t-distribution: 2 * (1 - t_dist.cdf(abs(f_stat), df)). This is statistically incorrect on three grounds. First, the correct test for joint significance of multiple pre-treatment coefficients is an F-test (or Wald chi-squared test), not an averaged t-statistic. The average of t-statistics follows neither a t-distribution nor an F-distribution. Second, the covariance between pre-treatment coefficients (which is non-zero due to the reference category and overlapping weekday dummies) is ignored. Third, the degrees of freedom calculation (n - k) is for a single coefficient t-test, not a joint test. This test could declare "parallel trends PASSED" even when individual pre-treatment coefficients are significantly non-zero, or vice versa. The test's actual size and power are unknown.
+    Principle violated: Statistical inference procedures must be valid for the hypothesis being tested — a joint test of multiple coefficients requires an F-test or Wald test.
+
+    [Risk Level: High] [ID: C-20260530-004] Cruising detection accuracy is unverifiable — synthetic ground truth exists but is never used for validation
+    Location: Section 5, main pipeline lines 2711-2743, and TrafficDataGenerator.generate_cruising_vehicles()
+    Description: The synthetic data generator produces 120 cruising vehicles with known plate IDs (line 206-207: cruising_plates set). After detection, the pipeline finds 210 cruising vehicles (tau=30) and reports this as a number without any comparison to the ground truth. For synthetic data, the primary advantage is exact ground truth knowledge, allowing precision, recall, and F1-score computation. The code completely ignores this. Moreover, the detected count of 210 versus ground truth of 120 implies either a 75% false positive rate (if detection misses none) or a different combination of false positives and false negatives. Without validation, the cruising detection model's accuracy is entirely unknown, undermining one of the four core algorithms.
+    Principle violated: With synthetic data providing exact ground truth, model validation against that ground truth is mandatory, not optional.
+
+    <!-- ===================================================================== -->
+    <!-- MEDIUM-RISK VULNERABILITIES                                            -->
+    <!-- ===================================================================== -->
+
+    [Risk Level: Med] [ID: C-20260530-005] PELT pruning is functionally a no-op — O(n^2) complexity without pruning benefit
+    Location: Section 2, TimePeriodPartitioner.pelt_changepoint_detection(), lines 702-711
+    Description: The PELT pruning step retains candidate index 0, best_s, and t for every iteration. The only candidates ever removed are those with index >= t (line 704). No candidate is ever pruned based on the PELT optimality condition (F[s] + cost(x_{s+1:t}) >= F[t]). The set R grows monotonically at O(n), making the overall algorithm O(n^2) instead of the advertised O(n). For n=96 this is not a performance problem, but the implementation claims PELT efficiency without delivering it — a misleading claim if presented as-is in the paper.
+    Principle violated: Algorithm names carry expected complexity guarantees; an implementation should either deliver the advertised performance or be transparent about the deviation.
+
+    [Risk Level: Med] [ID: C-20260530-006] Speed proxy assumes 500m between all consecutive records — coarse and intersection-dependent
+    Location: Section 6, ControlEffectEvaluator.compute_daily_metrics(), line 1719
+    Description: The speed proxy uses a hardcoded 500m as the assumed distance between consecutive records at the same intersection. Actual segment lengths are 700m (Weizhong Road, intersections 1-8) and 360m (Jingzhong Road, intersections 9-12). The weighted average is 530m, which would be a better single value, but the issue is structural: consecutive records at the same intersection may involve vehicles passing through at very different times (or different vehicles entirely — the code does not distinguish same-vehicle from cross-vehicle records). The speed proxy could be heavily biased: for intersections 9-12 with 360m spacing, if the true distance is 360m but the proxy assumes 500m, speeds are overestimated by 39%. This affects the control evaluation's dependent variable.
+    Principle violated: Derived variables used as regression outcomes must be accurately measured from the data; ad hoc proxies with known systematic bias require sensitivity analysis.
+
+    [Risk Level: Med] [ID: C-20260530-007] tau sensitivity CV = 56.2% indicates extreme model instability
+    Location: Section 5, results.json cruising_detection section, and CruisingVehicleDetector.sensitivity_analysis()
+    Description: The parking demand estimate changes from 15 (tau=15) to 102 (tau=60) — a 7x range. The coefficient of variation is 56.2%. This means the model's primary output (parking demand) depends more on the arbitrarily chosen tau parameter than on the actual data. The tau sensitivity plot shows this clearly, but the code draws no conclusions from this instability — it simply reports the tau=30 estimate as the "result." A model whose output varies 7x over the plausible range of its tuning parameter is not robust. The paper will need to either argue for a specific tau value or present the range as the result.
+    Principle violated: Model outputs should be stable with respect to reasonable variations in tuning parameters; otherwise, parameter selection dominates the inference.
+
+    [Risk Level: Med] [ID: C-20260530-008] Cruising time series and feature samples computed from a separate run, not from the sensitivity analysis results
+    Location: Section 8, main pipeline lines 2729-2739
+    Description: The code first calls sensivity_analysis() which generates all tau sensitivity results internally. Then it discards the internal cruise_counts and manually calls estimate_parking_demand() again (line 2732) to populate cruising_result['cruise_counts'] and cruising_result['feature_samples']. This second call uses the same tau=30 and same data, but the estimate_parking_demand call is separate from the sensitivity_analysis() call. The tau=30 results in cruising_result['tau_sensitivity'][30] were generated inside sensitivity_analysis() (line 1593-1599). The cruise_counts stored in cruising_result['cruise_counts'] come from the OUTER call (line 2733). These should be identical for tau=30, but the code structure is fragile: if sensitivity_analysis() is refactored to use different parameters, the plots would silently show mismatched data.
+    Principle violated: Computational pipelines should avoid redundant recomputation that introduces divergence risk between reported numbers and plotted data.
+
+    [Risk Level: Med] [ID: C-20260530-009] GA offset encoding mutation uses child[0] as ub, creating inconsistent bounds during crossover/mutation
+    Location: Section 4, SignalTimingOptimizer.polynomial_mutation(), line 1251
+    Description: For the 11 offset variables (chromosome indices 1-11), the mutation bounds are lb=0, ub=child[0] (the current C_0 value). Since mutation can modify child[0] AND the offsets in the same call, and child[0] is clipped independently (line 1301), an offset value valid under the pre-mutation C_0 may become invalid or poorly scaled under the post-mutation C_0. Furthermore, SBX crossover (line 1228-1241) crosses C_0 and offsets independently from two parents, producing children whose offset values may be completely inconsistent with their C_0. The post-mutation repair (line 1304, c1[j] = abs(c1[j]) % c1[0]) corrects this, but the repair is applied after SBX + mutation, meaning the GA explores a larger space than necessary and relies on repair to bring solutions back.
+    Principle violated: Encoding repair should either be embedded in the operators or the search space should natively encode constraints without repair.
+
+    [Risk Level: Med] [ID: C-20260530-010] GA offset initialization produces identical offsets for all 700m and 360m segments respectively, and GA converges exactly to initialization
+    Location: Section 4, SignalTimingOptimizer.ga_optimize(), lines 1174-1196
+    Description: The heuristic base individual sets offsets to travel_time_at_v_des = 63.0s (700m segments) and 32.4s (360m segments). After 200 generations of GA with 50 individuals, the best offset values are exactly 63.00630063006301 and 32.4032403240324 (identical to 700/11.11... and 360/11.11...). This suggests one of three possibilities: (a) the heuristic initialization is truly the global optimum — plausible for a linear network; (b) the GA population is dominated by the elite individual and diversity is insufficient to escape; or (c) the fitness landscape is flat and the GA cannot improve. None of these are ruled out or discussed. The results should be corroborated by at least comparing with an alternative initialization (e.g., random offsets).
+    Principle violated: Optimization results should be validated against alternative initializations to ensure global convergence.
+
+    <!-- ===================================================================== -->
+    <!-- LOW-RISK ISSUES                                                        -->
+    <!-- ===================================================================== -->
+
+    [Risk Level: Low] [ID: C-20260530-011] Dead code: holidays variable declared but never used in DataPreprocessor.label_date_types()
+    Location: Section 1, DataPreprocessor.label_date_types(), line 298
+    Description: The variable `holidays = {5, 6, 7, 8, 9, 10}` is assigned on line 298 but never referenced. The actual holiday logic on line 304 uses `(day_offset - 29) in {1, 2, 3, 4, 5}`. The dead code suggests refactoring residue and creates confusion about which holiday detection method is active.
+
+    [Risk Level: Low] [ID: C-20260530-012] Cohen's d sign interpretation hardcodes "negative = improvement" for flow and waiting time without justification
+    Location: Section 6, ControlEffectEvaluator.comprehensive_evaluation(), lines 1981-1984
+    Description: After computing Cohen's d as (post_mean - pre_mean) / pooled_std, the code flips the sign for total_flow and waiting_time metrics (d = -d) with the comment "Sign flip: reduction = improvement." While logically correct (reduced flow = less congestion, reduced wait = improvement), this domain knowledge should be explicitly stated and not hidden inside a sign flip that could be overlooked by readers.
+
+    [Risk Level: Low] [ID: C-20260530-013] R-squared values below 0.2 for all three regression models
+    Location: results.json control_evaluation section and Section 6
+    Description: The three regression models have R-squared values of 0.066 (avg_speed), 0.198 (total_flow), and 0.067 (waiting_time). All below 0.2, indicating the model explains very little variance. The post coefficient beta_3 is not statistically significant for any metric (all p > 0.05). The code faithfully reports these but provides no discussion of what these low values mean for the control evaluation's credibility. A model with R² &lt; 0.07 and insignificant treatment effects cannot support strong conclusions about traffic control effectiveness.
+
+    [Risk Level: Low] [ID: C-20260530-014] Identical breakpoints across date types with no commentary
+    Location: results.json partition_results and Section 2
+    Description: Weekday and weekend breakpoints are identical [28, 36, 56, 68, 76, 84]. Holiday breakpoints differ only at position 3 (57 vs 56). While this is mathematically correct given the synthetic data generates patterns as weekday * constant_scaling_factor (0.85 for weekend, 1.4 for holiday), this strong similarity would be suspicious to a reviewer viewing real-world data. The code provides no explanation for why breakpoints are nearly identical across fundamentally different day types.
+
+    [Risk Level: Low] [ID: C-20260530-015] No early stopping or convergence criterion for GA beyond fixed 200 generations
+    Location: Section 4, SignalTimingOptimizer.ga_optimize(), line 1270
+    Description: The GA runs exactly 200 generations regardless of convergence. The best_fitness_history is tracked but only used for plotting, not for early stopping. If the GA converges at generation 50, the remaining 150 generations waste computation. More importantly, if it has NOT converged by generation 200, the result is reported as optimal without any convergence check. Adding a convergence tolerance (e.g., stop if best fitness hasn't improved by 0.1% in 30 generations) would improve robustness.
+
+    [Risk Level: Low] [ID: C-20260530-016] Fig6 cruising analysis subplot 3 may be empty if cruise_counts is None
+    Location: Section 7, Visualizer.plot_cruising_stats(), lines 2278-2291
+    Description: The code checks `if cruise_counts is not None` before plotting subplot 3, else the subplot is left empty with only axis labels. In the current run, cruise_counts is populated, but this conditional is a code smell — an empty subplot in a 2x2 grid looks like an error to any reader.
+
+    <!-- ===================================================================== -->
+    <!-- VISUALIZATION-SPECIFIC FLAWS                                           -->
+    <!-- ===================================================================== -->
+
+    [Risk Level: Med] [ID: V-20260530-001] Fig4 GA convergence shows only best and mean lines without population variance or multiple runs
+    Location: Section 7, Visualizer.plot_ga_convergence(), lines 2137-2151
+    Description: The GA convergence plot shows a single trace for best fitness and one for mean fitness. A single GA run provides no information about the variability of the optimization: was the best solution found by luck, or is it consistently reachable? Standard practice is to run GA multiple times (5-10) with different random seeds and plot the mean +/- std band across runs, or at minimum overlay multiple run traces.
+
+    [Risk Level: Med] [ID: V-20260530-002] Fig5 green wave diagram shows only Phase 1 (N-S straight) green bands, omitting other three phases
+    Location: Section 7, Visualizer.plot_green_wave_diagram(), lines 2163-2184
+    Description: The green wave diagram only renders green bands for signal Phase 1 (N-S straight). The other three phases (N-S left, E-W straight, E-W left) are completely invisible. A green wave diagram should show all phase green times or explicitly state which phase is the coordinated one. The current diagram may be misleading: readers will see only the N-S straight band and assume that's the only green time.
+
+    [Risk Level: Med] [ID: V-20260530-003] Fig6 cruising analysis subplot 4 feature space uses darkness/overplotting — dense clusters at low v_avg obscure individual points
+    Location: Section 7, Visualizer.plot_cruising_stats(), lines 2295-2309
+    Description: The feature space scatter plot (v_avg vs H colored by n_repeat) uses s=20 markers with alpha=0.6 and no edge color. With ~8000 vehicles, many points will overlap near v_avg < 10 km/h (since the data generator produces many vehicles with low speed patterns). The `'edgecolors': 'none'` parameter worsens overlap visibility. Adding alpha=0.3-0.4, using hexagonal binning (plt.hexbin), or 2D histogram would better reveal density structure.
+
+    [Risk Level: Low] [ID: V-20260530-004] Fig6 cruising analysis subplot 4 uses "Cruising region: lower-left quadrant" label but the dashed lines do not clearly bound a quadrant
+    Location: Section 7, Visualizer.plot_cruising_stats(), lines 2298-2304
+    Description: The title says "(Cruising region: lower-left quadrant)" implying v_avg < 5 AND H < H_threshold. However, the cruising definition requires v_avg <= 5 AND N_repeat >= 3 AND H >= H_threshold, which is the upper-left region of the lower-left quadrant (low speed, high entropy). The labeling is geometrically accurate for v_avg but potentially confusing for H (above vs below threshold).
+
+    [Risk Level: Low] [ID: V-20260530-005] Fig8 summary dashboard panel 8 (regression coefficients) uses horizontal bar chart with overlapping category labels
+    Location: Section 7, Visualizer.plot_summary_dashboard(), lines 2551-2558
+    Description: The regression coefficient panel combines 6 categories (3 metrics x 2 terms) in a narrow subplot (1/3 of grid width). The y-tick labels are auto-generated from dict keys ('avg_s_Post', 'tot_Post', etc.) which are abridged to fit but may be illegible at dashboard print resolution.
+
+    [Risk Level: Low] [ID: V-20260530-006] No Y-axis truncation detected, but colorbar labels in fig1 heatmap overlap with tick labels
+    Location: Section 7, Visualizer.plot_flow_heatmap(), line 2067
+    Description: Heatmap colorbars use `shrink=0.8` which may not be sufficient for 3 subplots sharing the same colorbar sizing. The movement labels (['N-str', 'N-L', 'N-R']) at fontsize=8 may be hard to read in print. This is a readability concern for the final paper, not a correctness issue.
+
+    <!-- ===================================================================== -->
+    <!-- ADHERENCE TO PHASE-1 MODEL DESIGN                                      -->
+    <!-- ===================================================================== -->
+
+    [Risk Level: Med] [ID: C-20260530-017] Phase-1 audit ID M-20260530-015 (DID circular reasoning) RESOLVED — code correctly uses all-12-treated design
+    Verification: The ControlEffectEvaluator assigns Post=1 to May 1-6 without any outcome-based treatment group division. No change_rate-based treated_i logic exists in the code. Satisfied.
+
+    [Risk Level: Med] [ID: C-20260530-018] Phase-1 audit ID M-20260530-017 (GA residual bug) RESOLVED — code uses the approved "g_min base then remainder" design
+    Verification: allocate_green() follows the three-step procedure: g_min allocation -> remainder by flow ratio -> g_max overflow redistribution. Assertions verify sum(g) = C_0 - L_i. Satisfied, with the caveat noted in C-20260530-002 about the all-phases-at-g_max edge case.
+
+    [Risk Level: Med] [ID: C-20260530-019] Phase-1 audit ID M-20260530-016 (PELT BIC over-penalty) RESOLVED — penalty = 0.5 * ln(N) * 12
+    Verification: Line 652 shows penalty=0.5 * np.log(N_WINDOWS) * 12. The phase-1 model design audit required 0.5*ln(N)*12 (only mean parameters penalized). Satisfied.
+
+    [Risk Level: Med] [ID: C-20260530-020] Phase-1 audit ID M-20260530-018 (segment_length undefined) RESOLVED — variable defined in global constants
+    Verification: AVG_SEGMENT_LENGTH = 530.0 defined at line 90. Used in CruisingVehicleDetector via d_segment parameter. Satisfied.
+
+    [Risk Level: Med] [ID: C-20260530-021] Phase-1 audit ID M-20260530-019 (critical phase delay proxy) RESOLVED — used in compute_avg_speed
+    Verification: The compute_avg_speed method uses critical_phase (highest y_vals) delay as proxy. The model design's 2.5 section justifies this choice. Satisfied.
+
+  </flaws>
+
+  <correction_directives>
+    The following issues require correction before Phase 3 (paper writing) can proceed:
+
+    1. (High) [C-20260530-001] PELT covariance estimation: Replace the global-mean-centering in pelt_changepoint_detection() (lines 667-669) with a call to _estimate_shared_covariance() that computes pooled within-segment covariance. The current code has a correct implementation of the desired logic as a separate method but does not use it. The pipeline should either: (a) call _estimate_shared_covariance() with initial breakpoints from Scheme A before running PELT, or (b) compute pooled covariance iteratively. Without this fix, the PELT log-likelihood is biased and the breakpoint detection is unreliable.
+
+    2. (High) [C-20260530-002] GA allocate_green overflow edge case: Add handling for the "all phases at g_max" case in the redistribution loop. When all four phases have reached g_max, the code must not break silently — it should either increase C_0 (expand cycle time) or proportionally scale down all phases from their g_max values. The bare 'break' on line 1055 leaves the data structure in a state that triggers a runtime assertion failure. Add a fallback proportional reduction when overflow cannot be accommodated.
+
+    3. (High) [C-20260530-003] Event study parallel trend test: Replace the averaged-t-statistic approach with a proper joint F-test (or Wald test) of the null hypothesis that all pre-treatment coefficients are jointly zero. The standard approach constructs an F-statistic using the quadratic form beta_pre' * V_pre^{-1} * beta_pre / df, where V_pre is the covariance submatrix of the pre-treatment coefficients, and df is the number of pre-treatment periods. Alternatively, use an ANOVA-style comparison of the restricted model (without pre-treatment indicators) against the full model.
+
+    4. (High) [C-20260530-004] Cruising detection validation: Add a computation of precision, recall, and F1-score by comparing detected cruising plates against the known ground truth set (the 120 plates injected by TrafficDataGenerator). The generator's cruising_plates set (line 207) should be accessible from the main pipeline or passed through to the detector. Report these metrics alongside the raw counts. This is non-negotiable for synthetic data.
+
+    5. (Med) [C-20260530-007] Tau sensitivity discussion: Add a clear interpretation of the tau sensitivity analysis. The model's output varies 7x across tau=[15,60]. The current code reports tau=30 as the default but provides no argument for this choice. Either: (a) justify why tau=30 is the correct value with reference to the road network geometry (average segment traversal time), or (b) present the results as a range (15-102 spaces) rather than a point estimate, with the tau=30 value as the central case.
+
+    6. (Med) [V-20260530-001] GA convergence plot: Run the GA 5 times with different random seeds and overlay all runs, or show mean/std band across runs. A single GA trace cannot distinguish between "the optimum was found" and "the GA was lucky once."
+
+    7. (Med) [V-20260530-002] Green wave diagram: Either render green bands for all four phases (using different colors), or explicitly annotate that only Phase 1 (N-S straight) is shown as the coordinated phase. Remove the invisible phase data from the plotting code to avoid misleading readers.
+
+    8. (Low) [C-20260530-011] Remove dead code: Delete the unused `holidays` variable on line 298 of DataPreprocessor.label_date_types().
+
+    9. (Low) [C-20260530-015] Add GA convergence tolerance: After the main GA loop, verify convergence by checking whether best fitness improved in the last 50 generations. If not converged, note this limitation in the output.
+  </correction_directives>
+
+  <status>REJECTED</status>
+
+  <rejection_basis>
+    Status is REJECTED due to 4 High-risk issues (C-20260530-001 through C-20260530-004). Two of these are structural bugs (PELT covariance mis-estimation and GA edge-case crash), one is a statistical method error (parallel trend test invalid), and one is a validation omission (no ground truth comparison for cruising detection despite synthetic data). These must be resolved before Phase 3.
+  </rejection_basis>
+
+</devils_advocate_report>

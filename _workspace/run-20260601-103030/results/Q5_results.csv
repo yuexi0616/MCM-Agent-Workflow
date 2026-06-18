@@ -1,0 +1,5 @@
+problem_id,metric_name,value,unit,method,figure_ref,formula_ref
+Q5,全局最短遮蔽时长,0.0,s,Hierarchical DE (all failed),fig05_q5_hierarchical.png,Eq.(11)-(12)
+Q5,M1遮蔽时长,0.0,s,Hierarchical DE (all failed),fig05_q5_hierarchical.png,Layer 2 subproblem M1
+Q5,M2遮蔽时长,0.0,s,Hierarchical DE (all failed),fig05_q5_hierarchical.png,Layer 2 subproblem M2
+Q5,M3遮蔽时长,0.0,s,Hierarchical DE (all failed),fig05_q5_hierarchical.png,Layer 2 subproblem M3

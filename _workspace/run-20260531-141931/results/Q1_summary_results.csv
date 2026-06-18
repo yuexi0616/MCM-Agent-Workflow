@@ -1,0 +1,12 @@
+key,value,unit
+T_eff,8.9000,s
+t_d,0.00,s
+t_b,9.00,s
+M1_x,8000.0,m
+M1_y,0.0,m
+M1_z,150.0,m
+U1_x,3000.0,m
+U1_y,0.0,m
+U1_z,500.0,m
+theta1,-3.1416,rad
+v_u1,30.0,m/s

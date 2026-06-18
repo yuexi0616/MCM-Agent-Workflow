@@ -1,0 +1,3953 @@
+{
+    "pdf_info": [
+        {
+            "preproc_blocks": [
+                {
+                    "bbox": [
+                        225,
+                        164,
+                        368,
+                        181
+                    ],
+                    "type": "title",
+                    "angle": 0,
+                    "index": 2,
+                    "lines": [
+                        {
+                            "bbox": [
+                                224,
+                                164,
+                                368,
+                                183
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        224,
+                                        164,
+                                        368,
+                                        183
+                                    ],
+                                    "type": "text",
+                                    "content": "B 题 多波束测线问题",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "bbox": [
+                        79,
+                        197,
+                        515,
+                        274
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 3,
+                    "lines": [
+                        {
+                            "bbox": [
+                                103,
+                                198,
+                                512,
+                                209
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        103,
+                                        198,
+                                        512,
+                                        209
+                                    ],
+                                    "type": "text",
+                                    "content": "单波束测深是利用声波在水中的传播特性来测量水体深度的技术。声波在均匀介质中作匀",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                81,
+                                215,
+                                513,
+                                226
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        81,
+                                        215,
+                                        513,
+                                        226
+                                    ],
+                                    "type": "text",
+                                    "content": "速直线传播，在不同界面上产生反射，利用这一原理，从测量船换能器垂直向海底发射声波信",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                230,
+                                512,
+                                241
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        230,
+                                        512,
+                                        241
+                                    ],
+                                    "type": "text",
+                                    "content": "号，并记录从声波发射到信号接收的传播时间，通过声波在海水中的传播速度和传播时间计算",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                245,
+                                513,
+                                257
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        245,
+                                        513,
+                                        257
+                                    ],
+                                    "type": "text",
+                                    "content": "出海水的深度，其工作原理如图 1 所示。由于单波束测深过程中采取单点连续的测量方法，因",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                261,
+                                445,
+                                272
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        261,
+                                        445,
+                                        272
+                                    ],
+                                    "type": "text",
+                                    "content": "此，其测深数据分布的特点是，沿航迹的数据十分密集，而在测线间没有数据。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "type": "image",
+                    "bbox": [
+                        115,
+                        277,
+                        211,
+                        413
+                    ],
+                    "blocks": [
+                        {
+                            "bbox": [
+                                115,
+                                277,
+                                211,
+                                413
+                            ],
+                            "type": "image_body",
+                            "angle": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        115,
+                                        277,
+                                        211,
+                                        413
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                115,
+                                                277,
+                                                211,
+                                                413
+                                            ],
+                                            "type": "image",
+                                            "content": "Simple line drawing of a boat on a vertical pole with an orange curved base (no text or symbols)",
+                                            "image_path": "cd57255bf44f7d0d878e590597cacd021b6f48eaad9e04e58acc7709bd0969ec.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 4
+                        },
+                        {
+                            "bbox": [
+                                111,
+                                416,
+                                229,
+                                428
+                            ],
+                            "type": "image_caption",
+                            "angle": 0,
+                            "index": 5,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        113,
+                                        417,
+                                        229,
+                                        428
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                113,
+                                                417,
+                                                229,
+                                                428
+                                            ],
+                                            "type": "text",
+                                            "content": "（只有一个波束打到海底）",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                100,
+                                431,
+                                237,
+                                444
+                            ],
+                            "type": "image_caption",
+                            "angle": 0,
+                            "index": 6,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        102,
+                                        432,
+                                        238,
+                                        444
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                102,
+                                                432,
+                                                238,
+                                                444
+                                            ],
+                                            "type": "text",
+                                            "content": "图 1 单波束测深的工作原理",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "index": 4,
+                    "sub_type": "natural_image"
+                },
+                {
+                    "type": "image",
+                    "bbox": [
+                        276,
+                        280,
+                        483,
+                        413
+                    ],
+                    "blocks": [
+                        {
+                            "bbox": [
+                                276,
+                                280,
+                                483,
+                                413
+                            ],
+                            "type": "image_body",
+                            "angle": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        276,
+                                        280,
+                                        483,
+                                        413
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                276,
+                                                280,
+                                                483,
+                                                413
+                                            ],
+                                            "type": "image",
+                                            "content": "Simple line drawing of a conical structure with a boat at the top, no text or symbols present",
+                                            "image_path": "936083f11e79a3a6982a00654b4c210d50e08ac65c0012bd90149f2de2864a13.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 7
+                        },
+                        {
+                            "bbox": [
+                                321,
+                                416,
+                                451,
+                                428
+                            ],
+                            "type": "image_caption",
+                            "angle": 0,
+                            "index": 8,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        323,
+                                        417,
+                                        450,
+                                        428
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                323,
+                                                417,
+                                                450,
+                                                428
+                                            ],
+                                            "type": "text",
+                                            "content": "（多个独立的波束打到海底）",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                312,
+                                431,
+                                451,
+                                444
+                            ],
+                            "type": "image_caption",
+                            "angle": 0,
+                            "index": 9,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        315,
+                                        433,
+                                        449,
+                                        444
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                315,
+                                                433,
+                                                449,
+                                                444
+                                            ],
+                                            "type": "text",
+                                            "content": "图2 多波束测深的工作原理",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "index": 7,
+                    "sub_type": "natural_image"
+                },
+                {
+                    "bbox": [
+                        79,
+                        462,
+                        515,
+                        523
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 10,
+                    "lines": [
+                        {
+                            "bbox": [
+                                103,
+                                464,
+                                513,
+                                475
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        103,
+                                        464,
+                                        513,
+                                        475
+                                    ],
+                                    "type": "text",
+                                    "content": "多波束测深系统是在单波束测深的基础上发展起来的，该系统在与航迹垂直的平面内一次",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                480,
+                                514,
+                                491
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        480,
+                                        514,
+                                        491
+                                    ],
+                                    "type": "text",
+                                    "content": "能发射出数十个乃至上百个波束，再由接收换能器接收由海底返回的声波，其工作原理如图 2",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                495,
+                                512,
+                                506
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        495,
+                                        512,
+                                        506
+                                    ],
+                                    "type": "text",
+                                    "content": "所示。多波束测深系统克服了单波束测深的缺点，在海底平坦的海域内，能够测量出以测量船",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                510,
+                                337,
+                                522
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        510,
+                                        337,
+                                        522
+                                    ],
+                                    "type": "text",
+                                    "content": "测线为轴线且具有一定宽度的全覆盖水深条带（图3）。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "type": "image",
+                    "bbox": [
+                        99,
+                        530,
+                        194,
+                        704
+                    ],
+                    "blocks": [
+                        {
+                            "bbox": [
+                                99,
+                                530,
+                                194,
+                                704
+                            ],
+                            "type": "image_body",
+                            "angle": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        99,
+                                        530,
+                                        194,
+                                        704
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                99,
+                                                530,
+                                                194,
+                                                704
+                                            ],
+                                            "type": "image",
+                                            "content": "条带\n测线\n重叠区域",
+                                            "image_path": "a5094d0cb5af347685ca5970e1e5bc904912958e2cb8537b9171475f30719125.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 11
+                        },
+                        {
+                            "bbox": [
+                                79,
+                                714,
+                                217,
+                                727
+                            ],
+                            "type": "image_caption",
+                            "angle": 0,
+                            "index": 12,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        81,
+                                        714,
+                                        217,
+                                        727
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                81,
+                                                714,
+                                                217,
+                                                727
+                                            ],
+                                            "type": "text",
+                                            "content": "图 3 条带、测线及重叠区域",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "index": 11,
+                    "sub_type": "text_image"
+                },
+                {
+                    "type": "image",
+                    "bbox": [
+                        233,
+                        535,
+                        514,
+                        691
+                    ],
+                    "blocks": [
+                        {
+                            "bbox": [
+                                233,
+                                535,
+                                514,
+                                691
+                            ],
+                            "type": "image_body",
+                            "angle": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        233,
+                                        535,
+                                        514,
+                                        691
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                233,
+                                                535,
+                                                514,
+                                                691
+                                            ],
+                                            "type": "image",
+                                            "content": "d\nθ\nD\nθ\nD\nη\nW",
+                                            "image_path": "afc2ac274ea5777941b135ed60fc1d4fda9a7fe8b0ce18985f0f990252aabcc4.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 13
+                        },
+                        {
+                            "bbox": [
+                                255,
+                                714,
+                                477,
+                                727
+                            ],
+                            "type": "image_caption",
+                            "angle": 0,
+                            "index": 14,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        257,
+                                        714,
+                                        476,
+                                        727
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                257,
+                                                714,
+                                                476,
+                                                727
+                                            ],
+                                            "type": "text",
+                                            "content": "图4 覆盖宽度、测线间距和重叠率之间的关系",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "index": 13,
+                    "sub_type": "text_image"
+                }
+            ],
+            "discarded_blocks": [
+                {
+                    "bbox": [
+                        152,
+                        77,
+                        440,
+                        95
+                    ],
+                    "type": "header",
+                    "angle": 0,
+                    "index": 0,
+                    "lines": [
+                        {
+                            "bbox": [
+                                152,
+                                76,
+                                440,
+                                96
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        152,
+                                        76,
+                                        440,
+                                        96
+                                    ],
+                                    "type": "text",
+                                    "content": "2023 年高教社杯全国大学生数学建模竞赛题目",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "bbox": [
+                        127,
+                        108,
+                        465,
+                        125
+                    ],
+                    "type": "header",
+                    "angle": 0,
+                    "index": 1,
+                    "lines": [
+                        {
+                            "bbox": [
+                                129,
+                                109,
+                                465,
+                                125
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        129,
+                                        109,
+                                        465,
+                                        125
+                                    ],
+                                    "type": "text",
+                                    "content": "（请先阅读“全国大学生数学建模竞赛论文格式规范”）",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "page_size": [
+                595,
+                841
+            ],
+            "page_idx": 0,
+            "para_blocks": [
+                {
+                    "bbox": [
+                        225,
+                        164,
+                        368,
+                        181
+                    ],
+                    "type": "title",
+                    "angle": 0,
+                    "index": 2,
+                    "lines": [
+                        {
+                            "bbox": [
+                                224,
+                                164,
+                                368,
+                                183
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        224,
+                                        164,
+                                        368,
+                                        183
+                                    ],
+                                    "type": "text",
+                                    "content": "B 题 多波束测线问题",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "bbox": [
+                        79,
+                        197,
+                        515,
+                        274
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 3,
+                    "lines": [
+                        {
+                            "bbox": [
+                                103,
+                                198,
+                                512,
+                                209
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        103,
+                                        198,
+                                        512,
+                                        209
+                                    ],
+                                    "type": "text",
+                                    "content": "单波束测深是利用声波在水中的传播特性来测量水体深度的技术。声波在均匀介质中作匀",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                81,
+                                215,
+                                513,
+                                226
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        81,
+                                        215,
+                                        513,
+                                        226
+                                    ],
+                                    "type": "text",
+                                    "content": "速直线传播，在不同界面上产生反射，利用这一原理，从测量船换能器垂直向海底发射声波信",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                230,
+                                512,
+                                241
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        230,
+                                        512,
+                                        241
+                                    ],
+                                    "type": "text",
+                                    "content": "号，并记录从声波发射到信号接收的传播时间，通过声波在海水中的传播速度和传播时间计算",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                245,
+                                513,
+                                257
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        245,
+                                        513,
+                                        257
+                                    ],
+                                    "type": "text",
+                                    "content": "出海水的深度，其工作原理如图 1 所示。由于单波束测深过程中采取单点连续的测量方法，因",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                261,
+                                445,
+                                272
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        261,
+                                        445,
+                                        272
+                                    ],
+                                    "type": "text",
+                                    "content": "此，其测深数据分布的特点是，沿航迹的数据十分密集，而在测线间没有数据。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "type": "image",
+                    "bbox": [
+                        115,
+                        277,
+                        211,
+                        413
+                    ],
+                    "blocks": [
+                        {
+                            "bbox": [
+                                115,
+                                277,
+                                211,
+                                413
+                            ],
+                            "type": "image_body",
+                            "angle": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        115,
+                                        277,
+                                        211,
+                                        413
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                115,
+                                                277,
+                                                211,
+                                                413
+                                            ],
+                                            "type": "image",
+                                            "content": "Simple line drawing of a boat on a vertical pole with an orange curved base (no text or symbols)",
+                                            "image_path": "cd57255bf44f7d0d878e590597cacd021b6f48eaad9e04e58acc7709bd0969ec.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 4
+                        },
+                        {
+                            "bbox": [
+                                111,
+                                416,
+                                229,
+                                428
+                            ],
+                            "type": "image_caption",
+                            "angle": 0,
+                            "index": 5,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        113,
+                                        417,
+                                        229,
+                                        428
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                113,
+                                                417,
+                                                229,
+                                                428
+                                            ],
+                                            "type": "text",
+                                            "content": "（只有一个波束打到海底）",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                100,
+                                431,
+                                237,
+                                444
+                            ],
+                            "type": "image_caption",
+                            "angle": 0,
+                            "index": 6,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        102,
+                                        432,
+                                        238,
+                                        444
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                102,
+                                                432,
+                                                238,
+                                                444
+                                            ],
+                                            "type": "text",
+                                            "content": "图 1 单波束测深的工作原理",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "index": 4,
+                    "sub_type": "natural_image"
+                },
+                {
+                    "type": "image",
+                    "bbox": [
+                        276,
+                        280,
+                        483,
+                        413
+                    ],
+                    "blocks": [
+                        {
+                            "bbox": [
+                                276,
+                                280,
+                                483,
+                                413
+                            ],
+                            "type": "image_body",
+                            "angle": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        276,
+                                        280,
+                                        483,
+                                        413
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                276,
+                                                280,
+                                                483,
+                                                413
+                                            ],
+                                            "type": "image",
+                                            "content": "Simple line drawing of a conical structure with a boat at the top, no text or symbols present",
+                                            "image_path": "936083f11e79a3a6982a00654b4c210d50e08ac65c0012bd90149f2de2864a13.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 7
+                        },
+                        {
+                            "bbox": [
+                                321,
+                                416,
+                                451,
+                                428
+                            ],
+                            "type": "image_caption",
+                            "angle": 0,
+                            "index": 8,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        323,
+                                        417,
+                                        450,
+                                        428
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                323,
+                                                417,
+                                                450,
+                                                428
+                                            ],
+                                            "type": "text",
+                                            "content": "（多个独立的波束打到海底）",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                312,
+                                431,
+                                451,
+                                444
+                            ],
+                            "type": "image_caption",
+                            "angle": 0,
+                            "index": 9,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        315,
+                                        433,
+                                        449,
+                                        444
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                315,
+                                                433,
+                                                449,
+                                                444
+                                            ],
+                                            "type": "text",
+                                            "content": "图2 多波束测深的工作原理",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "index": 7,
+                    "sub_type": "natural_image"
+                },
+                {
+                    "bbox": [
+                        79,
+                        462,
+                        515,
+                        523
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 10,
+                    "lines": [
+                        {
+                            "bbox": [
+                                103,
+                                464,
+                                513,
+                                475
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        103,
+                                        464,
+                                        513,
+                                        475
+                                    ],
+                                    "type": "text",
+                                    "content": "多波束测深系统是在单波束测深的基础上发展起来的，该系统在与航迹垂直的平面内一次",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                480,
+                                514,
+                                491
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        480,
+                                        514,
+                                        491
+                                    ],
+                                    "type": "text",
+                                    "content": "能发射出数十个乃至上百个波束，再由接收换能器接收由海底返回的声波，其工作原理如图 2",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                495,
+                                512,
+                                506
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        495,
+                                        512,
+                                        506
+                                    ],
+                                    "type": "text",
+                                    "content": "所示。多波束测深系统克服了单波束测深的缺点，在海底平坦的海域内，能够测量出以测量船",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                510,
+                                337,
+                                522
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        510,
+                                        337,
+                                        522
+                                    ],
+                                    "type": "text",
+                                    "content": "测线为轴线且具有一定宽度的全覆盖水深条带（图3）。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "type": "image",
+                    "bbox": [
+                        99,
+                        530,
+                        194,
+                        704
+                    ],
+                    "blocks": [
+                        {
+                            "bbox": [
+                                99,
+                                530,
+                                194,
+                                704
+                            ],
+                            "type": "image_body",
+                            "angle": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        99,
+                                        530,
+                                        194,
+                                        704
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                99,
+                                                530,
+                                                194,
+                                                704
+                                            ],
+                                            "type": "image",
+                                            "content": "条带\n测线\n重叠区域",
+                                            "image_path": "a5094d0cb5af347685ca5970e1e5bc904912958e2cb8537b9171475f30719125.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 11
+                        },
+                        {
+                            "bbox": [
+                                79,
+                                714,
+                                217,
+                                727
+                            ],
+                            "type": "image_caption",
+                            "angle": 0,
+                            "index": 12,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        81,
+                                        714,
+                                        217,
+                                        727
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                81,
+                                                714,
+                                                217,
+                                                727
+                                            ],
+                                            "type": "text",
+                                            "content": "图 3 条带、测线及重叠区域",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "index": 11,
+                    "sub_type": "text_image"
+                },
+                {
+                    "type": "image",
+                    "bbox": [
+                        233,
+                        535,
+                        514,
+                        691
+                    ],
+                    "blocks": [
+                        {
+                            "bbox": [
+                                233,
+                                535,
+                                514,
+                                691
+                            ],
+                            "type": "image_body",
+                            "angle": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        233,
+                                        535,
+                                        514,
+                                        691
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                233,
+                                                535,
+                                                514,
+                                                691
+                                            ],
+                                            "type": "image",
+                                            "content": "d\nθ\nD\nθ\nD\nη\nW",
+                                            "image_path": "afc2ac274ea5777941b135ed60fc1d4fda9a7fe8b0ce18985f0f990252aabcc4.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 13
+                        },
+                        {
+                            "bbox": [
+                                255,
+                                714,
+                                477,
+                                727
+                            ],
+                            "type": "image_caption",
+                            "angle": 0,
+                            "index": 14,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        257,
+                                        714,
+                                        476,
+                                        727
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                257,
+                                                714,
+                                                476,
+                                                727
+                                            ],
+                                            "type": "text",
+                                            "content": "图4 覆盖宽度、测线间距和重叠率之间的关系",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "index": 13,
+                    "sub_type": "text_image"
+                }
+            ]
+        },
+        {
+            "preproc_blocks": [
+                {
+                    "bbox": [
+                        78,
+                        71,
+                        512,
+                        146
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 0,
+                    "lines": [
+                        {
+                            "bbox": [
+                                103,
+                                73,
+                                513,
+                                84
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        103,
+                                        73,
+                                        513,
+                                        84
+                                    ],
+                                    "type": "text",
+                                    "content": "多波束测深条带的覆盖宽度 ?? 随换能器开角 ?? 和水深 ?? 的变化而变化。若测线相互平",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                80,
+                                92,
+                                514,
+                                111
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        80,
+                                        95,
+                                        324,
+                                        111
+                                    ],
+                                    "type": "text",
+                                    "content": "行且海底地形平坦，则相邻条带之间的重叠率定义为",
+                                    "score": 1.0
+                                },
+                                {
+                                    "bbox": [
+                                        324,
+                                        92,
+                                        374,
+                                        111
+                                    ],
+                                    "type": "inline_equation",
+                                    "content": "\\begin{array} { r } { \\eta = 1 - \\frac { d } { W } , } \\end{array}",
+                                    "score": 0.9113
+                                },
+                                {
+                                    "bbox": [
+                                        374,
+                                        95,
+                                        514,
+                                        111
+                                    ],
+                                    "type": "text",
+                                    "content": "，其中 ?? 为相邻两条测线的间",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                81,
+                                119,
+                                513,
+                                132
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        81,
+                                        119,
+                                        264,
+                                        132
+                                    ],
+                                    "type": "text",
+                                    "content": "距，?? 为条带的覆盖宽度（图 4）。若",
+                                    "score": 1.0
+                                },
+                                {
+                                    "bbox": [
+                                        265,
+                                        119,
+                                        294,
+                                        132
+                                    ],
+                                    "type": "inline_equation",
+                                    "content": "\\eta < 0",
+                                    "score": 0.5377
+                                },
+                                {
+                                    "bbox": [
+                                        294,
+                                        119,
+                                        513,
+                                        132
+                                    ],
+                                    "type": "text",
+                                    "content": "，则表示漏测。为保证测量的便利性和数据的完",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                81,
+                                134,
+                                305,
+                                148
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        81,
+                                        134,
+                                        305,
+                                        148
+                                    ],
+                                    "type": "text",
+                                    "content": "整性，相邻条带之间应有 10%~20% 的重叠率。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "bbox": [
+                        78,
+                        149,
+                        512,
+                        209
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 1,
+                    "lines": [
+                        {
+                            "bbox": [
+                                102,
+                                151,
+                                513,
+                                162
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        102,
+                                        151,
+                                        513,
+                                        162
+                                    ],
+                                    "type": "text",
+                                    "content": "但真实海底地形起伏变化大，若采用海区平均水深设计测线间隔，虽然条带之间的平均重",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                166,
+                                513,
+                                178
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        166,
+                                        513,
+                                        178
+                                    ],
+                                    "type": "text",
+                                    "content": "叠率可以满足要求，但在水深较浅处会出现漏测的情况（图5），影响测量质量；若采用海区最",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                81,
+                                181,
+                                513,
+                                192
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        81,
+                                        181,
+                                        513,
+                                        192
+                                    ],
+                                    "type": "text",
+                                    "content": "浅处水深设计测线间隔，虽然最浅处的重叠率可以满足要求，但在水深较深处会出现重叠过多",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                197,
+                                306,
+                                209
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        197,
+                                        306,
+                                        209
+                                    ],
+                                    "type": "text",
+                                    "content": "的情况（图6），数据冗余量大，影响测量效率。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "type": "image",
+                    "bbox": [
+                        104,
+                        215,
+                        249,
+                        348
+                    ],
+                    "blocks": [
+                        {
+                            "bbox": [
+                                104,
+                                215,
+                                249,
+                                348
+                            ],
+                            "type": "image_body",
+                            "angle": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        104,
+                                        215,
+                                        249,
+                                        348
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                104,
+                                                215,
+                                                249,
+                                                348
+                                            ],
+                                            "type": "image",
+                                            "content": "Abstract geometric diagram with blue, gray, and yellow triangular shapes and vertical dashed lines (no text or symbols)",
+                                            "image_path": "267e9cca5534b8850bfbffce4f4ee4b123e8f8109da54674afa3159672a1eaee.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 2
+                        },
+                        {
+                            "bbox": [
+                                121,
+                                352,
+                                215,
+                                364
+                            ],
+                            "type": "image_caption",
+                            "angle": 0,
+                            "index": 3,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        123,
+                                        352,
+                                        217,
+                                        364
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                123,
+                                                352,
+                                                217,
+                                                364
+                                            ],
+                                            "type": "text",
+                                            "content": "图5 平均测线间隔",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "index": 2,
+                    "sub_type": "natural_image"
+                },
+                {
+                    "type": "image",
+                    "bbox": [
+                        317,
+                        216,
+                        436,
+                        348
+                    ],
+                    "blocks": [
+                        {
+                            "bbox": [
+                                317,
+                                216,
+                                436,
+                                348
+                            ],
+                            "type": "image_body",
+                            "angle": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        317,
+                                        216,
+                                        436,
+                                        348
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                317,
+                                                216,
+                                                436,
+                                                348
+                                            ],
+                                            "type": "image",
+                                            "content": "Abstract geometric diagram with three vertical color bands (blue, yellow, dark blue) and a red dashed rectangle highlighting a region, no text or symbols present.",
+                                            "image_path": "bb6e7e57d7fbb9bbb083e586bc2d91ca9077f68f7ac8bf8742862b6d5f3dfb2a.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 4
+                        },
+                        {
+                            "bbox": [
+                                324,
+                                352,
+                                428,
+                                364
+                            ],
+                            "type": "image_caption",
+                            "angle": 0,
+                            "index": 5,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        326,
+                                        353,
+                                        428,
+                                        364
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                326,
+                                                353,
+                                                428,
+                                                364
+                                            ],
+                                            "type": "text",
+                                            "content": "图 6 最浅处测线间隔",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "index": 4,
+                    "sub_type": "natural_image"
+                },
+                {
+                    "bbox": [
+                        79,
+                        383,
+                        512,
+                        412
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 6,
+                    "lines": [
+                        {
+                            "bbox": [
+                                102,
+                                384,
+                                513,
+                                396
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        102,
+                                        384,
+                                        513,
+                                        396
+                                    ],
+                                    "type": "text",
+                                    "content": "问题1 与测线方向垂直的平面和海底坡面的交线构成一条与水平面夹角为 ?? 的斜线（图",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                81,
+                                399,
+                                477,
+                                412
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        81,
+                                        399,
+                                        477,
+                                        412
+                                    ],
+                                    "type": "text",
+                                    "content": "7），称 ?? 为坡度。请建立多波束测深的覆盖宽度及相邻条带之间重叠率的数学模型。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "type": "image",
+                    "bbox": [
+                        163,
+                        420,
+                        431,
+                        561
+                    ],
+                    "blocks": [
+                        {
+                            "bbox": [
+                                163,
+                                420,
+                                431,
+                                561
+                            ],
+                            "type": "image_body",
+                            "angle": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        163,
+                                        420,
+                                        431,
+                                        561
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                163,
+                                                420,
+                                                431,
+                                                561
+                                            ],
+                                            "type": "image",
+                                            "content": "θ\nD\nα",
+                                            "image_path": "1590505d42508338f1f8a8b1a2ebab915194f6e3f129de51413ede3df8186a17.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 7
+                        },
+                        {
+                            "bbox": [
+                                243,
+                                570,
+                                349,
+                                582
+                            ],
+                            "type": "image_caption",
+                            "angle": 0,
+                            "index": 8,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        245,
+                                        570,
+                                        349,
+                                        582
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                245,
+                                                570,
+                                                349,
+                                                582
+                                            ],
+                                            "type": "text",
+                                            "content": "图 7 问题1 的示意图",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "index": 7,
+                    "sub_type": "text_image"
+                },
+                {
+                    "bbox": [
+                        78,
+                        601,
+                        512,
+                        645
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 9,
+                    "lines": [
+                        {
+                            "bbox": [
+                                102,
+                                602,
+                                513,
+                                614
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        102,
+                                        602,
+                                        513,
+                                        614
+                                    ],
+                                    "type": "text",
+                                    "content": "若多波束换能器的开角为 120∘，坡度为 1.5∘，海域中心点处的海水深度为 70 m，利用上",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                80,
+                                618,
+                                514,
+                                630
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        80,
+                                        618,
+                                        514,
+                                        630
+                                    ],
+                                    "type": "text",
+                                    "content": "述模型计算表1中所列位置的指标值，将结果以表 1的格式放在正文中，同时保存到 result1.xlsx",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                80,
+                                632,
+                                121,
+                                646
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        80,
+                                        632,
+                                        121,
+                                        646
+                                    ],
+                                    "type": "text",
+                                    "content": "文件中。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "type": "table",
+                    "bbox": [
+                        80,
+                        666,
+                        496,
+                        764
+                    ],
+                    "blocks": [
+                        {
+                            "bbox": [
+                                238,
+                                650,
+                                355,
+                                663
+                            ],
+                            "type": "table_caption",
+                            "angle": 0,
+                            "index": 10,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        239,
+                                        650,
+                                        355,
+                                        664
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                239,
+                                                650,
+                                                355,
+                                                664
+                                            ],
+                                            "type": "text",
+                                            "content": "表 1 问题 1的计算结果",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                80,
+                                666,
+                                496,
+                                764
+                            ],
+                            "type": "table_body",
+                            "angle": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        80,
+                                        666,
+                                        496,
+                                        764
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                80,
+                                                666,
+                                                496,
+                                                764
+                                            ],
+                                            "type": "table",
+                                            "html": "<table><tr><td>测线距中心点处的距离/m</td><td>-800</td><td>-600</td><td>-400</td><td>-200</td><td>0</td><td>200</td><td>400</td><td>600</td><td>800</td></tr><tr><td>海水深度/m</td><td></td><td></td><td></td><td></td><td>70</td><td></td><td></td><td></td><td></td></tr><tr><td>覆盖宽度/m</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>与前一条测线的重叠率/%</td><td>—</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr></table>",
+                                            "image_path": "e44ecd80dc1f5366c362817d1e283873647c959b654ac8076830be440d7b5ec7.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 11
+                        }
+                    ],
+                    "index": 11
+                }
+            ],
+            "discarded_blocks": [],
+            "page_size": [
+                595,
+                841
+            ],
+            "page_idx": 1,
+            "para_blocks": [
+                {
+                    "bbox": [
+                        78,
+                        71,
+                        512,
+                        146
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 0,
+                    "lines": [
+                        {
+                            "bbox": [
+                                103,
+                                73,
+                                513,
+                                84
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        103,
+                                        73,
+                                        513,
+                                        84
+                                    ],
+                                    "type": "text",
+                                    "content": "多波束测深条带的覆盖宽度 ?? 随换能器开角 ?? 和水深 ?? 的变化而变化。若测线相互平",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                80,
+                                92,
+                                514,
+                                111
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        80,
+                                        95,
+                                        324,
+                                        111
+                                    ],
+                                    "type": "text",
+                                    "content": "行且海底地形平坦，则相邻条带之间的重叠率定义为",
+                                    "score": 1.0
+                                },
+                                {
+                                    "bbox": [
+                                        324,
+                                        92,
+                                        374,
+                                        111
+                                    ],
+                                    "type": "inline_equation",
+                                    "content": "\\begin{array} { r } { \\eta = 1 - \\frac { d } { W } , } \\end{array}",
+                                    "score": 0.9113
+                                },
+                                {
+                                    "bbox": [
+                                        374,
+                                        95,
+                                        514,
+                                        111
+                                    ],
+                                    "type": "text",
+                                    "content": "，其中 ?? 为相邻两条测线的间",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                81,
+                                119,
+                                513,
+                                132
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        81,
+                                        119,
+                                        264,
+                                        132
+                                    ],
+                                    "type": "text",
+                                    "content": "距，?? 为条带的覆盖宽度（图 4）。若",
+                                    "score": 1.0
+                                },
+                                {
+                                    "bbox": [
+                                        265,
+                                        119,
+                                        294,
+                                        132
+                                    ],
+                                    "type": "inline_equation",
+                                    "content": "\\eta < 0",
+                                    "score": 0.5377
+                                },
+                                {
+                                    "bbox": [
+                                        294,
+                                        119,
+                                        513,
+                                        132
+                                    ],
+                                    "type": "text",
+                                    "content": "，则表示漏测。为保证测量的便利性和数据的完",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                81,
+                                134,
+                                305,
+                                148
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        81,
+                                        134,
+                                        305,
+                                        148
+                                    ],
+                                    "type": "text",
+                                    "content": "整性，相邻条带之间应有 10%~20% 的重叠率。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "bbox": [
+                        78,
+                        149,
+                        512,
+                        209
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 1,
+                    "lines": [
+                        {
+                            "bbox": [
+                                102,
+                                151,
+                                513,
+                                162
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        102,
+                                        151,
+                                        513,
+                                        162
+                                    ],
+                                    "type": "text",
+                                    "content": "但真实海底地形起伏变化大，若采用海区平均水深设计测线间隔，虽然条带之间的平均重",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                166,
+                                513,
+                                178
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        166,
+                                        513,
+                                        178
+                                    ],
+                                    "type": "text",
+                                    "content": "叠率可以满足要求，但在水深较浅处会出现漏测的情况（图5），影响测量质量；若采用海区最",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                81,
+                                181,
+                                513,
+                                192
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        81,
+                                        181,
+                                        513,
+                                        192
+                                    ],
+                                    "type": "text",
+                                    "content": "浅处水深设计测线间隔，虽然最浅处的重叠率可以满足要求，但在水深较深处会出现重叠过多",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                197,
+                                306,
+                                209
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        197,
+                                        306,
+                                        209
+                                    ],
+                                    "type": "text",
+                                    "content": "的情况（图6），数据冗余量大，影响测量效率。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "type": "image",
+                    "bbox": [
+                        104,
+                        215,
+                        249,
+                        348
+                    ],
+                    "blocks": [
+                        {
+                            "bbox": [
+                                104,
+                                215,
+                                249,
+                                348
+                            ],
+                            "type": "image_body",
+                            "angle": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        104,
+                                        215,
+                                        249,
+                                        348
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                104,
+                                                215,
+                                                249,
+                                                348
+                                            ],
+                                            "type": "image",
+                                            "content": "Abstract geometric diagram with blue, gray, and yellow triangular shapes and vertical dashed lines (no text or symbols)",
+                                            "image_path": "267e9cca5534b8850bfbffce4f4ee4b123e8f8109da54674afa3159672a1eaee.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 2
+                        },
+                        {
+                            "bbox": [
+                                121,
+                                352,
+                                215,
+                                364
+                            ],
+                            "type": "image_caption",
+                            "angle": 0,
+                            "index": 3,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        123,
+                                        352,
+                                        217,
+                                        364
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                123,
+                                                352,
+                                                217,
+                                                364
+                                            ],
+                                            "type": "text",
+                                            "content": "图5 平均测线间隔",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "index": 2,
+                    "sub_type": "natural_image"
+                },
+                {
+                    "type": "image",
+                    "bbox": [
+                        317,
+                        216,
+                        436,
+                        348
+                    ],
+                    "blocks": [
+                        {
+                            "bbox": [
+                                317,
+                                216,
+                                436,
+                                348
+                            ],
+                            "type": "image_body",
+                            "angle": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        317,
+                                        216,
+                                        436,
+                                        348
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                317,
+                                                216,
+                                                436,
+                                                348
+                                            ],
+                                            "type": "image",
+                                            "content": "Abstract geometric diagram with three vertical color bands (blue, yellow, dark blue) and a red dashed rectangle highlighting a region, no text or symbols present.",
+                                            "image_path": "bb6e7e57d7fbb9bbb083e586bc2d91ca9077f68f7ac8bf8742862b6d5f3dfb2a.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 4
+                        },
+                        {
+                            "bbox": [
+                                324,
+                                352,
+                                428,
+                                364
+                            ],
+                            "type": "image_caption",
+                            "angle": 0,
+                            "index": 5,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        326,
+                                        353,
+                                        428,
+                                        364
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                326,
+                                                353,
+                                                428,
+                                                364
+                                            ],
+                                            "type": "text",
+                                            "content": "图 6 最浅处测线间隔",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "index": 4,
+                    "sub_type": "natural_image"
+                },
+                {
+                    "bbox": [
+                        79,
+                        383,
+                        512,
+                        412
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 6,
+                    "lines": [
+                        {
+                            "bbox": [
+                                102,
+                                384,
+                                513,
+                                396
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        102,
+                                        384,
+                                        513,
+                                        396
+                                    ],
+                                    "type": "text",
+                                    "content": "问题1 与测线方向垂直的平面和海底坡面的交线构成一条与水平面夹角为 ?? 的斜线（图",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                81,
+                                399,
+                                477,
+                                412
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        81,
+                                        399,
+                                        477,
+                                        412
+                                    ],
+                                    "type": "text",
+                                    "content": "7），称 ?? 为坡度。请建立多波束测深的覆盖宽度及相邻条带之间重叠率的数学模型。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "type": "image",
+                    "bbox": [
+                        163,
+                        420,
+                        431,
+                        561
+                    ],
+                    "blocks": [
+                        {
+                            "bbox": [
+                                163,
+                                420,
+                                431,
+                                561
+                            ],
+                            "type": "image_body",
+                            "angle": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        163,
+                                        420,
+                                        431,
+                                        561
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                163,
+                                                420,
+                                                431,
+                                                561
+                                            ],
+                                            "type": "image",
+                                            "content": "θ\nD\nα",
+                                            "image_path": "1590505d42508338f1f8a8b1a2ebab915194f6e3f129de51413ede3df8186a17.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 7
+                        },
+                        {
+                            "bbox": [
+                                243,
+                                570,
+                                349,
+                                582
+                            ],
+                            "type": "image_caption",
+                            "angle": 0,
+                            "index": 8,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        245,
+                                        570,
+                                        349,
+                                        582
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                245,
+                                                570,
+                                                349,
+                                                582
+                                            ],
+                                            "type": "text",
+                                            "content": "图 7 问题1 的示意图",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "index": 7,
+                    "sub_type": "text_image"
+                },
+                {
+                    "bbox": [
+                        78,
+                        601,
+                        512,
+                        645
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 9,
+                    "lines": [
+                        {
+                            "bbox": [
+                                102,
+                                602,
+                                513,
+                                614
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        102,
+                                        602,
+                                        513,
+                                        614
+                                    ],
+                                    "type": "text",
+                                    "content": "若多波束换能器的开角为 120∘，坡度为 1.5∘，海域中心点处的海水深度为 70 m，利用上",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                80,
+                                618,
+                                514,
+                                630
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        80,
+                                        618,
+                                        514,
+                                        630
+                                    ],
+                                    "type": "text",
+                                    "content": "述模型计算表1中所列位置的指标值，将结果以表 1的格式放在正文中，同时保存到 result1.xlsx",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                80,
+                                632,
+                                121,
+                                646
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        80,
+                                        632,
+                                        121,
+                                        646
+                                    ],
+                                    "type": "text",
+                                    "content": "文件中。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "type": "table",
+                    "bbox": [
+                        80,
+                        666,
+                        496,
+                        764
+                    ],
+                    "blocks": [
+                        {
+                            "bbox": [
+                                238,
+                                650,
+                                355,
+                                663
+                            ],
+                            "type": "table_caption",
+                            "angle": 0,
+                            "index": 10,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        239,
+                                        650,
+                                        355,
+                                        664
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                239,
+                                                650,
+                                                355,
+                                                664
+                                            ],
+                                            "type": "text",
+                                            "content": "表 1 问题 1的计算结果",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                80,
+                                666,
+                                496,
+                                764
+                            ],
+                            "type": "table_body",
+                            "angle": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        80,
+                                        666,
+                                        496,
+                                        764
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                80,
+                                                666,
+                                                496,
+                                                764
+                                            ],
+                                            "type": "table",
+                                            "html": "<table><tr><td>测线距中心点处的距离/m</td><td>-800</td><td>-600</td><td>-400</td><td>-200</td><td>0</td><td>200</td><td>400</td><td>600</td><td>800</td></tr><tr><td>海水深度/m</td><td></td><td></td><td></td><td></td><td>70</td><td></td><td></td><td></td><td></td></tr><tr><td>覆盖宽度/m</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>与前一条测线的重叠率/%</td><td>—</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr></table>",
+                                            "image_path": "e44ecd80dc1f5366c362817d1e283873647c959b654ac8076830be440d7b5ec7.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 11
+                        }
+                    ],
+                    "index": 11
+                }
+            ]
+        },
+        {
+            "preproc_blocks": [
+                {
+                    "bbox": [
+                        79,
+                        87,
+                        514,
+                        116
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 0,
+                    "lines": [
+                        {
+                            "bbox": [
+                                102,
+                                88,
+                                513,
+                                100
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        102,
+                                        88,
+                                        513,
+                                        100
+                                    ],
+                                    "type": "text",
+                                    "content": "问题2 考虑一个矩形待测海域（图 8），测线方向与海底坡面的法向在水平面上投影的夹",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                104,
+                                310,
+                                116
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        104,
+                                        310,
+                                        116
+                                    ],
+                                    "type": "text",
+                                    "content": "角为 ??，请建立多波束测深覆盖宽度的数学模型。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "type": "image",
+                    "bbox": [
+                        128,
+                        123,
+                        466,
+                        285
+                    ],
+                    "blocks": [
+                        {
+                            "bbox": [
+                                128,
+                                123,
+                                466,
+                                285
+                            ],
+                            "type": "image_body",
+                            "angle": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        128,
+                                        123,
+                                        466,
+                                        285
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                128,
+                                                123,
+                                                466,
+                                                285
+                                            ],
+                                            "type": "image",
+                                            "content": "坡面法向\n测线方向\n海底坡面\n水平面\nα\nβ\n坡面法向在水平面上的投影",
+                                            "image_path": "12dda201b42b9e974a52f891f69abef1063438e3ddfa93fa3665b52f9928d147.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 1
+                        },
+                        {
+                            "bbox": [
+                                243,
+                                290,
+                                349,
+                                302
+                            ],
+                            "type": "image_caption",
+                            "angle": 0,
+                            "index": 2,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        245,
+                                        290,
+                                        349,
+                                        302
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                245,
+                                                290,
+                                                349,
+                                                302
+                                            ],
+                                            "type": "text",
+                                            "content": "图 8 问题2 的示意图",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "index": 1,
+                    "sub_type": "text_image"
+                },
+                {
+                    "bbox": [
+                        79,
+                        321,
+                        514,
+                        365
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 3,
+                    "lines": [
+                        {
+                            "bbox": [
+                                101,
+                                322,
+                                513,
+                                333
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        101,
+                                        322,
+                                        513,
+                                        333
+                                    ],
+                                    "type": "text",
+                                    "content": "若多波束换能器的开角为 120∘，坡度为 1.5∘，海域中心点处的海水深度为 120 m，利用上",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                81,
+                                337,
+                                513,
+                                349
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        81,
+                                        337,
+                                        513,
+                                        349
+                                    ],
+                                    "type": "text",
+                                    "content": "述模型计算表2 中所列位置多波束测深的覆盖宽度，将结果以表 2 的格式放在正文中，同时保",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                80,
+                                353,
+                                195,
+                                364
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        80,
+                                        353,
+                                        195,
+                                        364
+                                    ],
+                                    "type": "text",
+                                    "content": "存到 result2.xlsx 文件中。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "type": "table",
+                    "bbox": [
+                        91,
+                        385,
+                        504,
+                        550
+                    ],
+                    "blocks": [
+                        {
+                            "bbox": [
+                                238,
+                                370,
+                                355,
+                                383
+                            ],
+                            "type": "table_caption",
+                            "angle": 0,
+                            "index": 4,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        239,
+                                        370,
+                                        355,
+                                        383
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                239,
+                                                370,
+                                                355,
+                                                383
+                                            ],
+                                            "type": "text",
+                                            "content": "表2 问题 2 的计算结果",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                91,
+                                385,
+                                504,
+                                550
+                            ],
+                            "type": "table_body",
+                            "angle": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        91,
+                                        385,
+                                        504,
+                                        550
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                91,
+                                                385,
+                                                504,
+                                                550
+                                            ],
+                                            "type": "table",
+                                            "html": "<table><tr><td rowspan=\"2\" colspan=\"2\">覆盖宽度/m</td><td colspan=\"8\">测量船距海域中心点处的距离/海里</td></tr><tr><td>0</td><td>0.3</td><td>0.6</td><td>0.9</td><td>1.2</td><td>1.5</td><td>1.8</td><td>2.1</td></tr><tr><td rowspan=\"8\">测线方向夹角/°</td><td>0</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>45</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>90</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>135</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>180</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>225</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>270</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>315</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr></table>",
+                                            "image_path": "e03d699db5e151f1c8be10975d0e66d1c3175c349862cc42c3a80e9be9a2b880.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 5
+                        }
+                    ],
+                    "index": 5
+                },
+                {
+                    "bbox": [
+                        79,
+                        565,
+                        513,
+                        609
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 6,
+                    "lines": [
+                        {
+                            "bbox": [
+                                102,
+                                565,
+                                514,
+                                577
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        102,
+                                        565,
+                                        514,
+                                        577
+                                    ],
+                                    "type": "text",
+                                    "content": "问题 3 考虑一个南北长 2 海里、东西宽 4 海里的矩形海域内，海域中心点处的海水深度",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                81,
+                                581,
+                                514,
+                                593
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        81,
+                                        581,
+                                        514,
+                                        593
+                                    ],
+                                    "type": "text",
+                                    "content": "为 110 m，西深东浅，坡度为 1.5∘，多波束换能器的开角为 120∘。请设计一组测量长度最短、",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                597,
+                                473,
+                                608
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        597,
+                                        473,
+                                        608
+                                    ],
+                                    "type": "text",
+                                    "content": "可完全覆盖整个待测海域的测线，且相邻条带之间的重叠率满足 10%~20% 的要求。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "bbox": [
+                        79,
+                        612,
+                        513,
+                        703
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 7,
+                    "lines": [
+                        {
+                            "bbox": [
+                                102,
+                                613,
+                                508,
+                                624
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        102,
+                                        613,
+                                        508,
+                                        624
+                                    ],
+                                    "type": "text",
+                                    "content": "问题 4 海水深度数据（附件.xlsx）是若干年前某海域（南北长 5 海里、东西宽 4 海里）",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                628,
+                                512,
+                                640
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        628,
+                                        512,
+                                        640
+                                    ],
+                                    "type": "text",
+                                    "content": "单波束测量的测深数据，现希望利用这组数据为多波束测量船的测量布线提供帮助。在设计测",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                80,
+                                642,
+                                514,
+                                655
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        80,
+                                        642,
+                                        514,
+                                        655
+                                    ],
+                                    "type": "text",
+                                    "content": "线时，有如下要求：(1) 沿测线扫描形成的条带尽可能地覆盖整个待测海域；(2) 相邻条带之间",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                660,
+                                513,
+                                671
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        660,
+                                        513,
+                                        671
+                                    ],
+                                    "type": "text",
+                                    "content": "的重叠率尽量控制在20% 以下；(3) 测线的总长度尽可能短。在设计出具体的测线后，请计算",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                675,
+                                508,
+                                687
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        675,
+                                        508,
+                                        687
+                                    ],
+                                    "type": "text",
+                                    "content": "如下指标：(1) 测线的总长度；(2) 漏测海区占总待测海域面积的百分比；(3) 在重叠区域中，",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                690,
+                                231,
+                                703
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        690,
+                                        231,
+                                        703
+                                    ],
+                                    "type": "text",
+                                    "content": "重叠率超过20% 部分的总长度。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "bbox": [
+                        99,
+                        705,
+                        481,
+                        719
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 8,
+                    "lines": [
+                        {
+                            "bbox": [
+                                101,
+                                705,
+                                482,
+                                719
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        101,
+                                        705,
+                                        482,
+                                        719
+                                    ],
+                                    "type": "text",
+                                    "content": "注 在附件中，横、纵坐标的单位是海里，海水深度的单位是米。1海里=1852米。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "bbox": [
+                        100,
+                        736,
+                        198,
+                        750
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 9,
+                    "lines": [
+                        {
+                            "bbox": [
+                                102,
+                                736,
+                                198,
+                                749
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        102,
+                                        736,
+                                        198,
+                                        749
+                                    ],
+                                    "type": "text",
+                                    "content": "附件 海水深度数据",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                }
+            ],
+            "discarded_blocks": [],
+            "page_size": [
+                595,
+                841
+            ],
+            "page_idx": 2,
+            "para_blocks": [
+                {
+                    "bbox": [
+                        79,
+                        87,
+                        514,
+                        116
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 0,
+                    "lines": [
+                        {
+                            "bbox": [
+                                102,
+                                88,
+                                513,
+                                100
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        102,
+                                        88,
+                                        513,
+                                        100
+                                    ],
+                                    "type": "text",
+                                    "content": "问题2 考虑一个矩形待测海域（图 8），测线方向与海底坡面的法向在水平面上投影的夹",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                104,
+                                310,
+                                116
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        104,
+                                        310,
+                                        116
+                                    ],
+                                    "type": "text",
+                                    "content": "角为 ??，请建立多波束测深覆盖宽度的数学模型。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "type": "image",
+                    "bbox": [
+                        128,
+                        123,
+                        466,
+                        285
+                    ],
+                    "blocks": [
+                        {
+                            "bbox": [
+                                128,
+                                123,
+                                466,
+                                285
+                            ],
+                            "type": "image_body",
+                            "angle": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        128,
+                                        123,
+                                        466,
+                                        285
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                128,
+                                                123,
+                                                466,
+                                                285
+                                            ],
+                                            "type": "image",
+                                            "content": "坡面法向\n测线方向\n海底坡面\n水平面\nα\nβ\n坡面法向在水平面上的投影",
+                                            "image_path": "12dda201b42b9e974a52f891f69abef1063438e3ddfa93fa3665b52f9928d147.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 1
+                        },
+                        {
+                            "bbox": [
+                                243,
+                                290,
+                                349,
+                                302
+                            ],
+                            "type": "image_caption",
+                            "angle": 0,
+                            "index": 2,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        245,
+                                        290,
+                                        349,
+                                        302
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                245,
+                                                290,
+                                                349,
+                                                302
+                                            ],
+                                            "type": "text",
+                                            "content": "图 8 问题2 的示意图",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "index": 1,
+                    "sub_type": "text_image"
+                },
+                {
+                    "bbox": [
+                        79,
+                        321,
+                        514,
+                        365
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 3,
+                    "lines": [
+                        {
+                            "bbox": [
+                                101,
+                                322,
+                                513,
+                                333
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        101,
+                                        322,
+                                        513,
+                                        333
+                                    ],
+                                    "type": "text",
+                                    "content": "若多波束换能器的开角为 120∘，坡度为 1.5∘，海域中心点处的海水深度为 120 m，利用上",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                81,
+                                337,
+                                513,
+                                349
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        81,
+                                        337,
+                                        513,
+                                        349
+                                    ],
+                                    "type": "text",
+                                    "content": "述模型计算表2 中所列位置多波束测深的覆盖宽度，将结果以表 2 的格式放在正文中，同时保",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                80,
+                                353,
+                                195,
+                                364
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        80,
+                                        353,
+                                        195,
+                                        364
+                                    ],
+                                    "type": "text",
+                                    "content": "存到 result2.xlsx 文件中。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "type": "table",
+                    "bbox": [
+                        91,
+                        385,
+                        504,
+                        550
+                    ],
+                    "blocks": [
+                        {
+                            "bbox": [
+                                238,
+                                370,
+                                355,
+                                383
+                            ],
+                            "type": "table_caption",
+                            "angle": 0,
+                            "index": 4,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        239,
+                                        370,
+                                        355,
+                                        383
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                239,
+                                                370,
+                                                355,
+                                                383
+                                            ],
+                                            "type": "text",
+                                            "content": "表2 问题 2 的计算结果",
+                                            "score": 1.0
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                91,
+                                385,
+                                504,
+                                550
+                            ],
+                            "type": "table_body",
+                            "angle": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        91,
+                                        385,
+                                        504,
+                                        550
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                91,
+                                                385,
+                                                504,
+                                                550
+                                            ],
+                                            "type": "table",
+                                            "html": "<table><tr><td rowspan=\"2\" colspan=\"2\">覆盖宽度/m</td><td colspan=\"8\">测量船距海域中心点处的距离/海里</td></tr><tr><td>0</td><td>0.3</td><td>0.6</td><td>0.9</td><td>1.2</td><td>1.5</td><td>1.8</td><td>2.1</td></tr><tr><td rowspan=\"8\">测线方向夹角/°</td><td>0</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>45</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>90</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>135</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>180</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>225</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>270</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>315</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr></table>",
+                                            "image_path": "e03d699db5e151f1c8be10975d0e66d1c3175c349862cc42c3a80e9be9a2b880.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 5
+                        }
+                    ],
+                    "index": 5
+                },
+                {
+                    "bbox": [
+                        79,
+                        565,
+                        513,
+                        609
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 6,
+                    "lines": [
+                        {
+                            "bbox": [
+                                102,
+                                565,
+                                514,
+                                577
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        102,
+                                        565,
+                                        514,
+                                        577
+                                    ],
+                                    "type": "text",
+                                    "content": "问题 3 考虑一个南北长 2 海里、东西宽 4 海里的矩形海域内，海域中心点处的海水深度",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                81,
+                                581,
+                                514,
+                                593
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        81,
+                                        581,
+                                        514,
+                                        593
+                                    ],
+                                    "type": "text",
+                                    "content": "为 110 m，西深东浅，坡度为 1.5∘，多波束换能器的开角为 120∘。请设计一组测量长度最短、",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                597,
+                                473,
+                                608
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        597,
+                                        473,
+                                        608
+                                    ],
+                                    "type": "text",
+                                    "content": "可完全覆盖整个待测海域的测线，且相邻条带之间的重叠率满足 10%~20% 的要求。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "bbox": [
+                        79,
+                        612,
+                        513,
+                        703
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 7,
+                    "lines": [
+                        {
+                            "bbox": [
+                                102,
+                                613,
+                                508,
+                                624
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        102,
+                                        613,
+                                        508,
+                                        624
+                                    ],
+                                    "type": "text",
+                                    "content": "问题 4 海水深度数据（附件.xlsx）是若干年前某海域（南北长 5 海里、东西宽 4 海里）",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                628,
+                                512,
+                                640
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        628,
+                                        512,
+                                        640
+                                    ],
+                                    "type": "text",
+                                    "content": "单波束测量的测深数据，现希望利用这组数据为多波束测量船的测量布线提供帮助。在设计测",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                80,
+                                642,
+                                514,
+                                655
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        80,
+                                        642,
+                                        514,
+                                        655
+                                    ],
+                                    "type": "text",
+                                    "content": "线时，有如下要求：(1) 沿测线扫描形成的条带尽可能地覆盖整个待测海域；(2) 相邻条带之间",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                660,
+                                513,
+                                671
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        660,
+                                        513,
+                                        671
+                                    ],
+                                    "type": "text",
+                                    "content": "的重叠率尽量控制在20% 以下；(3) 测线的总长度尽可能短。在设计出具体的测线后，请计算",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                675,
+                                508,
+                                687
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        675,
+                                        508,
+                                        687
+                                    ],
+                                    "type": "text",
+                                    "content": "如下指标：(1) 测线的总长度；(2) 漏测海区占总待测海域面积的百分比；(3) 在重叠区域中，",
+                                    "score": 1.0
+                                }
+                            ]
+                        },
+                        {
+                            "bbox": [
+                                82,
+                                690,
+                                231,
+                                703
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        82,
+                                        690,
+                                        231,
+                                        703
+                                    ],
+                                    "type": "text",
+                                    "content": "重叠率超过20% 部分的总长度。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "bbox": [
+                        99,
+                        705,
+                        481,
+                        719
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 8,
+                    "lines": [
+                        {
+                            "bbox": [
+                                101,
+                                705,
+                                482,
+                                719
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        101,
+                                        705,
+                                        482,
+                                        719
+                                    ],
+                                    "type": "text",
+                                    "content": "注 在附件中，横、纵坐标的单位是海里，海水深度的单位是米。1海里=1852米。",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                },
+                {
+                    "bbox": [
+                        100,
+                        736,
+                        198,
+                        750
+                    ],
+                    "type": "text",
+                    "angle": 0,
+                    "index": 9,
+                    "lines": [
+                        {
+                            "bbox": [
+                                102,
+                                736,
+                                198,
+                                749
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        102,
+                                        736,
+                                        198,
+                                        749
+                                    ],
+                                    "type": "text",
+                                    "content": "附件 海水深度数据",
+                                    "score": 1.0
+                                }
+                            ]
+                        }
+                    ],
+                    "merge_prev": false
+                }
+            ]
+        }
+    ],
+    "_backend": "hybrid",
+    "_ocr_enable": false,
+    "_vlm_ocr_enable": false,
+    "_version_name": "3.1.8"
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "source": "termy",
+  "updatedAt": "2026-06-08T13:37:17.178Z",
+  "vaultRoot": "D:/ClaudeCodeWorkspace/MCM/MCMKnowledgeBase",
+  "workspaceFolders": [
+    "D:/ClaudeCodeWorkspace/MCM/MCMKnowledgeBase"
+  ],
+  "activeFile": {
+    "filePath": "D:\\ClaudeCodeWorkspace\\MCM\\MCMKnowledgeBase\\wiki\\concepts\\collision-detection-model.md",
+    "vaultPath": "wiki/concepts/collision-detection-model.md",
+    "fileUrl": "file:///D:/ClaudeCodeWorkspace/MCM/MCMKnowledgeBase/wiki/concepts/collision-detection-model.md",
+    "hasFocus": false
+  },
+  "openFiles": [
+    {
+      "filePath": "D:\\ClaudeCodeWorkspace\\MCM\\MCMKnowledgeBase\\wiki\\concepts\\collision-detection-model.md",
+      "vaultPath": "wiki/concepts/collision-detection-model.md",
+      "fileUrl": "file:///D:/ClaudeCodeWorkspace/MCM/MCMKnowledgeBase/wiki/concepts/collision-detection-model.md",
+      "isActive": true
+    }
+  ],
+  "selection": null
+}

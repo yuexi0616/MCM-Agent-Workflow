@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<devils_advocate_report>
+  <audit_target>draft_paper — MCM 2025-D 矿井突水水流漫延仿真与逃生路径优化，Phase 3 论文最终盲审</audit_target>
+
+  <summary>
+    对 Phase 3 论文手输出的 draft-paper.md 进行最终盲审。
+    验证数据一致性、结论合理性、结构完整性、过度推断和 LLM 废话模式。
+    发现 2 项 High-risk 漏洞、4 项 Med-risk 漏洞、4 项 Low-risk 漏洞。
+    核心问题：Problem 3 双源结果来自 80 节点网络而非摘要声称的 100 节点网络；
+    敏感性分析 6.4/6.5 节做出未经代码验证的定量百分比声明。
+    结论：REJECTED — 必须修正 H1~H2 后方可进入最终输出。
+  </summary>
+
+  <flaws>
+
+    <!-- ==================== HIGH-RISK ==================== -->
+
+    - [Risk Level: High] [Category: data_inconsistency] 摘要中 Problem 3 双源漫延结果被错误地归入 100 节点网络的语境下
+      位置: 摘要第二段
+      描述: 摘要写道"对平面合成网络(100节点)的仿真结果表明：...双源漫延(偏移4 min)产生56条封闭巷道，最早碰撞时间7.52 min，最晚19.34 min，总灌满时间6243.82 min。"
+      事实: 代码行 2930 `run_problem_1_planar(synthetic_n_nodes=100)` 与行 2951 `run_problem_3(synthetic_n_nodes=80)` 使用了不同的节点数。Problem 1/2 运行在 100 节点网络上，Problem 3/4 运行在 80 节点网络上。摘要未做任何区分，将两个不同网络的结果并列在同一句话中，读者必然认为所有平面仿真使用相同网络。(56 条封闭巷道、7.52 min 碰撞时间、6243.82 min 总灌满时间均来自 80 节点网络，非 100 节点网络。) 这构成事实性数据误报。
+
+    - [Risk Level: High] [Category: over_extrapolation] 敏感性分析 6.4 和 6.5 节做出无法从代码追溯的定量百分比声明
+      位置: Sections 6.4, 6.5
+      描述: 6.4 节声称"含追踪方案在分支数≤4时误差<2%，在8分支场景中控制在5%以内"——代码中没有任何"含/不含追踪方案"的对比仿真实现（grep 确认无匹配）。6.5 节声称"若忽略碰撞封闭效应...灌满时间被低估约23%"——同样没有运行"无碰撞检测"的消融实验来支撑这一百分比。这些定量数字是纯分析推断，但论文将它们表述为经验验证结果，属于过度推断。
+
+    <!-- ==================== MEDIUM-RISK ==================== -->
+
+    - [Risk Level: Med] [Category: incomplete_structure] 缺失独立的 Conclusion 章节
+      位置: 论文末尾，7. Evaluation → References
+      描述: 标准 MCM 论文应在 Limitations 之后包含 Conclusion/Summary 章节，总结模型核心发现、量化贡献和实际意义。当前论文从 7.2 Limitations 直接跳至 References，未对全文进行收束性总结。结构不完整。
+
+    - [Risk Level: Med] [Category: untested_result] Problem 4 重规划功能在合成数据场景中未实际触发，却被呈现为有效结果
+      位置: Section 5.2.5, 图 8
+      描述: 论文认为"矿工在 t=1.42 min 已到达出口，早于切换时间 t=5 min，因此重规划功能未实际触发路径变更。图 8 展示了...两条路径相同。"这本质上是一个空操作测试——算法从未进入需要做出决策的场景。论文虽然口头承认了此局限，但仍在 Results 中将其作为 Problem 4 的正式结果列出，并提供了"新路径 vs 初始路径"的对比图(图 8 两条路径完全相同)。更合适的做法是将此标记为"功能演示"(demonstration)而非"结果"(result)。
+
+    - [Risk Level: Med] [Category: unverifiable_data] 逃生路径"全长约340m"无法从代码输出追溯
+      位置: Section 5.2.3, 行 343
+      描述: 代码输出 `path_length=3` 仅表示路径包含 3 个节点(2 段边)。"约340m"这一距离值在 summary_results.txt 中不存在，也不是任何程序化输出的一部分。代码没有提供 `total_path_distance_meters` 的指标。该数据点不可独立验证。
+
+    - [Risk Level: Med] [Category: unverified_estimate] 敏感性分析 6.3 节节点规模性能表是基于分析估计而非实际仿真
+      位置: Section 6.3, 性能表格
+      描述: 50/100/200/665 节点下的漫延迭代轮数和 Dijkstra 时间(ms)是分析推导值，不是对不同节点规模运行仿真获取的。代码中被 grep "sensitivity" 无任何匹配，说明不存在按节点规模扫描的测试循环。论文将这些数字以与实测表格相同的格式呈现，未标注其估计性质。
+
+    <!-- ==================== LOW-RISK ==================== -->
+
+    - [Risk Level: Low] [Category: visualization_ambiguity] 图 7 展示的是独立单源覆盖范围，非双源耦合竞争结果，论文未澄清两者差异
+      位置: Section 5.2.4, 图 7 描述
+      描述: 图 7 的 A/B 覆盖范围来自两个独立的 `single_source_flood` 调用（代码行 2786-2788），而非来自 `dual_source_flood` 输出的真实竞争覆盖。也就是说蓝色区域的 B 源覆盖范围并未考虑 A 源占据巷道后的流量影响。论文用"独立单源漫延覆盖范围"描述，在技术上准确但有意弱化了差异——读者会自然以为图 7 显示的是双源模拟的结果。
+
+    - [Risk Level: Low] [Category: citation_incomplete] 参考文献 [5] "D037 优秀论文"缺少完整引用信息
+      位置: References [5]
+      描述: 引用仅写"2025 MCM Problem D: Mine Flood Evacuation — Outstanding Paper D037"，无作者名、期刊名(UMAP Journal)、卷期号或 DOI，不符合学术引用标准。无法独立验证。
+
+    - [Risk Level: Low] [Category: vague_reference] 7.2 节 Limitations 中"偏差约2.9%"未明确说明比较基准
+      位置: Section 7.2, point 3
+      描述: "两种方法在理想均匀网络中应一致，但在非均匀网络中产生约2.9%的偏差"——2.9% 是相对于哪个值的百分比？12420.57 的 2.9% 是 360，但 12420.57 和 12420.57×2 的差距也不是 2.9%。缺乏明确的分子/分母定义。
+
+    - [Risk Level: Low] [Category: missing_summary_format] Summary Sheet 缺少 MCM 必需的队伍编号和选题标记
+      位置: Summary Sheet 头部
+      描述: MCM Summary Sheet 标准格式要求包含 Team Control Number 和 Problem Choice。当前 Summary Sheet 仅包含题目和关键词，缺少这些强制性信息条目。
+
+  </flaws>
+
+  <correction_directives>
+    以下指令不提供修正文本，仅描述需要上游 Agent 解决的问题。
+
+    H1 (Problem 3 网络规模数据不一致):
+      摘要中必须明确区分 Problem 1/2 的结果来自 100 节点网络，而 Problem 3/4 的结果来自 80 节点网络。
+      "对平面合成网络(100节点)的仿真结果表明"这句话后只能跟 Problem 1/2 的结果。
+      Problem 3/4 的结果应另起一句并标注"(80节点)"。同时检查论文正文中是否还有将两个网络的
+      结果混为一谈的表述，进行同样修正。
+      注意：修正此问题后，56 条封闭巷道占总边数比例(~37%)的声明也需重新验证，
+      因为 80 节点网络的总边数与 100 节点网络不同。
+
+    H2 (未经验证的敏感性百分比):
+      6.4 节和 6.5 节的定量百分比(<2%, <5%, ~23%)必须做以下处理之一：
+      (a) 从论文中删除，替换为定性描述（如"当分支数增加时，部分填充量追踪机制的优势更加显著"），
+      或 (b) 在论文中明确标注这些是分析估计值而非仿真验证结果，并说明其近似性质。
+      绝不可以当前形式呈现为经验验证结论。
+
+    M1 (缺失 Conclusion 章节):
+      在 References 之前增加独立的 Conclusion 章节，总结四个子问题的核心发现、
+      模型的实用意义和主要局限(约 200 字)。不应在 Conclusion 中引入新的数据或分析。
+
+    M2 (Problem 4 结果表述方式):
+      将 Section 5.2.5 的标题或副标题改为"算法功能演示"或类似措辞，
+      明确标注当前合成数据下重规划未实际触发。避免使用"结果"一词。
+      图 8 的图注需增加说明文字（如"注：在当前合成数据中矿工已于切换前到达出口，
+      因此路径未变更；本图仅用于演示算法接口"）。
+
+    M3 (340m 数据可追溯性):
+      Section 5.2.3 中"全长约340m"的声明需要提供其来源，或从论文中移除。
+      若需保留，应在代码中增加 `total_path_distance` 计算并输出至 summary_results.txt，
+      然后引用该输出。否则删除此数据点，仅报告节点数和逃生时间。
+
+    M4 (性能表标注):
+      Section 6.3 的性能表需添加脚注或标注，说明这些值为分析估计值而非实测值。
+      例如可加标注"注：以上值为基于算法复杂度的分析估计值，未在不同节点规模的
+      独立仿真中重复验证"。
+
+    L1 (图 7 说明):
+      在图 7 图注中增加一句解释，说明 A/B 覆盖范围分别来自独立单源漫延结果，
+      并非双源耦合模拟中的真实竞争覆盖，以免读者误解。
+
+    L2 (Reference [5]):
+      补充 D037 论文的作者、发表期刊和年卷信息。若无法获取，则改为
+      "COMAP. (2025). Outstanding Paper D037: Mine Flood Evacuation, MCM 2025."
+      并标注"available from COMAP"。
+
+    L3 (2.9% 偏差):
+      明确说明 2.9% 是相对于哪个基准值的偏差。例如："单源 12420.57 min 的一半(6210.29 min)
+      与双源 6243.82 min 之间的偏差为 0.54%"（如果这是实际数字），或删除"2.9%"引用，
+      改为定性描述。
+
+    L4 (Summary Sheet):
+      在 Summary Sheet 头部添加 Team Control Number 和 Problem Choice 占位符。
+
+  </correction_directives>
+
+  <model_design_compliance>
+    验证 Phase 2 审计(REJECTED→APPROVED)中的修正是否在论文中得到正确反映：
+
+    H1 (t_spread=max): 论文 5.2.4 节双源灌满时间 6243.82 min 使用总量守恒法，与修正后代码一致。
+        但未声明计算方法差异。通过（需补充说明）。
+
+    H2 (上升阶段基准): 论文未单独报告上升阶段时间，仅报告最终 T_total，无法直接验证。
+        间接推断与代码一致。通过。
+
+    H3 (B源可视化): 图 7 标注为"独立单源漫延覆盖范围"，与修正后代码(ws_A, ws_B 来自独立
+        single_source_flood)一致。但未解释独立单源 VS 双源竞争的区别。部分通过。
+
+    H4 (3D T_total): 论文中 3D T_total=10195.05 min 与修正后代码输出一致。通过。
+
+    M4 (合成数据边界): 论文 5.2.5 和 7.2.5 均承认了此局限。通过。
+
+    其余 Med/Low 未强制要求论文修正的项不在此评估。
+  </model_design_compliance>
+
+  <status>REJECTED</status>
+</devils_advocate_report>
