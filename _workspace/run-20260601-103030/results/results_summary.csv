@@ -1,28 +1,3 @@
-problem_id,metric_name,value,unit,method,figure_ref,formula_ref
-Q1,有效遮蔽时长,1.391406250000001,s,确定性计算 (几何模拟),fig01_q1_occlusion_timeline.png,Eq.(1)-(7)
-Q1,起爆位置X,17188.0,m,抛体运动公式,fig01_q1_occlusion_timeline.png,Eq.(3)
-Q1,起爆位置Y,7.494838410781801e-14,m,抛体运动公式,fig01_q1_occlusion_timeline.png,Eq.(3)
-Q1,起爆位置Z,1736.496,m,抛体运动公式,fig01_q1_occlusion_timeline.png,Eq.(3)
-Q2,最大有效遮蔽时长,4.587500000000001,s,GridSearch + Nelder-Mead,fig02_q2_optimization.png,Eq.(1)-(7) + NM优化
-Q2,最优航向角,6.992255158284822,°,GridSearch + Nelder-Mead,fig02_q2_optimization.png,Eq.(8)
-Q2,最优速度,133.02424785154102,m/s,GridSearch + Nelder-Mead,fig02_q2_optimization.png,Eq.(8)
-Q2,最优投放时刻,0.001672779102507616,s,GridSearch + Nelder-Mead,fig02_q2_optimization.png,Eq.(8)
-Q2,最优起爆时刻,0.7625338769254248,s,GridSearch + Nelder-Mead,fig02_q2_optimization.png,Eq.(8)
-Q3,最大有效遮蔽时长,5.839016499771214,s,DE/rand/1/bin,fig03_q3_de_optimization.png,Eq.(9)
-Q3,弹1投放时刻,0.0,s,DE/rand/1/bin,fig03_q3_de_optimization.png,DE x[2]
-Q3,弹1起爆时刻,3.808498217595977,s,DE/rand/1/bin,fig03_q3_de_optimization.png,DE x[5]
-Q3,弹2投放时刻,1.0,s,DE/rand/1/bin,fig03_q3_de_optimization.png,DE x[3]
-Q3,弹2起爆时刻,4.90337409236719,s,DE/rand/1/bin,fig03_q3_de_optimization.png,DE x[6]
-Q3,弹3投放时刻,45.0,s,DE/rand/1/bin,fig03_q3_de_optimization.png,DE x[4]
-Q3,弹3起爆时刻,65.0,s,DE/rand/1/bin,fig03_q3_de_optimization.png,DE x[7]
-Q4,最大有效遮蔽时长,6.634374999999999,s,DE/rand/1/bin (Multi-UAV),fig04_q4_multi_uav.png,Eq.(10)
-Q4,FY1航向角,5.460676930902517,°,DE/rand/1/bin (Multi-UAV),fig04_q4_multi_uav.png,DE 12D
-Q4,FY1速度,140.0,m/s,DE/rand/1/bin (Multi-UAV),fig04_q4_multi_uav.png,DE 12D
-Q4,FY2航向角,266.2753564986772,°,DE/rand/1/bin (Multi-UAV),fig04_q4_multi_uav.png,DE 12D
-Q4,FY2速度,70.0,m/s,DE/rand/1/bin (Multi-UAV),fig04_q4_multi_uav.png,DE 12D
-Q4,FY3航向角,81.8760122740518,°,DE/rand/1/bin (Multi-UAV),fig04_q4_multi_uav.png,DE 12D
-Q4,FY3速度,123.39385076019592,m/s,DE/rand/1/bin (Multi-UAV),fig04_q4_multi_uav.png,DE 12D
-Q5,全局最短遮蔽时长,0.0,s,Hierarchical DE (all failed),fig05_q5_hierarchical.png,Eq.(11)-(12)
-Q5,M1遮蔽时长,0.0,s,Hierarchical DE (all failed),fig05_q5_hierarchical.png,Layer 2 subproblem M1
-Q5,M2遮蔽时长,0.0,s,Hierarchical DE (all failed),fig05_q5_hierarchical.png,Layer 2 subproblem M2
-Q5,M3遮蔽时长,0.0,s,Hierarchical DE (all failed),fig05_q5_hierarchical.png,Layer 2 subproblem M3
+version https://git-lfs.github.com/spec/v1
+oid sha256:ab89ef86c9228fe0faa32d6d7934bddd6331da6681bad3cdb31977d5f7647d3e
+size 2624

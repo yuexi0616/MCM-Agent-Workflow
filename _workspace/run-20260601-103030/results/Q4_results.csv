@@ -1,8 +1,3 @@
-problem_id,metric_name,value,unit,method,figure_ref,formula_ref
-Q4,最大有效遮蔽时长,6.634374999999999,s,DE/rand/1/bin (Multi-UAV),fig04_q4_multi_uav.png,Eq.(10)
-Q4,FY1航向角,5.460676930902517,°,DE/rand/1/bin (Multi-UAV),fig04_q4_multi_uav.png,DE 12D
-Q4,FY1速度,140.0,m/s,DE/rand/1/bin (Multi-UAV),fig04_q4_multi_uav.png,DE 12D
-Q4,FY2航向角,266.2753564986772,°,DE/rand/1/bin (Multi-UAV),fig04_q4_multi_uav.png,DE 12D
-Q4,FY2速度,70.0,m/s,DE/rand/1/bin (Multi-UAV),fig04_q4_multi_uav.png,DE 12D
-Q4,FY3航向角,81.8760122740518,°,DE/rand/1/bin (Multi-UAV),fig04_q4_multi_uav.png,DE 12D
-Q4,FY3速度,123.39385076019592,m/s,DE/rand/1/bin (Multi-UAV),fig04_q4_multi_uav.png,DE 12D
+version https://git-lfs.github.com/spec/v1
+oid sha256:dea58f9a981125b8ca5a91b9e50089c820a4a0c8b9dc6c811a12373b8035489f
+size 704

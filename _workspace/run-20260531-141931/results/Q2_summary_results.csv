@@ -1,2 +1,3 @@
-theta_rad,v_u_mps,t_d_s,t_b_s,T_eff_opt_s,T_eff_val_s,n_intervals
-3.1416,30.0000,0.0000,9.0000,8.9000,8.9000,1
+version https://git-lfs.github.com/spec/v1
+oid sha256:daeaa7eb57ef920837f051a07a8ffee5e26397fbfad5bfe28f2ad280aceb0908
+size 113

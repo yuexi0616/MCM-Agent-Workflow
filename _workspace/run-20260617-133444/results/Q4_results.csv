@@ -1,4 +1,3 @@
-﻿problem_id,bomb_idx,speed_mps,heading_deg,t_r_s,t_d_s,duration_s
-Q4,1,121.569,7.5,0.0,0.667,4.58
-Q4,2,104.338,-5.2,28.5225,28.8225,4.58
-Q4,3,77.403,180.0,15.3087,16.3954,4.58
+version https://git-lfs.github.com/spec/v1
+oid sha256:38c0840ccaf8530cacee6f4062ce96a9aa25e8f96e8ea5357b5eeac20377d355
+size 182
