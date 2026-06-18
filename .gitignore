@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+"*.exe" 
+"*.dll" 
+"*.so" 
+"*.dylib" 
